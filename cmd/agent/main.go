@@ -102,8 +102,11 @@ func sendMetric(paramName string, paramValue interface{}) {
 
 	// закрываю тело ответа
 	defer response.Body.Close()
-	_, err = io.Copy(io.Discard, response.Body)
+	payload, err := io.ReadAll(response.Body)
 	if err != nil {
 		fmt.Println("Произошла ошибка чтения тела ответа: ", err)
+	} else {
+		fmt.Println("Тело ответа: ", string(payload))
 	}
+	fmt.Println("____________________________")
 }
