@@ -79,16 +79,16 @@ func main() {
 
 func sendMetric(paramName string, paramValue interface{}) {
 	client := &http.Client{}
-	var requestUrl string
+	var requestURL string
 	switch value := paramValue.(type) {
 	case gauge:
-		requestUrl = fmt.Sprintf("http://localhost:8080/update/%s/%s/%f", "gauge", paramName, value)
+		requestURL = fmt.Sprintf("http://localhost:8080/update/%s/%s/%f", "gauge", paramName, value)
 	case counter:
-		requestUrl = fmt.Sprintf("http://localhost:8080/update/%s/%s/%d", "counter", paramName, value)
+		requestURL = fmt.Sprintf("http://localhost:8080/update/%s/%s/%d", "counter", paramName, value)
 	default:
 		panic("Незнакомый тип значения метрики")
 	}
-	request, err := http.NewRequest(http.MethodPost, requestUrl, nil)
+	request, err := http.NewRequest(http.MethodPost, requestURL, nil)
 	if err != nil {
 		fmt.Println("Произошла ошибка при создании запроса:  ", err)
 	}
