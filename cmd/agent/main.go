@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"runtime"
@@ -97,5 +98,12 @@ func sendMetric(paramName string, paramValue interface{}) {
 		fmt.Println("Произошла ошибка при отправке запроса:", err)
 	} else {
 		fmt.Printf("Запрос отправлен с метрикой '%s', статус ответа %d\n", paramName, response.StatusCode)
+	}
+
+	// закрываю тело ответа
+	defer response.Body.Close()
+	_, err = io.Copy(io.Discard, response.Body)
+	if err != nil {
+		fmt.Println("Произошла ошибка чтения тела ответа: ", err)
 	}
 }
