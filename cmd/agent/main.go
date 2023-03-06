@@ -91,7 +91,7 @@ func sendMetric(paramName string, paramValue interface{}) {
 	if err != nil {
 		fmt.Println("Произошла ошибка при создании запроса:  ", err)
 	}
-	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Add("Content-Type", "text/plain")
 	response, err := client.Do(request)
 	if err != nil {
 		fmt.Println("Произошла ошибка при отправке запроса:", err)
