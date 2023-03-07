@@ -7,9 +7,10 @@ import (
 )
 
 func main() {
+	metricHandler := server.NewDefaultMetricHandler()
 	serverObj := &http.Server{
 		Addr:    "localhost:8080",
-		Handler: http.HandlerFunc(server.CustomHandler),
+		Handler: metricHandler,
 	}
 	err := serverObj.ListenAndServe()
 	if err != nil {
