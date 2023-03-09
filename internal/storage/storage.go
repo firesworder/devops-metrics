@@ -3,6 +3,7 @@ package storage
 import "fmt"
 
 // todo: Разобраться с DI
+// todo: Дописать ошибки в функции, чтобы понятно было обновилось или что то произошло!
 
 type gauge float64
 type counter int64
@@ -10,6 +11,10 @@ type counter int64
 type Metric struct {
 	name  string
 	value interface{}
+}
+
+func NewMetric(name string, value interface{}) *Metric {
+	return &Metric{name: name, value: value}
 }
 
 type MetricRepository interface {
@@ -47,6 +52,20 @@ func (ms *MemStorage) DeleteMetric(metric Metric) {
 	_, isMetricExist := ms.metrics[metric.name]
 	if isMetricExist {
 		delete(ms.metrics, metric.name)
+	}
+}
+
+func (ms *MemStorage) IsMetricInStorage(metric Metric) bool {
+	_, isMetricExist := ms.metrics[metric.name]
+	return isMetricExist
+}
+
+// UpdateOrAddMetric Обновляет метрику, если она есть в коллекции, иначе добавляет ее.
+func (ms *MemStorage) UpdateOrAddMetric(metric Metric) {
+	if ms.IsMetricInStorage(metric) {
+		ms.UpdateMetric(metric)
+	} else {
+		ms.AddMetric(metric)
 	}
 }
 
