@@ -88,6 +88,7 @@ func sendMetric(paramName string, paramValue interface{}) {
 	response, err := client.Do(request)
 	if err != nil {
 		fmt.Println("Произошла ошибка при отправке запроса:", err)
+		return
 	} else {
 		fmt.Printf("Запрос отправлен с метрикой '%s', статус ответа %d\n", paramName, response.StatusCode)
 	}
@@ -97,6 +98,7 @@ func sendMetric(paramName string, paramValue interface{}) {
 	payload, err := io.ReadAll(response.Body)
 	if err != nil {
 		fmt.Println("Произошла ошибка чтения тела ответа: ", err)
+		return
 	} else {
 		fmt.Println("Тело ответа: ", string(payload))
 	}
