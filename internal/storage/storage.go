@@ -2,8 +2,6 @@ package storage
 
 import "fmt"
 
-// todo: реализовать геттер для репозитория метрик, на будущее и для отладки
-// todo: Разобраться с DI
 // todo: Дописать ошибки в функции, чтобы понятно было обновилось или что то произошло!
 
 var MetricStorage *MemStorage
@@ -81,6 +79,15 @@ func (ms *MemStorage) UpdateOrAddMetric(metric Metric) {
 	} else {
 		ms.AddMetric(metric)
 	}
+}
+
+func (ms *MemStorage) getAll() map[string]Metric {
+	return ms.metrics
+}
+
+func (ms *MemStorage) getMetric(name string) (metric Metric, ok bool) {
+	metric, ok = ms.metrics[name]
+	return
 }
 
 func NewMemStorage(metrics map[string]Metric) *MemStorage {
