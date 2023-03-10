@@ -1,8 +1,8 @@
 package storage
 
-import "fmt"
-
-// todo: Дописать ошибки в функции, чтобы понятно было обновилось или что то произошло!
+import (
+	"fmt"
+)
 
 var MetricStorage *MemStorage
 
@@ -40,7 +40,7 @@ type MemStorage struct {
 }
 
 func (ms *MemStorage) AddMetric(metric Metric) {
-	if _, isMetricExist := ms.metrics[metric.name]; !isMetricExist {
+	if !ms.IsMetricInStorage(metric) {
 		ms.metrics[metric.name] = metric
 	}
 }
@@ -61,8 +61,7 @@ func (ms *MemStorage) UpdateMetric(metric Metric) {
 }
 
 func (ms *MemStorage) DeleteMetric(metric Metric) {
-	_, isMetricExist := ms.metrics[metric.name]
-	if isMetricExist {
+	if ms.IsMetricInStorage(metric) {
 		delete(ms.metrics, metric.name)
 	}
 }
