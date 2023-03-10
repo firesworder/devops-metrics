@@ -13,38 +13,6 @@ var memStorage = storage.NewMemStorage(map[string]storage.Metric{})
 // todo: реализовать MemStorage(самост, как структуру) и переписать хендлер на использование оного
 // todo: покрыть код тестами
 
-var metricsTypes = map[string]string{
-	"Alloc":         "gauge",
-	"BuckHashSys":   "gauge",
-	"Frees":         "gauge",
-	"GCCPUFraction": "gauge",
-	"GCSys":         "gauge",
-	"HeapAlloc":     "gauge",
-	"HeapIdle":      "gauge",
-	"HeapInuse":     "gauge",
-	"HeapObjects":   "gauge",
-	"HeapReleased":  "gauge",
-	"HeapSys":       "gauge",
-	"LastGC":        "gauge",
-	"Lookups":       "gauge",
-	"MCacheInuse":   "gauge",
-	"MCacheSys":     "gauge",
-	"MSpanInuse":    "gauge",
-	"MSpanSys":      "gauge",
-	"Mallocs":       "gauge",
-	"NextGC":        "gauge",
-	"NumForcedGC":   "gauge",
-	"NumGC":         "gauge",
-	"OtherSys":      "gauge",
-	"PauseTotalNs":  "gauge",
-	"StackInuse":    "gauge",
-	"StackSys":      "gauge",
-	"Sys":           "gauge",
-	"TotalAlloc":    "gauge",
-	"PollCount":     "counter",
-	"RandomValue":   "gauge",
-}
-
 type errorHTTP struct {
 	message    string
 	statusCode int
@@ -89,23 +57,6 @@ func (mrh MetricReqHandler) parseMetricParams(r *http.Request) (m *storage.Metri
 		err = &errorHTTP{
 			message: fmt.Sprintf(
 				"Некорректный URL запроса. Ожидаемая первая часть пути 'update', получено '%s'", rootURLPath),
-			statusCode: http.StatusBadRequest,
-		}
-		return
-	}
-	metricType, ok := metricsTypes[paramName]
-	if ok {
-		if metricType != typeName {
-			err = &errorHTTP{
-				message: fmt.Sprintf(
-					"Некорректный тип для метрики. Ожидался '%s', получен '%s'", metricType, typeName),
-				statusCode: http.StatusBadRequest,
-			}
-			return
-		}
-	} else {
-		err = &errorHTTP{
-			message:    fmt.Sprintf("Неизвестная метрика. Название полученной метрики '%s'", paramName),
 			statusCode: http.StatusBadRequest,
 		}
 		return
