@@ -2,10 +2,15 @@ package storage
 
 import "fmt"
 
-// todo: Перенести инициализацию memstorage в сюда
 // todo: реализовать геттер для репозитория метрик, на будущее и для отладки
 // todo: Разобраться с DI
 // todo: Дописать ошибки в функции, чтобы понятно было обновилось или что то произошло!
+
+var MetricStorage *MemStorage
+
+func init() {
+	MetricStorage = NewMemStorage(map[string]Metric{})
+}
 
 type gauge float64
 type counter int64

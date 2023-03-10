@@ -8,9 +8,6 @@ import (
 	"strings"
 )
 
-var memStorage = storage.NewMemStorage(map[string]storage.Metric{})
-
-// todo: реализовать MemStorage(самост, как структуру) и переписать хендлер на использование оного
 // todo: покрыть код тестами
 
 type errorHTTP struct {
@@ -34,7 +31,7 @@ func (mrh MetricReqHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.message, err.statusCode)
 		return
 	}
-	memStorage.UpdateOrAddMetric(*metric)
+	storage.MetricStorage.UpdateOrAddMetric(*metric)
 }
 
 func (mrh MetricReqHandler) parseMetricParams(r *http.Request) (m *storage.Metric, err *errorHTTP) {
