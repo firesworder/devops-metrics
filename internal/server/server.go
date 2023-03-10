@@ -2,10 +2,16 @@ package server
 
 import (
 	"fmt"
+	"github.com/firesworder/devopsmetrics/internal/storage"
 	"net/http"
 	"strconv"
 	"strings"
 )
+
+var memStorage = storage.NewMemStorage(map[string]storage.Metric{})
+
+// todo: реализовать MemStorage(самост, как структуру) и переписать хендлер на использование оного
+// todo: покрыть код тестами
 
 var metricsTypes = map[string]string{
 	"Alloc":         "gauge",
@@ -50,30 +56,20 @@ type MetricReqHandler struct {
 	urlPathLen  int
 }
 
-type metric struct {
-	typeName, paramName string
-	paramValue          interface{}
-}
-
 func NewDefaultMetricHandler() MetricReqHandler {
 	return MetricReqHandler{rootURLPath: "update", method: http.MethodPost, urlPathLen: 4}
 }
 
 func (mrh MetricReqHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	metricObj, err := mrh.parseMetricParams(r)
+	metric, err := mrh.parseMetricParams(r)
 	if err != nil {
 		http.Error(w, err.message, err.statusCode)
 		return
 	}
-
-	if metricObj.typeName == "counter" {
-		fmt.Printf("Type: %s | Param: %s | Value: %d\n", metricObj.typeName, metricObj.paramName, metricObj.paramValue)
-	} else if metricObj.typeName == "gauge" {
-		fmt.Printf("Type: %s | Param: %s | Value: %f\n", metricObj.typeName, metricObj.paramName, metricObj.paramValue)
-	}
+	memStorage.UpdateOrAddMetric(*metric)
 }
 
-func (mrh MetricReqHandler) parseMetricParams(r *http.Request) (m *metric, err *errorHTTP) {
+func (mrh MetricReqHandler) parseMetricParams(r *http.Request) (m *storage.Metric, err *errorHTTP) {
 	if r.Method != mrh.method {
 		err = &errorHTTP{message: "Only POST method allowed", statusCode: http.StatusMethodNotAllowed}
 		return
@@ -132,5 +128,5 @@ func (mrh MetricReqHandler) parseMetricParams(r *http.Request) (m *metric, err *
 		return
 	}
 
-	return &metric{typeName: typeName, paramName: paramName, paramValue: paramValue}, nil
+	return storage.NewMetric(paramName, typeName, paramValue), nil
 }

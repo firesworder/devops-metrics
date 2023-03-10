@@ -2,6 +2,8 @@ package storage
 
 import "fmt"
 
+// todo: Перенести инициализацию memstorage в сюда
+// todo: реализовать геттер для репозитория метрик, на будущее и для отладки
 // todo: Разобраться с DI
 // todo: Дописать ошибки в функции, чтобы понятно было обновилось или что то произошло!
 
@@ -13,7 +15,14 @@ type Metric struct {
 	value interface{}
 }
 
-func NewMetric(name string, value interface{}) *Metric {
+func NewMetric(name string, typeName string, rawValue interface{}) *Metric {
+	var value interface{}
+	switch typeName {
+	case "counter":
+		value = counter(rawValue.(int64))
+	case "gauge":
+		value = gauge(rawValue.(float64))
+	}
 	return &Metric{name: name, value: value}
 }
 
