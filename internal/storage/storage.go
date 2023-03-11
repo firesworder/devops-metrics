@@ -1,9 +1,5 @@
 package storage
 
-import (
-	"fmt"
-)
-
 var MetricStorage *MemStorage
 
 func init() {
@@ -91,22 +87,4 @@ func (ms *MemStorage) getMetric(name string) (metric Metric, ok bool) {
 
 func NewMemStorage(metrics map[string]Metric) *MemStorage {
 	return &MemStorage{metrics: metrics}
-}
-
-// todo: удалить по завершению. Можно использовать для описания тестов
-func Playground() {
-	memStorage := NewMemStorage(map[string]Metric{})
-	demoMetric := Metric{name: "demo", value: gauge(1.12)}
-	memStorage.AddMetric(demoMetric)
-	fmt.Println(memStorage)
-
-	demoMetric.value = gauge(1.45)
-	memStorage.UpdateMetric(demoMetric)
-	fmt.Println(memStorage)
-
-	metricToDelete := Metric{name: "toDelete", value: counter(10)}
-	memStorage.AddMetric(metricToDelete)
-	fmt.Println(memStorage)
-	memStorage.DeleteMetric(metricToDelete)
-	fmt.Println(memStorage)
 }
