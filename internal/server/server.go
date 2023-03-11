@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"net/http"
@@ -66,6 +67,8 @@ func (mrh MetricReqHandler) parseMetricParams(r *http.Request) (m *storage.Metri
 		paramValue, parseErr = strconv.ParseInt(paramValueStr, 10, 64)
 	case "gauge":
 		paramValue, parseErr = strconv.ParseFloat(paramValueStr, 64)
+	default:
+		parseErr = errors.New("неизвестный тип метрики")
 	}
 	if parseErr != nil {
 		err = &errorHTTP{
