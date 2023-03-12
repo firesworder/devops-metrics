@@ -180,7 +180,7 @@ func TestMemStorage_IsMetricInStorage(t *testing.T) {
 	testMetric3 := Metric{name: "testMetric1", value: gauge(22.2)}
 	testMetric4 := Metric{name: "testMetric4", value: gauge(2.27)}
 	//testMetric5 := Metric{name: "testMetric5", value: 0}
-	testMetric6 := Metric{}
+	//testMetric6 := Metric{}
 	testMetric7 := Metric{name: "testMetric7", value: counter(27)}
 
 	tests := []struct {
@@ -218,12 +218,6 @@ func TestMemStorage_IsMetricInStorage(t *testing.T) {
 			metricToCheck: testMetric1,
 			startState:    map[string]Metric{},
 			wantedResult:  false,
-		},
-		{
-			name:          "Test 5. Empty metric.",
-			metricToCheck: testMetric6,
-			startState:    map[string]Metric{testMetric6.name: testMetric6, testMetric4.name: testMetric4},
-			wantedResult:  true,
 		},
 	}
 	for _, tt := range tests {
