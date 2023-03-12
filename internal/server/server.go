@@ -9,8 +9,6 @@ import (
 	"strings"
 )
 
-// todo: покрыть код тестами
-
 type errorHTTP struct {
 	message    string
 	statusCode int
@@ -61,7 +59,8 @@ func (mrh MetricReqHandler) parseMetricParams(r *http.Request) (m *storage.Metri
 	if rootURLPath != mrh.rootURLPath {
 		err = &errorHTTP{
 			message: fmt.Sprintf(
-				"Некорректный URL запроса. Ожидаемая первая часть пути 'update', получено '%s'", rootURLPath),
+				"Некорректный URL запроса. Ожидаемая первая часть пути '%s', получено '%s'",
+				mrh.rootURLPath, rootURLPath),
 			statusCode: http.StatusBadRequest,
 		}
 		return

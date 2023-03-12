@@ -67,7 +67,6 @@ func TestMetricReqHandler_ServeHTTP(t *testing.T) {
 			wantMetric: metricArgs{},
 		},
 		{
-			// todo: у меня обработки такой ошибки нет, надо добавить!
 			name:    "Test 5. Incorrect url order.",
 			request: request{url: `/update/PollCount/counter/10`, method: http.MethodPost},
 			wantResponse: response{

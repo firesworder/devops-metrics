@@ -73,7 +73,6 @@ func SendMetrics() {
 func sendMetric(paramName string, paramValue interface{}) {
 	client := &http.Client{}
 	var requestURL string
-	// todo: можно убрать свитч, в спринтф есть тег %T
 	switch value := paramValue.(type) {
 	case gauge:
 		requestURL = fmt.Sprintf("%s/update/%s/%s/%f", serverURL, "gauge", paramName, value)
