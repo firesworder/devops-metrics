@@ -80,7 +80,8 @@ func sendMetric(paramName string, paramValue interface{}) {
 	case counter:
 		requestURL = fmt.Sprintf("%s/update/%s/%s/%d", serverURL, "counter", paramName, value)
 	default:
-		panic("Незнакомый тип значения метрики")
+		fmt.Println("Передан незнакомый тип метрики! Отправка метрики отменена.")
+		return
 	}
 	request, err := http.NewRequest(http.MethodPost, requestURL, nil)
 	if err != nil {
