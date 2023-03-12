@@ -356,7 +356,7 @@ func TestMemStorage_UpdateOrAddMetric(t *testing.T) {
 			ms := &MemStorage{
 				metrics: tt.startState,
 			}
-			ms.UpdateOrAddMetric(tt.metricObj)
+			_ = ms.UpdateOrAddMetric(tt.metricObj)
 			assert.Equal(t, tt.wantedState, ms.metrics)
 		})
 	}

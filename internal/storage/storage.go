@@ -87,12 +87,13 @@ func (ms *MemStorage) IsMetricInStorage(metric Metric) bool {
 }
 
 // UpdateOrAddMetric Обновляет метрику, если она есть в коллекции, иначе добавляет ее.
-func (ms *MemStorage) UpdateOrAddMetric(metric Metric) {
+func (ms *MemStorage) UpdateOrAddMetric(metric Metric) (err error) {
 	if ms.IsMetricInStorage(metric) {
-		ms.UpdateMetric(metric)
+		err = ms.UpdateMetric(metric)
 	} else {
-		ms.AddMetric(metric)
+		err = ms.AddMetric(metric)
 	}
+	return
 }
 
 func (ms *MemStorage) getAll() map[string]Metric {
