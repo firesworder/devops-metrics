@@ -1,5 +1,10 @@
 package storage
 
+import (
+	"fmt"
+	"reflect"
+)
+
 var MetricStorage *MemStorage
 
 func init() {
@@ -41,10 +46,15 @@ func (ms *MemStorage) AddMetric(metric Metric) {
 	}
 }
 
-func (ms *MemStorage) UpdateMetric(metric Metric) {
+func (ms *MemStorage) UpdateMetric(metric Metric) (err error) {
 	metricToUpdate, ok := ms.metrics[metric.name]
 	if !ok {
-		return
+		return fmt.Errorf("there is no metric with name '%s'", metric.name)
+	}
+
+	if reflect.TypeOf(metricToUpdate.value) != reflect.TypeOf(metric.value) {
+		return fmt.Errorf("updated(%T) and new(%T) value type mismatch",
+			metricToUpdate.value, metric.value)
 	}
 
 	switch value := metric.value.(type) {
@@ -54,6 +64,7 @@ func (ms *MemStorage) UpdateMetric(metric Metric) {
 		metricToUpdate.value = metricToUpdate.value.(counter) + value
 	}
 	ms.metrics[metric.name] = metricToUpdate
+	return
 }
 
 func (ms *MemStorage) DeleteMetric(metric Metric) {

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -237,9 +238,9 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 	// одинаковый name с testMetric1, но другое value и тип value
 	testMetric13 := Metric{name: "testMetric1", value: gauge(22.2)}
 	testMetric4 := Metric{name: "testMetric4", value: gauge(2.27)}
-	testMetric5 := Metric{name: "testMetric5", value: 0}
-	testMetric6 := Metric{}
-	testMetric7 := Metric{name: "testMetric7", value: counter(27)}
+	//testMetric5 := Metric{name: "testMetric5", value: 0}
+	//testMetric6 := Metric{}
+	//testMetric7 := Metric{name: "testMetric7", value: counter(27)}
 
 	tests := []struct {
 		name           string
@@ -247,6 +248,7 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 		newValue       interface{}
 		startState     map[string]Metric
 		wantedState    map[string]Metric
+		wantError      error
 	}{
 		{
 			name:           "Test 1. Update metric, type 'counter'",
@@ -254,6 +256,7 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 			newValue:       counter(15),
 			startState:     map[string]Metric{testMetric11.name: testMetric11},
 			wantedState:    map[string]Metric{"testMetric1": {name: "testMetric1", value: counter(25)}},
+			wantError:      nil,
 		},
 		{
 			name:           "Test 2. Update metric, type 'gauge'",
@@ -261,49 +264,16 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 			newValue:       gauge(27.3),
 			startState:     map[string]Metric{testMetric13.name: testMetric13},
 			wantedState:    map[string]Metric{"testMetric1": {name: "testMetric1", value: gauge(27.3)}},
+			wantError:      nil,
 		},
 		{
-			// todo: должна быть ошибка расхождения типов или хотя бы НЕ обновление
 			name:           "Test 3. Update metric, wrong type 'gauge'",
 			metricToUpdate: testMetric11,
 			newValue:       gauge(27.3),
 			startState:     map[string]Metric{testMetric11.name: testMetric11},
 			wantedState:    map[string]Metric{testMetric11.name: testMetric11},
-		},
-		{
-			// todo: должна быть ошибка расхождения типов или хотя бы НЕ обновление
-			name:           "Test 4. Update metric, wrong type 'gauge'",
-			metricToUpdate: testMetric13,
-			newValue:       counter(27),
-			startState:     map[string]Metric{testMetric13.name: testMetric13},
-			wantedState:    map[string]Metric{testMetric13.name: testMetric13},
-		},
-		{
-			// todo: должна быть ошибка расхождения типов или хотя бы НЕ обновление
-			name:           "Test 5. Update metric with UNHANDLED value type",
-			metricToUpdate: testMetric5,
-			newValue:       12,
-			startState:     map[string]Metric{testMetric5.name: testMetric5},
-			wantedState:    map[string]Metric{testMetric5.name: testMetric5},
-		},
-		{
-			// todo: должна быть ошибка расхождения типов или хотя бы НЕ обновление
-			name:           "Test 6. Update metric, wrong UNHANDLED type. Type mismatch",
-			metricToUpdate: testMetric5,
-			newValue:       "str_value",
-			startState:     map[string]Metric{testMetric5.name: testMetric5},
-			wantedState:    map[string]Metric{testMetric5.name: testMetric5},
-		},
-		{
-			// todo: должна быть ошибка расхождения типов или хотя бы НЕ обновление
-			name:           "Test 7. Update empty metric",
-			metricToUpdate: testMetric7,
-			newValue:       counter(15),
-			startState:     map[string]Metric{testMetric13.name: testMetric13, testMetric6.name: testMetric6},
-			wantedState: map[string]Metric{
-				testMetric13.name: testMetric13,
-				testMetric6.name:  {name: testMetric6.name, value: nil},
-			},
+			wantError: fmt.Errorf("updated(%s) and new(%s) value type mismatch",
+				"storage.counter", "storage.gauge"),
 		},
 		{
 			name:           "Test 8. Empty state",
@@ -311,14 +281,15 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 			newValue:       counter(15),
 			startState:     map[string]Metric{},
 			wantedState:    map[string]Metric{},
+			wantError:      fmt.Errorf("there is no metric with name '%s'", testMetric11.name),
 		},
 		{
-			// todo: должна быть ошибка расхождения типов или хотя бы НЕ обновление
 			name:           "Test 9. Metric to update is not present",
 			metricToUpdate: testMetric11,
 			newValue:       counter(15),
 			startState:     map[string]Metric{testMetric4.name: testMetric4},
 			wantedState:    map[string]Metric{testMetric4.name: testMetric4},
+			wantError:      fmt.Errorf("there is no metric with name '%s'", testMetric11.name),
 		},
 	}
 	for _, tt := range tests {
@@ -327,8 +298,9 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 				metrics: tt.startState,
 			}
 			tt.metricToUpdate.value = tt.newValue
-			ms.UpdateMetric(tt.metricToUpdate)
+			err := ms.UpdateMetric(tt.metricToUpdate)
 			assert.Equal(t, tt.wantedState, ms.metrics)
+			assert.Equal(t, tt.wantError, err)
 		})
 	}
 }
