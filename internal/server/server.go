@@ -1,7 +1,6 @@
 package server
 
 import (
-	"errors"
 	"fmt"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"net/http"
@@ -51,7 +50,7 @@ func (mrh MetricReqHandler) parseMetricParams(r *http.Request) (m *storage.Metri
 		err = &errorHTTP{
 			message: fmt.Sprintf(
 				"Некорректный URL запроса. Ожидаемое число частей пути URL: 4, получено %d", len(urlParts)),
-			statusCode: http.StatusBadRequest,
+			statusCode: http.StatusNotFound,
 		}
 		return
 	}
@@ -59,9 +58,9 @@ func (mrh MetricReqHandler) parseMetricParams(r *http.Request) (m *storage.Metri
 	if rootURLPath != mrh.rootURLPath {
 		err = &errorHTTP{
 			message: fmt.Sprintf(
-				"Некорректный URL запроса. Ожидаемая первая часть пути '%s', получено '%s'",
+				"Incorrect root part of URL. Expected '%s', got '%s'",
 				mrh.rootURLPath, rootURLPath),
-			statusCode: http.StatusBadRequest,
+			statusCode: http.StatusNotFound,
 		}
 		return
 	}
@@ -74,7 +73,11 @@ func (mrh MetricReqHandler) parseMetricParams(r *http.Request) (m *storage.Metri
 	case "gauge":
 		paramValue, parseErr = strconv.ParseFloat(paramValueStr, 64)
 	default:
-		parseErr = errors.New("неизвестный тип метрики")
+		err = &errorHTTP{
+			message:    "unhandled value type",
+			statusCode: http.StatusNotImplemented,
+		}
+		return
 	}
 	if parseErr != nil {
 		err = &errorHTTP{

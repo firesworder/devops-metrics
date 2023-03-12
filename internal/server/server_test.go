@@ -52,7 +52,7 @@ func TestMetricReqHandler_ServeHTTP(t *testing.T) {
 			name:    "Test 3. Incorrect url path(shorter).",
 			request: request{url: `/update/counter/PollCount`, method: http.MethodPost},
 			wantResponse: response{
-				statusCode: http.StatusBadRequest,
+				statusCode: http.StatusNotFound,
 				body:       "Некорректный URL запроса. Ожидаемое число частей пути URL: 4, получено 3",
 			},
 			wantMetric: metricArgs{},
@@ -61,7 +61,7 @@ func TestMetricReqHandler_ServeHTTP(t *testing.T) {
 			name:    "Test 4. Incorrect url path(longer).",
 			request: request{url: `/update/counter/PollCount/10/someinfo`, method: http.MethodPost},
 			wantResponse: response{
-				statusCode: http.StatusBadRequest,
+				statusCode: http.StatusNotFound,
 				body:       "Некорректный URL запроса. Ожидаемое число частей пути URL: 4, получено 5",
 			},
 			wantMetric: metricArgs{},
@@ -70,8 +70,8 @@ func TestMetricReqHandler_ServeHTTP(t *testing.T) {
 			name:    "Test 5. Incorrect url order.",
 			request: request{url: `/update/PollCount/counter/10`, method: http.MethodPost},
 			wantResponse: response{
-				statusCode: http.StatusBadRequest,
-				body:       "Ошибка приведения значения '10' метрики к типу 'PollCount'",
+				statusCode: http.StatusNotImplemented,
+				body:       "unhandled value type",
 			},
 			wantMetric: metricArgs{},
 		},
@@ -79,17 +79,8 @@ func TestMetricReqHandler_ServeHTTP(t *testing.T) {
 			name:    "Test 6. Unknown metric type.",
 			request: request{url: `/update/integer/PollCount/10`, method: http.MethodPost},
 			wantResponse: response{
-				statusCode: http.StatusBadRequest,
-				body:       "Ошибка приведения значения '10' метрики к типу 'integer'",
-			},
-			wantMetric: metricArgs{},
-		},
-		{
-			name:    "Test 7. Unknown metric type.",
-			request: request{url: `/update/integer/PollCount/10`, method: http.MethodPost},
-			wantResponse: response{
-				statusCode: http.StatusBadRequest,
-				body:       "Ошибка приведения значения '10' метрики к типу 'integer'",
+				statusCode: http.StatusNotImplemented,
+				body:       "unhandled value type",
 			},
 			wantMetric: metricArgs{},
 		},
@@ -117,6 +108,15 @@ func TestMetricReqHandler_ServeHTTP(t *testing.T) {
 			wantResponse: response{
 				statusCode: http.StatusOK,
 				body:       "",
+			},
+			wantMetric: metricArgs{name: "RandomValue", typeName: "gauge", rawValue: 13.223},
+		},
+		{
+			name:    "Test 10. Incorrect first part of URL.",
+			request: request{url: `/updater/gauge/RandomValue/13.223`, method: http.MethodPost},
+			wantResponse: response{
+				statusCode: http.StatusNotFound,
+				body:       "Incorrect root part of URL. Expected 'update', got 'updater'",
 			},
 			wantMetric: metricArgs{name: "RandomValue", typeName: "gauge", rawValue: 13.223},
 		},
