@@ -17,13 +17,16 @@ type errorHTTP struct {
 }
 
 type MetricReqHandler struct {
-	rootURLPath string
-	method      string
-	urlPathLen  int
+	rootURLPath   string
+	method        string
+	urlPathLen    int
+	MetricStorage storage.MetricRepository
 }
 
 func NewDefaultMetricHandler() MetricReqHandler {
-	return MetricReqHandler{rootURLPath: "update", method: http.MethodPost, urlPathLen: 4}
+	return MetricReqHandler{
+		rootURLPath: "update", method: http.MethodPost, urlPathLen: 4, MetricStorage: storage.MetricStorage,
+	}
 }
 
 func (mrh MetricReqHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
