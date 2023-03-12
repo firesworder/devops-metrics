@@ -8,11 +8,11 @@ import (
 )
 
 func TestMemStorage_AddMetric(t *testing.T) {
-	testMetric1 := Metric{name: "testMetric1", value: counter(10)}
+	testMetric11 := Metric{name: "testMetric1", value: counter(10)}
 	// одинаковый name с testMetric1, но другое value
-	testMetric2 := Metric{name: "testMetric1", value: counter(15)}
+	testMetric12 := Metric{name: "testMetric1", value: counter(15)}
 	// одинаковый name с testMetric1, но другое value и тип value
-	testMetric3 := Metric{name: "testMetric1", value: gauge(22.2)}
+	testMetric13 := Metric{name: "testMetric1", value: gauge(22.2)}
 	testMetric4 := Metric{name: "testMetric4", value: gauge(2.27)}
 	testMetric5 := Metric{name: "testMetric5", value: 0}
 	testMetric6 := Metric{}
@@ -22,45 +22,49 @@ func TestMemStorage_AddMetric(t *testing.T) {
 		metricToAdd Metric
 		startState  map[string]Metric
 		wantedState map[string]Metric
+		wantError   error
 	}{
 		{
 			name:        "Test 1. Add metric to empty storage state.",
-			metricToAdd: testMetric1,
+			metricToAdd: testMetric11,
 			startState:  map[string]Metric{},
-			wantedState: map[string]Metric{testMetric1.name: testMetric1},
+			wantedState: map[string]Metric{testMetric11.name: testMetric11},
+			wantError:   nil,
 		},
 		{
 			name:        "Test 2. Add metric to storage, but metric already present.",
-			metricToAdd: testMetric2,
-			startState:  map[string]Metric{testMetric1.name: testMetric1},
-			wantedState: map[string]Metric{testMetric1.name: testMetric1},
+			metricToAdd: testMetric12,
+			startState:  map[string]Metric{testMetric11.name: testMetric11},
+			wantedState: map[string]Metric{testMetric11.name: testMetric11},
+			wantError:   fmt.Errorf("metric with name '%s' already present in Storage", testMetric12.name),
 		},
 		{
 			name:        "Test 3. Add metric to storage, but metric already present. Value type differ",
-			metricToAdd: testMetric3,
-			startState:  map[string]Metric{testMetric1.name: testMetric1},
-			wantedState: map[string]Metric{testMetric1.name: testMetric1},
+			metricToAdd: testMetric13,
+			startState:  map[string]Metric{testMetric11.name: testMetric11},
+			wantedState: map[string]Metric{testMetric11.name: testMetric11},
+			wantError:   fmt.Errorf("metric with name '%s' already present in Storage", testMetric13.name),
 		},
 		{
 			name:        "Test 4. Add another metric to storage",
 			metricToAdd: testMetric4,
-			startState:  map[string]Metric{testMetric1.name: testMetric1},
-			wantedState: map[string]Metric{
-				testMetric1.name: testMetric1,
-				testMetric4.name: testMetric4,
-			},
+			startState:  map[string]Metric{testMetric11.name: testMetric11},
+			wantedState: map[string]Metric{testMetric11.name: testMetric11, testMetric4.name: testMetric4},
+			wantError:   nil,
 		},
 		{
 			name:        "Test 5. Add metric with unhandled value type",
 			metricToAdd: testMetric5,
 			startState:  map[string]Metric{},
-			wantedState: map[string]Metric{testMetric5.name: testMetric5},
+			wantedState: map[string]Metric{},
+			wantError:   fmt.Errorf("unhandled value type '%T'", testMetric5.value),
 		},
 		{
 			name:        "Test 6. Add empty metric",
 			metricToAdd: testMetric6,
 			startState:  map[string]Metric{},
-			wantedState: map[string]Metric{testMetric6.name: testMetric6},
+			wantedState: map[string]Metric{},
+			wantError:   fmt.Errorf("unhandled value type '%T'", testMetric6.value),
 		},
 	}
 	for _, tt := range tests {
@@ -68,8 +72,9 @@ func TestMemStorage_AddMetric(t *testing.T) {
 			ms := &MemStorage{
 				metrics: tt.startState,
 			}
-			ms.AddMetric(tt.metricToAdd)
+			err := ms.AddMetric(tt.metricToAdd)
 			assert.Equal(t, tt.wantedState, ms.metrics)
+			assert.Equal(t, tt.wantError, err)
 		})
 	}
 }

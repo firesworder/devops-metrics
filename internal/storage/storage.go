@@ -40,10 +40,18 @@ type MemStorage struct {
 	metrics map[string]Metric
 }
 
-func (ms *MemStorage) AddMetric(metric Metric) {
-	if !ms.IsMetricInStorage(metric) {
-		ms.metrics[metric.name] = metric
+func (ms *MemStorage) AddMetric(metric Metric) (err error) {
+	if ms.IsMetricInStorage(metric) {
+		return fmt.Errorf("metric with name '%s' already present in Storage", metric.name)
 	}
+
+	switch metric.value.(type) {
+	case counter, gauge:
+		ms.metrics[metric.name] = metric
+	default:
+		return fmt.Errorf("unhandled value type '%T'", metric.value)
+	}
+	return
 }
 
 func (ms *MemStorage) UpdateMetric(metric Metric) (err error) {
