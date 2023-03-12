@@ -345,7 +345,7 @@ func TestMemStorage_UpdateOrAddMetric(t *testing.T) {
 	}
 }
 
-func TestMemStorage_getAll(t *testing.T) {
+func TestMemStorage_GetAll(t *testing.T) {
 	testMetric11 := Metric{name: "testMetric1", value: counter(10)}
 	// одинаковый name с testMetric1, но другое value
 	//testMetric12 := Metric{name: "testMetric1", value: counter(15)}
@@ -383,12 +383,13 @@ func TestMemStorage_getAll(t *testing.T) {
 			ms := &MemStorage{
 				metrics: tt.state,
 			}
-			assert.Equal(t, tt.want, ms.metrics)
+			gotMapMetrics := ms.GetAll()
+			assert.Equal(t, tt.want, gotMapMetrics)
 		})
 	}
 }
 
-func TestMemStorage_getMetric(t *testing.T) {
+func TestMemStorage_GetMetric(t *testing.T) {
 	testMetric11 := Metric{name: "testMetric1", value: counter(10)}
 	// одинаковый name с testMetric1, но другое value
 	//testMetric12 := Metric{name: "testMetric1", value: counter(15)}
@@ -426,7 +427,7 @@ func TestMemStorage_getMetric(t *testing.T) {
 			ms := &MemStorage{
 				metrics: tt.state,
 			}
-			gotMetric, gotOk := ms.getMetric(tt.metricName)
+			gotMetric, gotOk := ms.GetMetric(tt.metricName)
 			require.Equal(t, tt.wantOk, gotOk)
 			assert.Equal(t, tt.wantMetric, gotMetric)
 		})

@@ -41,9 +41,15 @@ func NewMetric(name string, typeName string, rawValue interface{}) (*Metric, err
 }
 
 type MetricRepository interface {
-	AddMetric(Metric)
-	UpdateMetric(Metric)
-	DeleteMetric(Metric)
+	AddMetric(Metric) error
+	UpdateMetric(Metric) error
+	DeleteMetric(Metric) error
+
+	IsMetricInStorage(Metric) bool
+	UpdateOrAddMetric(metric Metric) error
+
+	GetAll() map[string]Metric
+	GetMetric(string) (Metric, bool)
 }
 
 type MemStorage struct {
@@ -108,11 +114,11 @@ func (ms *MemStorage) UpdateOrAddMetric(metric Metric) (err error) {
 	return
 }
 
-func (ms *MemStorage) getAll() map[string]Metric {
+func (ms *MemStorage) GetAll() map[string]Metric {
 	return ms.metrics
 }
 
-func (ms *MemStorage) getMetric(name string) (metric Metric, ok bool) {
+func (ms *MemStorage) GetMetric(name string) (metric Metric, ok bool) {
 	metric, ok = ms.metrics[name]
 	return
 }
