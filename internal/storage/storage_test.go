@@ -80,14 +80,14 @@ func TestMemStorage_AddMetric(t *testing.T) {
 }
 
 func TestMemStorage_DeleteMetric(t *testing.T) {
-	testMetric1 := Metric{name: "testMetric1", value: counter(10)}
+	testMetric11 := Metric{name: "testMetric1", value: counter(10)}
 	// одинаковый name с testMetric1, но другое value
-	//testMetric2 := Metric{name: "testMetric1", value: counter(15)}
+	//testMetric12 := Metric{name: "testMetric1", value: counter(15)}
 	// одинаковый name с testMetric1, но другое value и тип value
-	testMetric3 := Metric{name: "testMetric1", value: gauge(22.2)}
+	testMetric13 := Metric{name: "testMetric1", value: gauge(22.2)}
 	testMetric4 := Metric{name: "testMetric4", value: gauge(2.27)}
-	testMetric5 := Metric{name: "testMetric5", value: 0}
-	testMetric6 := Metric{}
+	//testMetric5 := Metric{name: "testMetric5", value: 0}
+	//testMetric6 := Metric{}
 	testMetric7 := Metric{name: "testMetric7", value: counter(27)}
 
 	tests := []struct {
@@ -95,27 +95,30 @@ func TestMemStorage_DeleteMetric(t *testing.T) {
 		metricToDelete Metric
 		startState     map[string]Metric
 		wantedState    map[string]Metric
+		wantError      error
 	}{
 		{
 			name:           "Test 1. Delete metric from state contains ONLY that metric.",
-			metricToDelete: testMetric1,
-			startState:     map[string]Metric{testMetric1.name: testMetric1},
+			metricToDelete: testMetric11,
+			startState:     map[string]Metric{testMetric11.name: testMetric11},
 			wantedState:    map[string]Metric{},
+			wantError:      nil,
 		},
 		{
-			name:           "Test 2. Delete metric from state contains that metric.",
-			metricToDelete: testMetric1,
+			name:           "Test 2. Delete metric from state that contains that metric.",
+			metricToDelete: testMetric11,
 			startState: map[string]Metric{
-				testMetric1.name: testMetric1,
-				testMetric4.name: testMetric4,
+				testMetric11.name: testMetric11,
+				testMetric4.name:  testMetric4,
 			},
 			wantedState: map[string]Metric{
 				testMetric4.name: testMetric4,
 			},
+			wantError: nil,
 		},
 		{
-			name:           "Test 3. Delete metric from state contains metrics, except that metric.",
-			metricToDelete: testMetric1,
+			name:           "Test 3. Delete metric from state that contains metrics, except that metric.",
+			metricToDelete: testMetric11,
 			startState: map[string]Metric{
 				testMetric7.name: testMetric7,
 				testMetric4.name: testMetric4,
@@ -124,41 +127,26 @@ func TestMemStorage_DeleteMetric(t *testing.T) {
 				testMetric7.name: testMetric7,
 				testMetric4.name: testMetric4,
 			},
+			wantError: fmt.Errorf("there is no metric with name '%s'", testMetric11.name),
 		},
 		{
 			name:           "Test 4. Delete metric from state contains that metric, but value differ.",
-			metricToDelete: testMetric1,
+			metricToDelete: testMetric11,
 			startState: map[string]Metric{
-				testMetric3.name: testMetric3,
-				testMetric4.name: testMetric4,
+				testMetric13.name: testMetric13,
+				testMetric4.name:  testMetric4,
 			},
 			wantedState: map[string]Metric{
 				testMetric4.name: testMetric4,
 			},
+			wantError: nil,
 		},
 		{
 			name:           "Test 5. Delete metric from empty state.",
-			metricToDelete: testMetric1,
+			metricToDelete: testMetric11,
 			startState:     map[string]Metric{},
 			wantedState:    map[string]Metric{},
-		},
-		{
-			name:           "Test 6. Delete empty metric.",
-			metricToDelete: testMetric6,
-			startState: map[string]Metric{
-				testMetric6.name: testMetric6,
-				testMetric7.name: testMetric7,
-			},
-			wantedState: map[string]Metric{testMetric7.name: testMetric7},
-		},
-		{
-			name:           "Test 7. Delete metric with unhandled value type.",
-			metricToDelete: testMetric5,
-			startState: map[string]Metric{
-				testMetric5.name: testMetric5,
-				testMetric7.name: testMetric7,
-			},
-			wantedState: map[string]Metric{testMetric7.name: testMetric7},
+			wantError:      fmt.Errorf("there is no metric with name '%s'", testMetric11.name),
 		},
 	}
 	for _, tt := range tests {
@@ -166,8 +154,9 @@ func TestMemStorage_DeleteMetric(t *testing.T) {
 			ms := &MemStorage{
 				metrics: tt.startState,
 			}
-			ms.DeleteMetric(tt.metricToDelete)
+			err := ms.DeleteMetric(tt.metricToDelete)
 			assert.Equal(t, tt.wantedState, ms.metrics)
+			assert.Equal(t, tt.wantError, err)
 		})
 	}
 }

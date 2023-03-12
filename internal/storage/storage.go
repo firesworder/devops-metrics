@@ -75,10 +75,12 @@ func (ms *MemStorage) UpdateMetric(metric Metric) (err error) {
 	return
 }
 
-func (ms *MemStorage) DeleteMetric(metric Metric) {
-	if ms.IsMetricInStorage(metric) {
-		delete(ms.metrics, metric.name)
+func (ms *MemStorage) DeleteMetric(metric Metric) (err error) {
+	if !ms.IsMetricInStorage(metric) {
+		return fmt.Errorf("there is no metric with name '%s'", metric.name)
 	}
+	delete(ms.metrics, metric.name)
+	return
 }
 
 func (ms *MemStorage) IsMetricInStorage(metric Metric) bool {
