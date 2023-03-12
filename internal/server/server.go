@@ -35,7 +35,11 @@ func (mrh MetricReqHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.message, err.statusCode)
 		return
 	}
-	storage.MetricStorage.UpdateOrAddMetric(*metric)
+	errorObj := mrh.MetricStorage.UpdateOrAddMetric(*metric)
+	if errorObj != nil {
+		http.Error(w, errorObj.Error(), http.StatusBadRequest)
+		return
+	}
 }
 
 func (mrh MetricReqHandler) parseMetricParams(r *http.Request) (m *storage.Metric, err *errorHTTP) {
