@@ -50,39 +50,39 @@ func Test_sendMetric(t *testing.T) {
 	tests := []struct {
 		name           string
 		args           args
-		wantRequestUrl string
+		wantRequestURL string
 	}{
 		{
 			name:           "Test 1. Gauge metric.",
 			args:           args{paramName: "Alloc", paramValue: gauge(12.133)},
-			wantRequestUrl: "/update/gauge/Alloc/12.133000",
+			wantRequestURL: "/update/gauge/Alloc/12.133000",
 		},
 		{
 			name:           "Test 2. Counter metric.",
 			args:           args{paramName: "PollCount", paramValue: counter(10)},
-			wantRequestUrl: "/update/counter/PollCount/10",
+			wantRequestURL: "/update/counter/PollCount/10",
 		},
 		{
 			name:           "Test 3. Metric with unknown type.",
 			args:           args{paramName: "Alloc", paramValue: int64(10)},
-			wantRequestUrl: "",
+			wantRequestURL: "",
 		},
 		{
 			name:           "Test 4. Metric with nil value.",
 			args:           args{paramName: "Alloc", paramValue: nil},
-			wantRequestUrl: "",
+			wantRequestURL: "",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var actualRequestUrl string
+			var actualRequestURL string
 			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				actualRequestUrl = r.URL.Path
+				actualRequestURL = r.URL.Path
 			}))
 			defer svr.Close()
 			serverURL = svr.URL
 			sendMetric(tt.args.paramName, tt.args.paramValue)
-			assert.Equal(t, tt.wantRequestUrl, actualRequestUrl)
+			assert.Equal(t, tt.wantRequestURL, actualRequestURL)
 		})
 	}
 }
