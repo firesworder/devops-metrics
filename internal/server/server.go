@@ -79,5 +79,14 @@ func (mrh MetricReqHandler) parseMetricParams(r *http.Request) (m *storage.Metri
 		return
 	}
 
-	return storage.NewMetric(paramName, typeName, paramValue), nil
+	m, metricError := storage.NewMetric(paramName, typeName, paramValue)
+	if metricError != nil {
+		err = &errorHTTP{
+			message:    metricError.Error(),
+			statusCode: http.StatusBadRequest,
+		}
+		return
+	}
+
+	return
 }
