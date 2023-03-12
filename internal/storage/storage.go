@@ -19,15 +19,25 @@ type Metric struct {
 	value interface{}
 }
 
-func NewMetric(name string, typeName string, rawValue interface{}) *Metric {
+func NewMetric(name string, typeName string, rawValue interface{}) (*Metric, error) {
 	var value interface{}
 	switch typeName {
 	case "counter":
-		value = counter(rawValue.(int64))
+		valueInt, ok := rawValue.(int64)
+		if !ok {
+			return nil, fmt.Errorf("cannot convert value '%v' to 'counter' type", rawValue)
+		}
+		value = counter(valueInt)
 	case "gauge":
-		value = gauge(rawValue.(float64))
+		valueFloat, ok := rawValue.(float64)
+		if !ok {
+			return nil, fmt.Errorf("cannot convert value '%v' to 'gauge' type", rawValue)
+		}
+		value = gauge(valueFloat)
+	default:
+		return nil, fmt.Errorf("unhandled value type '%s'", typeName)
 	}
-	return &Metric{name: name, value: value}
+	return &Metric{name: name, value: value}, nil
 }
 
 type MetricRepository interface {

@@ -489,48 +489,53 @@ func TestNewMetric(t *testing.T) {
 		rawValue interface{}
 	}
 	tests := []struct {
-		name string
-		args args
-		want Metric
+		name      string
+		args      args
+		want      *Metric
+		wantError error
 	}{
 		{
-			name: "Test 1. Counter type metric, with correct value.",
-			args: args{name: "testMetric11", typeName: "counter", rawValue: int64(10)},
-			want: Metric{name: "testMetric11", value: counter(10)},
-		},
-		// todo: тут ошибка должна быть
-		{
-			name: "Test 2. Counter type metric, with incorrect number value.",
-			args: args{name: "testMetric12", typeName: "counter", rawValue: 11.3},
-			want: Metric{},
-		},
-		// todo: тут ошибка должна быть
-		{
-			name: "Test 3. Counter type metric, with incorrect NAN value.",
-			args: args{name: "testMetric13", typeName: "counter", rawValue: "str"},
-			want: Metric{},
+			name:      "Test 1. Counter type metric, with correct value.",
+			args:      args{name: "testMetric11", typeName: "counter", rawValue: int64(10)},
+			want:      &Metric{name: "testMetric11", value: counter(10)},
+			wantError: nil,
 		},
 		{
-			name: "Test 4. Gauge type metric, with correct value.",
-			args: args{name: "testMetric2", typeName: "gauge", rawValue: 11.2},
-			want: Metric{name: "testMetric2", value: gauge(11.2)},
+			name:      "Test 2. Counter type metric, with incorrect number value.",
+			args:      args{name: "testMetric12", typeName: "counter", rawValue: 11.3},
+			want:      nil,
+			wantError: fmt.Errorf("cannot convert value '%v' to 'counter' type", 11.3),
 		},
 		{
-			name: "Test 5. Gauge type metric, with incorrect number value.",
-			args: args{name: "testMetric2", typeName: "gauge", rawValue: 10},
-			want: Metric{},
+			name:      "Test 3. Counter type metric, with incorrect NAN value.",
+			args:      args{name: "testMetric13", typeName: "counter", rawValue: "str"},
+			want:      nil,
+			wantError: fmt.Errorf("cannot convert value '%v' to 'counter' type", "str"),
 		},
 		{
-			name: "Test 6. Gauge type metric, with incorrect NAN value.",
-			args: args{name: "testMetric2", typeName: "gauge", rawValue: "str"},
-			want: Metric{},
+			name:      "Test 4. Gauge type metric, with correct value.",
+			args:      args{name: "testMetric2", typeName: "gauge", rawValue: 11.2},
+			want:      &Metric{name: "testMetric2", value: gauge(11.2)},
+			wantError: nil,
 		},
-		// TODO: Add test cases.
+		{
+			name:      "Test 5. Gauge type metric, with incorrect number value.",
+			args:      args{name: "testMetric2", typeName: "gauge", rawValue: 10},
+			want:      nil,
+			wantError: fmt.Errorf("cannot convert value '%v' to 'gauge' type", 10),
+		},
+		{
+			name:      "Test 6. Gauge type metric, with incorrect NAN value.",
+			args:      args{name: "testMetric2", typeName: "gauge", rawValue: "str"},
+			want:      nil,
+			wantError: fmt.Errorf("cannot convert value '%v' to 'gauge' type", "str"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotMetric := *NewMetric(tt.args.name, tt.args.typeName, tt.args.rawValue)
+			gotMetric, err := NewMetric(tt.args.name, tt.args.typeName, tt.args.rawValue)
 			assert.Equal(t, tt.want, gotMetric)
+			assert.Equal(t, tt.wantError, err)
 		})
 	}
 }
