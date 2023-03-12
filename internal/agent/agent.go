@@ -15,6 +15,8 @@ var memstats runtime.MemStats
 var PollCount counter
 var RandomValue gauge
 
+var serverURL = `http://localhost:8080`
+
 func init() {
 	memstats = runtime.MemStats{}
 	runtime.ReadMemStats(&memstats)
@@ -74,9 +76,9 @@ func sendMetric(paramName string, paramValue interface{}) {
 	// todo: можно убрать свитч, в спринтф есть тег %T
 	switch value := paramValue.(type) {
 	case gauge:
-		requestURL = fmt.Sprintf("http://localhost:8080/update/%s/%s/%f", "gauge", paramName, value)
+		requestURL = fmt.Sprintf("%s/update/%s/%s/%f", serverURL, "gauge", paramName, value)
 	case counter:
-		requestURL = fmt.Sprintf("http://localhost:8080/update/%s/%s/%d", "counter", paramName, value)
+		requestURL = fmt.Sprintf("%s/update/%s/%s/%d", serverURL, "counter", paramName, value)
 	default:
 		panic("Незнакомый тип значения метрики")
 	}
