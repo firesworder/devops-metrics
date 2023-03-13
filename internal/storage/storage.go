@@ -40,18 +40,6 @@ func NewMetric(name string, typeName string, rawValue interface{}) (*Metric, err
 	return &Metric{Name: name, Value: value}, nil
 }
 
-type MetricRepository interface {
-	AddMetric(Metric) error
-	UpdateMetric(Metric) error
-	DeleteMetric(Metric) error
-
-	IsMetricInStorage(Metric) bool
-	UpdateOrAddMetric(metric Metric) error
-
-	GetAll() map[string]Metric
-	GetMetric(string) (Metric, bool)
-}
-
 type MemStorage struct {
 	metrics map[string]Metric
 }
