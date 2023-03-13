@@ -7,20 +7,20 @@ import (
 	"testing"
 )
 
-var testMetric11, testMetric12, testMetric13 Metric
-var testMetric4, testMetric5, testMetric6, testMetric7 Metric
+var metric1Counter10, metric1Counter15, metric1Gauge22d2 Metric
+var metric4Gauge2d27, metric5Int0, emptyMetric, metric7Counter27 Metric
 
 func init() {
-	testMetric11 = Metric{Name: "testMetric1", Value: counter(10)}
+	metric1Counter10 = Metric{Name: "testMetric1", Value: counter(10)}
 	// одинаковый name с testMetric1, но другое value
-	testMetric12 = Metric{Name: "testMetric1", Value: counter(15)}
+	metric1Counter15 = Metric{Name: "testMetric1", Value: counter(15)}
 	// одинаковый name с testMetric1, но другое value и тип value
-	testMetric13 = Metric{Name: "testMetric1", Value: gauge(22.2)}
+	metric1Gauge22d2 = Metric{Name: "testMetric1", Value: gauge(22.2)}
 
-	testMetric4 = Metric{Name: "testMetric4", Value: gauge(2.27)}
-	testMetric5 = Metric{Name: "testMetric5", Value: 0}
-	testMetric6 = Metric{}
-	testMetric7 = Metric{Name: "testMetric7", Value: counter(27)}
+	metric4Gauge2d27 = Metric{Name: "testMetric4", Value: gauge(2.27)}
+	metric5Int0 = Metric{Name: "testMetric5", Value: 0}
+	emptyMetric = Metric{}
+	metric7Counter27 = Metric{Name: "testMetric7", Value: counter(27)}
 }
 
 // todo: почистить
@@ -35,45 +35,45 @@ func TestMemStorage_AddMetric(t *testing.T) {
 	}{
 		{
 			name:        "Test 1. Add metric to empty storage state.",
-			metricToAdd: testMetric11,
+			metricToAdd: metric1Counter10,
 			startState:  map[string]Metric{},
-			wantedState: map[string]Metric{testMetric11.Name: testMetric11},
+			wantedState: map[string]Metric{metric1Counter10.Name: metric1Counter10},
 			wantError:   nil,
 		},
 		{
 			name:        "Test 2. Add metric to storage, but metric already present.",
-			metricToAdd: testMetric12,
-			startState:  map[string]Metric{testMetric11.Name: testMetric11},
-			wantedState: map[string]Metric{testMetric11.Name: testMetric11},
-			wantError:   fmt.Errorf("metric with name '%s' already present in Storage", testMetric12.Name),
+			metricToAdd: metric1Counter15,
+			startState:  map[string]Metric{metric1Counter10.Name: metric1Counter10},
+			wantedState: map[string]Metric{metric1Counter10.Name: metric1Counter10},
+			wantError:   fmt.Errorf("metric with name '%s' already present in Storage", metric1Counter15.Name),
 		},
 		{
 			name:        "Test 3. Add metric to storage, but metric already present. Value type differ",
-			metricToAdd: testMetric13,
-			startState:  map[string]Metric{testMetric11.Name: testMetric11},
-			wantedState: map[string]Metric{testMetric11.Name: testMetric11},
-			wantError:   fmt.Errorf("metric with name '%s' already present in Storage", testMetric13.Name),
+			metricToAdd: metric1Gauge22d2,
+			startState:  map[string]Metric{metric1Counter10.Name: metric1Counter10},
+			wantedState: map[string]Metric{metric1Counter10.Name: metric1Counter10},
+			wantError:   fmt.Errorf("metric with name '%s' already present in Storage", metric1Gauge22d2.Name),
 		},
 		{
 			name:        "Test 4. Add another metric to storage",
-			metricToAdd: testMetric4,
-			startState:  map[string]Metric{testMetric11.Name: testMetric11},
-			wantedState: map[string]Metric{testMetric11.Name: testMetric11, testMetric4.Name: testMetric4},
+			metricToAdd: metric4Gauge2d27,
+			startState:  map[string]Metric{metric1Counter10.Name: metric1Counter10},
+			wantedState: map[string]Metric{metric1Counter10.Name: metric1Counter10, metric4Gauge2d27.Name: metric4Gauge2d27},
 			wantError:   nil,
 		},
 		{
 			name:        "Test 5. Add metric with unhandled value type",
-			metricToAdd: testMetric5,
+			metricToAdd: metric5Int0,
 			startState:  map[string]Metric{},
 			wantedState: map[string]Metric{},
-			wantError:   fmt.Errorf("unhandled value type '%T'", testMetric5.Value),
+			wantError:   fmt.Errorf("unhandled value type '%T'", metric5Int0.Value),
 		},
 		{
 			name:        "Test 6. Add empty metric",
-			metricToAdd: testMetric6,
+			metricToAdd: emptyMetric,
 			startState:  map[string]Metric{},
 			wantedState: map[string]Metric{},
-			wantError:   fmt.Errorf("unhandled value type '%T'", testMetric6.Value),
+			wantError:   fmt.Errorf("unhandled value type '%T'", emptyMetric.Value),
 		},
 	}
 	for _, tt := range tests {
@@ -98,54 +98,54 @@ func TestMemStorage_DeleteMetric(t *testing.T) {
 	}{
 		{
 			name:           "Test 1. Delete metric from state contains ONLY that metric.",
-			metricToDelete: testMetric11,
-			startState:     map[string]Metric{testMetric11.Name: testMetric11},
+			metricToDelete: metric1Counter10,
+			startState:     map[string]Metric{metric1Counter10.Name: metric1Counter10},
 			wantedState:    map[string]Metric{},
 			wantError:      nil,
 		},
 		{
 			name:           "Test 2. Delete metric from state that contains that metric.",
-			metricToDelete: testMetric11,
+			metricToDelete: metric1Counter10,
 			startState: map[string]Metric{
-				testMetric11.Name: testMetric11,
-				testMetric4.Name:  testMetric4,
+				metric1Counter10.Name: metric1Counter10,
+				metric4Gauge2d27.Name: metric4Gauge2d27,
 			},
 			wantedState: map[string]Metric{
-				testMetric4.Name: testMetric4,
+				metric4Gauge2d27.Name: metric4Gauge2d27,
 			},
 			wantError: nil,
 		},
 		{
 			name:           "Test 3. Delete metric from state that contains metrics, except that metric.",
-			metricToDelete: testMetric11,
+			metricToDelete: metric1Counter10,
 			startState: map[string]Metric{
-				testMetric7.Name: testMetric7,
-				testMetric4.Name: testMetric4,
+				metric7Counter27.Name: metric7Counter27,
+				metric4Gauge2d27.Name: metric4Gauge2d27,
 			},
 			wantedState: map[string]Metric{
-				testMetric7.Name: testMetric7,
-				testMetric4.Name: testMetric4,
+				metric7Counter27.Name: metric7Counter27,
+				metric4Gauge2d27.Name: metric4Gauge2d27,
 			},
-			wantError: fmt.Errorf("there is no metric with name '%s'", testMetric11.Name),
+			wantError: fmt.Errorf("there is no metric with name '%s'", metric1Counter10.Name),
 		},
 		{
 			name:           "Test 4. Delete metric from state contains that metric, but value differ.",
-			metricToDelete: testMetric11,
+			metricToDelete: metric1Counter10,
 			startState: map[string]Metric{
-				testMetric13.Name: testMetric13,
-				testMetric4.Name:  testMetric4,
+				metric1Gauge22d2.Name: metric1Gauge22d2,
+				metric4Gauge2d27.Name: metric4Gauge2d27,
 			},
 			wantedState: map[string]Metric{
-				testMetric4.Name: testMetric4,
+				metric4Gauge2d27.Name: metric4Gauge2d27,
 			},
 			wantError: nil,
 		},
 		{
 			name:           "Test 5. Delete metric from empty state.",
-			metricToDelete: testMetric11,
+			metricToDelete: metric1Counter10,
 			startState:     map[string]Metric{},
 			wantedState:    map[string]Metric{},
-			wantError:      fmt.Errorf("there is no metric with name '%s'", testMetric11.Name),
+			wantError:      fmt.Errorf("there is no metric with name '%s'", metric1Counter10.Name),
 		},
 	}
 	for _, tt := range tests {
@@ -169,31 +169,31 @@ func TestMemStorage_IsMetricInStorage(t *testing.T) {
 	}{
 		{
 			name:          "Test 1. Searched metric present in state. State contains only that metric.",
-			metricToCheck: testMetric11,
-			startState:    map[string]Metric{testMetric11.Name: testMetric11},
+			metricToCheck: metric1Counter10,
+			startState:    map[string]Metric{metric1Counter10.Name: metric1Counter10},
 			wantedResult:  true,
 		},
 		{
 			name:          "Test 2. Searched metric present in state. Multiple metrics in state.",
-			metricToCheck: testMetric11,
-			startState:    map[string]Metric{testMetric11.Name: testMetric11, testMetric4.Name: testMetric4},
+			metricToCheck: metric1Counter10,
+			startState:    map[string]Metric{metric1Counter10.Name: metric1Counter10, metric4Gauge2d27.Name: metric4Gauge2d27},
 			wantedResult:  true,
 		},
 		{
 			name:          "Test 3. Metric name present in state, but value differs",
-			metricToCheck: testMetric11,
-			startState:    map[string]Metric{testMetric13.Name: testMetric13, testMetric4.Name: testMetric4},
+			metricToCheck: metric1Counter10,
+			startState:    map[string]Metric{metric1Gauge22d2.Name: metric1Gauge22d2, metric4Gauge2d27.Name: metric4Gauge2d27},
 			wantedResult:  true,
 		},
 		{
 			name:          "Test 4. Metric is not present in state.",
-			metricToCheck: testMetric11,
-			startState:    map[string]Metric{testMetric7.Name: testMetric7, testMetric4.Name: testMetric4},
+			metricToCheck: metric1Counter10,
+			startState:    map[string]Metric{metric7Counter27.Name: metric7Counter27, metric4Gauge2d27.Name: metric4Gauge2d27},
 			wantedResult:  false,
 		},
 		{
 			name:          "Test 5. Empty state.",
-			metricToCheck: testMetric11,
+			metricToCheck: metric1Counter10,
 			startState:    map[string]Metric{},
 			wantedResult:  false,
 		},
@@ -219,44 +219,44 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 	}{
 		{
 			name:           "Test 1. Update metric, type 'counter'",
-			metricToUpdate: testMetric11,
+			metricToUpdate: metric1Counter10,
 			newValue:       counter(15),
-			startState:     map[string]Metric{testMetric11.Name: testMetric11},
+			startState:     map[string]Metric{metric1Counter10.Name: metric1Counter10},
 			wantedState:    map[string]Metric{"testMetric1": {Name: "testMetric1", Value: counter(25)}},
 			wantError:      nil,
 		},
 		{
 			name:           "Test 2. Update metric, type 'gauge'",
-			metricToUpdate: testMetric13,
+			metricToUpdate: metric1Gauge22d2,
 			newValue:       gauge(27.3),
-			startState:     map[string]Metric{testMetric13.Name: testMetric13},
+			startState:     map[string]Metric{metric1Gauge22d2.Name: metric1Gauge22d2},
 			wantedState:    map[string]Metric{"testMetric1": {Name: "testMetric1", Value: gauge(27.3)}},
 			wantError:      nil,
 		},
 		{
 			name:           "Test 3. Update metric, wrong type 'gauge'",
-			metricToUpdate: testMetric11,
+			metricToUpdate: metric1Counter10,
 			newValue:       gauge(27.3),
-			startState:     map[string]Metric{testMetric11.Name: testMetric11},
-			wantedState:    map[string]Metric{testMetric11.Name: testMetric11},
+			startState:     map[string]Metric{metric1Counter10.Name: metric1Counter10},
+			wantedState:    map[string]Metric{metric1Counter10.Name: metric1Counter10},
 			wantError: fmt.Errorf("updated(%s) and new(%s) value type mismatch",
 				"storage.counter", "storage.gauge"),
 		},
 		{
 			name:           "Test 8. Empty state",
-			metricToUpdate: testMetric11,
+			metricToUpdate: metric1Counter10,
 			newValue:       counter(15),
 			startState:     map[string]Metric{},
 			wantedState:    map[string]Metric{},
-			wantError:      fmt.Errorf("there is no metric with name '%s'", testMetric11.Name),
+			wantError:      fmt.Errorf("there is no metric with name '%s'", metric1Counter10.Name),
 		},
 		{
 			name:           "Test 9. Metric to update is not present",
-			metricToUpdate: testMetric11,
+			metricToUpdate: metric1Counter10,
 			newValue:       counter(15),
-			startState:     map[string]Metric{testMetric4.Name: testMetric4},
-			wantedState:    map[string]Metric{testMetric4.Name: testMetric4},
-			wantError:      fmt.Errorf("there is no metric with name '%s'", testMetric11.Name),
+			startState:     map[string]Metric{metric4Gauge2d27.Name: metric4Gauge2d27},
+			wantedState:    map[string]Metric{metric4Gauge2d27.Name: metric4Gauge2d27},
+			wantError:      fmt.Errorf("there is no metric with name '%s'", metric1Counter10.Name),
 		},
 	}
 	for _, tt := range tests {
@@ -284,23 +284,23 @@ func TestMemStorage_UpdateOrAddMetric(t *testing.T) {
 	}{
 		{
 			name:       "Test 1. Add new metric.",
-			metricObj:  testMetric4,
-			startState: map[string]Metric{testMetric11.Name: testMetric11},
+			metricObj:  metric4Gauge2d27,
+			startState: map[string]Metric{metric1Counter10.Name: metric1Counter10},
 			wantedState: map[string]Metric{
-				testMetric11.Name: testMetric11,
-				testMetric4.Name:  testMetric4,
+				metric1Counter10.Name: metric1Counter10,
+				metric4Gauge2d27.Name: metric4Gauge2d27,
 			},
 		},
 		{
 			name:      "Test 2. Update existed metric.",
-			metricObj: testMetric12,
+			metricObj: metric1Counter15,
 			startState: map[string]Metric{
-				testMetric11.Name: testMetric11,
-				testMetric4.Name:  testMetric4,
+				metric1Counter10.Name: metric1Counter10,
+				metric4Gauge2d27.Name: metric4Gauge2d27,
 			},
 			wantedState: map[string]Metric{
-				testMetric11.Name: {Name: testMetric11.Name, Value: counter(25)},
-				testMetric4.Name:  testMetric4,
+				metric1Counter10.Name: {Name: metric1Counter10.Name, Value: counter(25)},
+				metric4Gauge2d27.Name: metric4Gauge2d27,
 			},
 		},
 	}
@@ -329,12 +329,12 @@ func TestMemStorage_GetAll(t *testing.T) {
 		{
 			name: "Test 2. State contains metrics.",
 			state: map[string]Metric{
-				testMetric11.Name: testMetric11,
-				testMetric4.Name:  testMetric4,
+				metric1Counter10.Name: metric1Counter10,
+				metric4Gauge2d27.Name: metric4Gauge2d27,
 			},
 			want: map[string]Metric{
-				testMetric11.Name: testMetric11,
-				testMetric4.Name:  testMetric4,
+				metric1Counter10.Name: metric1Counter10,
+				metric4Gauge2d27.Name: metric4Gauge2d27,
 			},
 		},
 	}
@@ -359,15 +359,15 @@ func TestMemStorage_GetMetric(t *testing.T) {
 	}{
 		{
 			name:       "Test 1. State contains requested metric.",
-			state:      map[string]Metric{testMetric11.Name: testMetric11},
-			metricName: testMetric11.Name,
-			wantMetric: testMetric11,
+			state:      map[string]Metric{metric1Counter10.Name: metric1Counter10},
+			metricName: metric1Counter10.Name,
+			wantMetric: metric1Counter10,
 			wantOk:     true,
 		},
 		{
 			name:       "Test 2. State doesn't contain requested metric.",
-			state:      map[string]Metric{testMetric4.Name: testMetric4},
-			metricName: testMetric11.Name,
+			state:      map[string]Metric{metric4Gauge2d27.Name: metric4Gauge2d27},
+			metricName: metric1Counter10.Name,
 			wantMetric: Metric{},
 			wantOk:     false,
 		},
@@ -403,13 +403,13 @@ func TestNewMemStorage(t *testing.T) {
 		{
 			name: "Test 3. Arg metrics filled with metrics.",
 			argMetrics: map[string]Metric{
-				testMetric11.Name: testMetric11,
-				testMetric4.Name:  testMetric4,
+				metric1Counter10.Name: metric1Counter10,
+				metric4Gauge2d27.Name: metric4Gauge2d27,
 			},
 			want: MemStorage{
 				metrics: map[string]Metric{
-					testMetric11.Name: testMetric11,
-					testMetric4.Name:  testMetric4,
+					metric1Counter10.Name: metric1Counter10,
+					metric4Gauge2d27.Name: metric4Gauge2d27,
 				},
 			},
 		},
