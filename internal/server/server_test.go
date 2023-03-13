@@ -185,15 +185,23 @@ func TestGetRootPageHandler(t *testing.T) {
 		memStorageState map[string]storage.Metric
 	}{
 		{
-			name:            "Test 1. Correct request, empty state.",
-			request:         requestArgs{method: http.MethodGet, url: "/"},
-			wantResponse:    response{statusCode: http.StatusOK, body: "<h1>Metrics</h1>\r\n<ul>\r\n    \r\n</ul>"},
+			name:    "Test 1. Correct request, empty state.",
+			request: requestArgs{method: http.MethodGet, url: "/"},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "text/html; charset=utf-8",
+				body:        "<h1>Metrics</h1>\r\n<ul>\r\n    \r\n</ul>",
+			},
 			memStorageState: map[string]storage.Metric{},
 		},
 		{
-			name:         "Test 2. Correct request, with filled state.",
-			request:      requestArgs{method: http.MethodGet, url: "/"},
-			wantResponse: response{statusCode: http.StatusOK, body: "<h1>Metrics</h1>\r\n<ul>\r\n    \r\n        <li>Alloc: 7.77</li>\r\n    \r\n        <li>PollCount: 10</li>\r\n    \r\n        <li>RandomValue: 12.133</li>\r\n    \r\n</ul>"},
+			name:    "Test 2. Correct request, with filled state.",
+			request: requestArgs{method: http.MethodGet, url: "/"},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "text/html; charset=utf-8",
+				body:        "<h1>Metrics</h1>\r\n<ul>\r\n    \r\n        <li>Alloc: 7.77</li>\r\n    \r\n        <li>PollCount: 10</li>\r\n    \r\n        <li>RandomValue: 12.133</li>\r\n    \r\n</ul>",
+			},
 			memStorageState: map[string]storage.Metric{
 				metric1.Name: *metric1,
 				metric2.Name: *metric2,
@@ -201,17 +209,22 @@ func TestGetRootPageHandler(t *testing.T) {
 			},
 		},
 		{
-			name:            "Test 3. Incorrect method, empty state.",
-			request:         requestArgs{method: http.MethodPost, url: "/"},
-			wantResponse:    response{statusCode: http.StatusMethodNotAllowed, body: ""},
+			name:    "Test 3. Incorrect method, empty state.",
+			request: requestArgs{method: http.MethodPost, url: "/"},
+			wantResponse: response{
+				statusCode:  http.StatusMethodNotAllowed,
+				contentType: "",
+				body:        "",
+			},
 			memStorageState: map[string]storage.Metric{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s.MetricStorage = storage.NewMemStorage(tt.memStorageState)
-			statusCode, body := sendTestRequest(t, ts, tt.request)
+			statusCode, contentType, body := sendTestRequest(t, ts, tt.request)
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, contentType)
 			assert.Equal(t, tt.wantResponse.body, body)
 		})
 	}
@@ -236,53 +249,79 @@ func TestGetMetricHandler(t *testing.T) {
 		memStorageState map[string]storage.Metric
 	}{
 		{
-			name:            "Test 1. Correct url, empty state.",
-			request:         requestArgs{method: http.MethodGet, url: "/value/counter/PollCount"},
-			wantResponse:    response{statusCode: http.StatusNotFound, contentType: "", body: "unknown metric\n"},
+			name:    "Test 1. Correct url, empty state.",
+			request: requestArgs{method: http.MethodGet, url: "/value/counter/PollCount"},
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "unknown metric\n",
+			},
 			memStorageState: emptyState,
 		},
 		{
-			name:            "Test 2. Correct url, metric in filled state. Counter type",
-			request:         requestArgs{method: http.MethodGet, url: "/value/counter/PollCount"},
-			wantResponse:    response{statusCode: http.StatusOK, contentType: "", body: "10"},
+			name:    "Test 2. Correct url, metric in filled state. Counter type",
+			request: requestArgs{method: http.MethodGet, url: "/value/counter/PollCount"},
+			wantResponse: response{
+				statusCode: http.StatusOK, contentType: "text/plain; charset=utf-8", body: "10",
+			},
 			memStorageState: filledState,
 		},
 		{
-			name:            "Test 3. Correct url, metric in filled state. Gauge type",
-			request:         requestArgs{method: http.MethodGet, url: "/value/gauge/RandomValue"},
-			wantResponse:    response{statusCode: http.StatusOK, contentType: "", body: "12.133"},
+			name:    "Test 3. Correct url, metric in filled state. Gauge type",
+			request: requestArgs{method: http.MethodGet, url: "/value/gauge/RandomValue"},
+			wantResponse: response{
+				statusCode: http.StatusOK, contentType: "text/plain; charset=utf-8", body: "12.133",
+			},
 			memStorageState: filledState,
 		},
 		{
-			name:            "Test 4. Correct url, metric NOT in filled state.",
-			request:         requestArgs{method: http.MethodGet, url: "/value/gauge/AnotherMetric"},
-			wantResponse:    response{statusCode: http.StatusNotFound, contentType: "", body: "unknown metric\n"},
+			name:    "Test 4. Correct url, metric NOT in filled state.",
+			request: requestArgs{method: http.MethodGet, url: "/value/gauge/AnotherMetric"},
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "unknown metric\n",
+			},
 			memStorageState: filledState,
 		},
 		{
 			// todo: пока что я не проверяю типы, а только наличие метрики с соотв. названием
 			//  мб стоит дополнить. Хотя бы на проверку counter\gauge
-			name:            "Test 5. Incorrect url. WrongType of metric",
-			request:         requestArgs{method: http.MethodGet, url: "/value/gauge/PollCount"},
-			wantResponse:    response{statusCode: http.StatusOK, contentType: "", body: "10"},
+			name:    "Test 5. Incorrect url. WrongType of metric",
+			request: requestArgs{method: http.MethodGet, url: "/value/gauge/PollCount"},
+			wantResponse: response{
+				statusCode: http.StatusOK, contentType: "text/plain; charset=utf-8", body: "10",
+			},
 			memStorageState: filledState,
 		},
 		{
-			name:            "Test 6. Incorrect url. Skipped type part",
-			request:         requestArgs{method: http.MethodGet, url: "/value/PollCount"},
-			wantResponse:    response{statusCode: http.StatusNotFound, contentType: "", body: "404 page not found\n"},
+			name:    "Test 6. Incorrect url. Skipped type part",
+			request: requestArgs{method: http.MethodGet, url: "/value/PollCount"},
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "404 page not found\n",
+			},
 			memStorageState: filledState,
 		},
 		{
-			name:            "Test 7. Incorrect url. Skipped metricName part",
-			request:         requestArgs{method: http.MethodGet, url: "/value/counter/"},
-			wantResponse:    response{statusCode: http.StatusNotFound, contentType: "", body: "404 page not found\n"},
+			name:    "Test 7. Incorrect url. Skipped metricName part",
+			request: requestArgs{method: http.MethodGet, url: "/value/counter/"},
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "404 page not found\n",
+			},
 			memStorageState: filledState,
 		},
 		{
-			name:            "Test 8. Incorrect url. Only 'value' part",
-			request:         requestArgs{method: http.MethodGet, url: "/value"},
-			wantResponse:    response{statusCode: http.StatusNotFound, contentType: "", body: "404 page not found\n"},
+			name:    "Test 8. Incorrect url. Only 'value' part",
+			request: requestArgs{method: http.MethodGet, url: "/value"},
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "404 page not found\n",
+			},
 			memStorageState: filledState,
 		},
 		{
@@ -295,14 +334,15 @@ func TestGetMetricHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s.MetricStorage = storage.NewMemStorage(tt.memStorageState)
-			statusCode, body := sendTestRequest(t, ts, tt.request)
+			statusCode, contentType, body := sendTestRequest(t, ts, tt.request)
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, contentType)
 			assert.Equal(t, tt.wantResponse.body, body)
 		})
 	}
 }
 
-func sendTestRequest(t *testing.T, ts *httptest.Server, r requestArgs) (int, string) {
+func sendTestRequest(t *testing.T, ts *httptest.Server, r requestArgs) (int, string, string) {
 	// создаю реквест
 	req, err := http.NewRequest(r.method, ts.URL+r.url, nil)
 	require.NoError(t, err)
@@ -315,5 +355,5 @@ func sendTestRequest(t *testing.T, ts *httptest.Server, r requestArgs) (int, str
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	return resp.StatusCode, string(body)
+	return resp.StatusCode, resp.Header.Get("content-type"), string(body)
 }
