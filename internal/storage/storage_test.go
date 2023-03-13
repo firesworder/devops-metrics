@@ -23,8 +23,6 @@ func init() {
 	metric7Counter27 = Metric{Name: "testMetric7", Value: counter(27)}
 }
 
-// todo: почистить
-
 func TestMemStorage_AddMetric(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -469,6 +467,12 @@ func TestNewMetric(t *testing.T) {
 			args:      args{name: "testMetric2", typeName: "gauge", rawValue: "str"},
 			want:      nil,
 			wantError: fmt.Errorf("cannot convert value '%v' to 'gauge' type", "str"),
+		},
+		{
+			name:      "Test 7. Unknown value type.",
+			args:      args{name: "testMetric2", typeName: "int", rawValue: 100},
+			want:      nil,
+			wantError: fmt.Errorf("unhandled value type '%s'", "int"),
 		},
 	}
 	for _, tt := range tests {
