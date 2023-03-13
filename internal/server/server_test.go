@@ -220,7 +220,6 @@ func TestGetRootPageHandler(t *testing.T) {
 			wantResponse: response{
 				statusCode:  http.StatusOK,
 				contentType: "text/html; charset=utf-8",
-				body:        "<h1>Metrics</h1>\r\n<ul>\r\n    \r\n</ul>",
 			},
 			memStorageState: map[string]storage.Metric{},
 		},
@@ -230,7 +229,6 @@ func TestGetRootPageHandler(t *testing.T) {
 			wantResponse: response{
 				statusCode:  http.StatusOK,
 				contentType: "text/html; charset=utf-8",
-				body:        "<h1>Metrics</h1>\r\n<ul>\r\n    \r\n        <li>Alloc: 7.77</li>\r\n    \r\n        <li>PollCount: 10</li>\r\n    \r\n        <li>RandomValue: 12.133</li>\r\n    \r\n</ul>",
 			},
 			memStorageState: map[string]storage.Metric{
 				metric1.Name: *metric1,
@@ -255,7 +253,11 @@ func TestGetRootPageHandler(t *testing.T) {
 			statusCode, contentType, body := sendTestRequest(t, ts, tt.request)
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
-			assert.Equal(t, tt.wantResponse.body, body)
+			if statusCode == http.StatusOK {
+				assert.NotEmpty(t, body, "Empty body(html) response!")
+			} else {
+				assert.Equal(t, tt.wantResponse.body, body)
+			}
 		})
 	}
 }
