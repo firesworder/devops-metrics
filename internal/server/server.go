@@ -161,7 +161,7 @@ func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
 	_, metricName := chi.URLParam(request, "typeName"), chi.URLParam(request, "metricName")
 	metric, ok := s.MetricStorage.GetMetric(metricName)
 	if !ok {
-		// todo: реализовать ошибку
+		http.Error(writer, "unknown metric", http.StatusNotFound)
 		return
 	}
 	fmt.Fprintf(writer, "%v", metric.Value)
