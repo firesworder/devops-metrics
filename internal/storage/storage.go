@@ -15,8 +15,8 @@ type gauge float64
 type counter int64
 
 type Metric struct {
-	name  string
-	value interface{}
+	Name  string
+	Value interface{}
 }
 
 func NewMetric(name string, typeName string, rawValue interface{}) (*Metric, error) {
@@ -37,7 +37,7 @@ func NewMetric(name string, typeName string, rawValue interface{}) (*Metric, err
 	default:
 		return nil, fmt.Errorf("unhandled value type '%s'", typeName)
 	}
-	return &Metric{name: name, value: value}, nil
+	return &Metric{Name: name, Value: value}, nil
 }
 
 type MetricRepository interface {
@@ -58,49 +58,49 @@ type MemStorage struct {
 
 func (ms *MemStorage) AddMetric(metric Metric) (err error) {
 	if ms.IsMetricInStorage(metric) {
-		return fmt.Errorf("metric with name '%s' already present in Storage", metric.name)
+		return fmt.Errorf("metric with name '%s' already present in Storage", metric.Name)
 	}
 
-	switch metric.value.(type) {
+	switch metric.Value.(type) {
 	case counter, gauge:
-		ms.metrics[metric.name] = metric
+		ms.metrics[metric.Name] = metric
 	default:
-		return fmt.Errorf("unhandled value type '%T'", metric.value)
+		return fmt.Errorf("unhandled value type '%T'", metric.Value)
 	}
 	return
 }
 
 func (ms *MemStorage) UpdateMetric(metric Metric) (err error) {
-	metricToUpdate, ok := ms.metrics[metric.name]
+	metricToUpdate, ok := ms.metrics[metric.Name]
 	if !ok {
-		return fmt.Errorf("there is no metric with name '%s'", metric.name)
+		return fmt.Errorf("there is no metric with name '%s'", metric.Name)
 	}
 
-	if reflect.TypeOf(metricToUpdate.value) != reflect.TypeOf(metric.value) {
+	if reflect.TypeOf(metricToUpdate.Value) != reflect.TypeOf(metric.Value) {
 		return fmt.Errorf("updated(%T) and new(%T) value type mismatch",
-			metricToUpdate.value, metric.value)
+			metricToUpdate.Value, metric.Value)
 	}
 
-	switch value := metric.value.(type) {
+	switch value := metric.Value.(type) {
 	case gauge:
-		metricToUpdate.value = value
+		metricToUpdate.Value = value
 	case counter:
-		metricToUpdate.value = metricToUpdate.value.(counter) + value
+		metricToUpdate.Value = metricToUpdate.Value.(counter) + value
 	}
-	ms.metrics[metric.name] = metricToUpdate
+	ms.metrics[metric.Name] = metricToUpdate
 	return
 }
 
 func (ms *MemStorage) DeleteMetric(metric Metric) (err error) {
 	if !ms.IsMetricInStorage(metric) {
-		return fmt.Errorf("there is no metric with name '%s'", metric.name)
+		return fmt.Errorf("there is no metric with name '%s'", metric.Name)
 	}
-	delete(ms.metrics, metric.name)
+	delete(ms.metrics, metric.Name)
 	return
 }
 
 func (ms *MemStorage) IsMetricInStorage(metric Metric) bool {
-	_, isMetricExist := ms.metrics[metric.name]
+	_, isMetricExist := ms.metrics[metric.Name]
 	return isMetricExist
 }
 

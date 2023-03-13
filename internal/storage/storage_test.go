@@ -8,13 +8,13 @@ import (
 )
 
 func TestMemStorage_AddMetric(t *testing.T) {
-	testMetric11 := Metric{name: "testMetric1", value: counter(10)}
+	testMetric11 := Metric{Name: "testMetric1", Value: counter(10)}
 	// одинаковый name с testMetric1, но другое value
-	testMetric12 := Metric{name: "testMetric1", value: counter(15)}
+	testMetric12 := Metric{Name: "testMetric1", Value: counter(15)}
 	// одинаковый name с testMetric1, но другое value и тип value
-	testMetric13 := Metric{name: "testMetric1", value: gauge(22.2)}
-	testMetric4 := Metric{name: "testMetric4", value: gauge(2.27)}
-	testMetric5 := Metric{name: "testMetric5", value: 0}
+	testMetric13 := Metric{Name: "testMetric1", Value: gauge(22.2)}
+	testMetric4 := Metric{Name: "testMetric4", Value: gauge(2.27)}
+	testMetric5 := Metric{Name: "testMetric5", Value: 0}
 	testMetric6 := Metric{}
 
 	tests := []struct {
@@ -28,28 +28,28 @@ func TestMemStorage_AddMetric(t *testing.T) {
 			name:        "Test 1. Add metric to empty storage state.",
 			metricToAdd: testMetric11,
 			startState:  map[string]Metric{},
-			wantedState: map[string]Metric{testMetric11.name: testMetric11},
+			wantedState: map[string]Metric{testMetric11.Name: testMetric11},
 			wantError:   nil,
 		},
 		{
 			name:        "Test 2. Add metric to storage, but metric already present.",
 			metricToAdd: testMetric12,
-			startState:  map[string]Metric{testMetric11.name: testMetric11},
-			wantedState: map[string]Metric{testMetric11.name: testMetric11},
-			wantError:   fmt.Errorf("metric with name '%s' already present in Storage", testMetric12.name),
+			startState:  map[string]Metric{testMetric11.Name: testMetric11},
+			wantedState: map[string]Metric{testMetric11.Name: testMetric11},
+			wantError:   fmt.Errorf("metric with name '%s' already present in Storage", testMetric12.Name),
 		},
 		{
 			name:        "Test 3. Add metric to storage, but metric already present. Value type differ",
 			metricToAdd: testMetric13,
-			startState:  map[string]Metric{testMetric11.name: testMetric11},
-			wantedState: map[string]Metric{testMetric11.name: testMetric11},
-			wantError:   fmt.Errorf("metric with name '%s' already present in Storage", testMetric13.name),
+			startState:  map[string]Metric{testMetric11.Name: testMetric11},
+			wantedState: map[string]Metric{testMetric11.Name: testMetric11},
+			wantError:   fmt.Errorf("metric with name '%s' already present in Storage", testMetric13.Name),
 		},
 		{
 			name:        "Test 4. Add another metric to storage",
 			metricToAdd: testMetric4,
-			startState:  map[string]Metric{testMetric11.name: testMetric11},
-			wantedState: map[string]Metric{testMetric11.name: testMetric11, testMetric4.name: testMetric4},
+			startState:  map[string]Metric{testMetric11.Name: testMetric11},
+			wantedState: map[string]Metric{testMetric11.Name: testMetric11, testMetric4.Name: testMetric4},
 			wantError:   nil,
 		},
 		{
@@ -57,14 +57,14 @@ func TestMemStorage_AddMetric(t *testing.T) {
 			metricToAdd: testMetric5,
 			startState:  map[string]Metric{},
 			wantedState: map[string]Metric{},
-			wantError:   fmt.Errorf("unhandled value type '%T'", testMetric5.value),
+			wantError:   fmt.Errorf("unhandled value type '%T'", testMetric5.Value),
 		},
 		{
 			name:        "Test 6. Add empty metric",
 			metricToAdd: testMetric6,
 			startState:  map[string]Metric{},
 			wantedState: map[string]Metric{},
-			wantError:   fmt.Errorf("unhandled value type '%T'", testMetric6.value),
+			wantError:   fmt.Errorf("unhandled value type '%T'", testMetric6.Value),
 		},
 	}
 	for _, tt := range tests {
@@ -80,15 +80,15 @@ func TestMemStorage_AddMetric(t *testing.T) {
 }
 
 func TestMemStorage_DeleteMetric(t *testing.T) {
-	testMetric11 := Metric{name: "testMetric1", value: counter(10)}
+	testMetric11 := Metric{Name: "testMetric1", Value: counter(10)}
 	// одинаковый name с testMetric1, но другое value
-	//testMetric12 := Metric{name: "testMetric1", value: counter(15)}
+	//testMetric12 := Metric{Name: "testMetric1", Value: counter(15)}
 	// одинаковый name с testMetric1, но другое value и тип value
-	testMetric13 := Metric{name: "testMetric1", value: gauge(22.2)}
-	testMetric4 := Metric{name: "testMetric4", value: gauge(2.27)}
-	//testMetric5 := Metric{name: "testMetric5", value: 0}
+	testMetric13 := Metric{Name: "testMetric1", Value: gauge(22.2)}
+	testMetric4 := Metric{Name: "testMetric4", Value: gauge(2.27)}
+	//testMetric5 := Metric{Name: "testMetric5", Value: 0}
 	//testMetric6 := Metric{}
-	testMetric7 := Metric{name: "testMetric7", value: counter(27)}
+	testMetric7 := Metric{Name: "testMetric7", Value: counter(27)}
 
 	tests := []struct {
 		name           string
@@ -100,7 +100,7 @@ func TestMemStorage_DeleteMetric(t *testing.T) {
 		{
 			name:           "Test 1. Delete metric from state contains ONLY that metric.",
 			metricToDelete: testMetric11,
-			startState:     map[string]Metric{testMetric11.name: testMetric11},
+			startState:     map[string]Metric{testMetric11.Name: testMetric11},
 			wantedState:    map[string]Metric{},
 			wantError:      nil,
 		},
@@ -108,11 +108,11 @@ func TestMemStorage_DeleteMetric(t *testing.T) {
 			name:           "Test 2. Delete metric from state that contains that metric.",
 			metricToDelete: testMetric11,
 			startState: map[string]Metric{
-				testMetric11.name: testMetric11,
-				testMetric4.name:  testMetric4,
+				testMetric11.Name: testMetric11,
+				testMetric4.Name:  testMetric4,
 			},
 			wantedState: map[string]Metric{
-				testMetric4.name: testMetric4,
+				testMetric4.Name: testMetric4,
 			},
 			wantError: nil,
 		},
@@ -120,24 +120,24 @@ func TestMemStorage_DeleteMetric(t *testing.T) {
 			name:           "Test 3. Delete metric from state that contains metrics, except that metric.",
 			metricToDelete: testMetric11,
 			startState: map[string]Metric{
-				testMetric7.name: testMetric7,
-				testMetric4.name: testMetric4,
+				testMetric7.Name: testMetric7,
+				testMetric4.Name: testMetric4,
 			},
 			wantedState: map[string]Metric{
-				testMetric7.name: testMetric7,
-				testMetric4.name: testMetric4,
+				testMetric7.Name: testMetric7,
+				testMetric4.Name: testMetric4,
 			},
-			wantError: fmt.Errorf("there is no metric with name '%s'", testMetric11.name),
+			wantError: fmt.Errorf("there is no metric with name '%s'", testMetric11.Name),
 		},
 		{
 			name:           "Test 4. Delete metric from state contains that metric, but value differ.",
 			metricToDelete: testMetric11,
 			startState: map[string]Metric{
-				testMetric13.name: testMetric13,
-				testMetric4.name:  testMetric4,
+				testMetric13.Name: testMetric13,
+				testMetric4.Name:  testMetric4,
 			},
 			wantedState: map[string]Metric{
-				testMetric4.name: testMetric4,
+				testMetric4.Name: testMetric4,
 			},
 			wantError: nil,
 		},
@@ -146,7 +146,7 @@ func TestMemStorage_DeleteMetric(t *testing.T) {
 			metricToDelete: testMetric11,
 			startState:     map[string]Metric{},
 			wantedState:    map[string]Metric{},
-			wantError:      fmt.Errorf("there is no metric with name '%s'", testMetric11.name),
+			wantError:      fmt.Errorf("there is no metric with name '%s'", testMetric11.Name),
 		},
 	}
 	for _, tt := range tests {
@@ -162,15 +162,15 @@ func TestMemStorage_DeleteMetric(t *testing.T) {
 }
 
 func TestMemStorage_IsMetricInStorage(t *testing.T) {
-	testMetric1 := Metric{name: "testMetric1", value: counter(10)}
+	testMetric1 := Metric{Name: "testMetric1", Value: counter(10)}
 	// одинаковый name с testMetric1, но другое value
-	//testMetric2 := Metric{name: "testMetric1", value: counter(15)}
+	//testMetric2 := Metric{Name: "testMetric1", Value: counter(15)}
 	// одинаковый name с testMetric1, но другое value и тип value
-	testMetric3 := Metric{name: "testMetric1", value: gauge(22.2)}
-	testMetric4 := Metric{name: "testMetric4", value: gauge(2.27)}
-	//testMetric5 := Metric{name: "testMetric5", value: 0}
+	testMetric3 := Metric{Name: "testMetric1", Value: gauge(22.2)}
+	testMetric4 := Metric{Name: "testMetric4", Value: gauge(2.27)}
+	//testMetric5 := Metric{Name: "testMetric5", Value: 0}
 	//testMetric6 := Metric{}
-	testMetric7 := Metric{name: "testMetric7", value: counter(27)}
+	testMetric7 := Metric{Name: "testMetric7", Value: counter(27)}
 
 	tests := []struct {
 		name          string
@@ -181,25 +181,25 @@ func TestMemStorage_IsMetricInStorage(t *testing.T) {
 		{
 			name:          "Test 1. Searched metric present in state. State contains only that metric.",
 			metricToCheck: testMetric1,
-			startState:    map[string]Metric{testMetric1.name: testMetric1},
+			startState:    map[string]Metric{testMetric1.Name: testMetric1},
 			wantedResult:  true,
 		},
 		{
 			name:          "Test 2. Searched metric present in state. Multiple metrics in state.",
 			metricToCheck: testMetric1,
-			startState:    map[string]Metric{testMetric1.name: testMetric1, testMetric4.name: testMetric4},
+			startState:    map[string]Metric{testMetric1.Name: testMetric1, testMetric4.Name: testMetric4},
 			wantedResult:  true,
 		},
 		{
 			name:          "Test 3. Metric name present in state, but value differs",
 			metricToCheck: testMetric1,
-			startState:    map[string]Metric{testMetric3.name: testMetric3, testMetric4.name: testMetric4},
+			startState:    map[string]Metric{testMetric3.Name: testMetric3, testMetric4.Name: testMetric4},
 			wantedResult:  true,
 		},
 		{
 			name:          "Test 4. Metric is not present in state.",
 			metricToCheck: testMetric1,
-			startState:    map[string]Metric{testMetric7.name: testMetric7, testMetric4.name: testMetric4},
+			startState:    map[string]Metric{testMetric7.Name: testMetric7, testMetric4.Name: testMetric4},
 			wantedResult:  false,
 		},
 		{
@@ -220,15 +220,15 @@ func TestMemStorage_IsMetricInStorage(t *testing.T) {
 }
 
 func TestMemStorage_UpdateMetric(t *testing.T) {
-	testMetric11 := Metric{name: "testMetric1", value: counter(10)}
+	testMetric11 := Metric{Name: "testMetric1", Value: counter(10)}
 	// одинаковый name с testMetric1, но другое value
-	//testMetric12 := Metric{name: "testMetric1", value: counter(15)}
+	//testMetric12 := Metric{Name: "testMetric1", Value: counter(15)}
 	// одинаковый name с testMetric1, но другое value и тип value
-	testMetric13 := Metric{name: "testMetric1", value: gauge(22.2)}
-	testMetric4 := Metric{name: "testMetric4", value: gauge(2.27)}
-	//testMetric5 := Metric{name: "testMetric5", value: 0}
+	testMetric13 := Metric{Name: "testMetric1", Value: gauge(22.2)}
+	testMetric4 := Metric{Name: "testMetric4", Value: gauge(2.27)}
+	//testMetric5 := Metric{Name: "testMetric5", Value: 0}
 	//testMetric6 := Metric{}
-	//testMetric7 := Metric{name: "testMetric7", value: counter(27)}
+	//testMetric7 := Metric{Name: "testMetric7", Value: counter(27)}
 
 	tests := []struct {
 		name           string
@@ -242,24 +242,24 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 			name:           "Test 1. Update metric, type 'counter'",
 			metricToUpdate: testMetric11,
 			newValue:       counter(15),
-			startState:     map[string]Metric{testMetric11.name: testMetric11},
-			wantedState:    map[string]Metric{"testMetric1": {name: "testMetric1", value: counter(25)}},
+			startState:     map[string]Metric{testMetric11.Name: testMetric11},
+			wantedState:    map[string]Metric{"testMetric1": {Name: "testMetric1", Value: counter(25)}},
 			wantError:      nil,
 		},
 		{
 			name:           "Test 2. Update metric, type 'gauge'",
 			metricToUpdate: testMetric13,
 			newValue:       gauge(27.3),
-			startState:     map[string]Metric{testMetric13.name: testMetric13},
-			wantedState:    map[string]Metric{"testMetric1": {name: "testMetric1", value: gauge(27.3)}},
+			startState:     map[string]Metric{testMetric13.Name: testMetric13},
+			wantedState:    map[string]Metric{"testMetric1": {Name: "testMetric1", Value: gauge(27.3)}},
 			wantError:      nil,
 		},
 		{
 			name:           "Test 3. Update metric, wrong type 'gauge'",
 			metricToUpdate: testMetric11,
 			newValue:       gauge(27.3),
-			startState:     map[string]Metric{testMetric11.name: testMetric11},
-			wantedState:    map[string]Metric{testMetric11.name: testMetric11},
+			startState:     map[string]Metric{testMetric11.Name: testMetric11},
+			wantedState:    map[string]Metric{testMetric11.Name: testMetric11},
 			wantError: fmt.Errorf("updated(%s) and new(%s) value type mismatch",
 				"storage.counter", "storage.gauge"),
 		},
@@ -269,15 +269,15 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 			newValue:       counter(15),
 			startState:     map[string]Metric{},
 			wantedState:    map[string]Metric{},
-			wantError:      fmt.Errorf("there is no metric with name '%s'", testMetric11.name),
+			wantError:      fmt.Errorf("there is no metric with name '%s'", testMetric11.Name),
 		},
 		{
 			name:           "Test 9. Metric to update is not present",
 			metricToUpdate: testMetric11,
 			newValue:       counter(15),
-			startState:     map[string]Metric{testMetric4.name: testMetric4},
-			wantedState:    map[string]Metric{testMetric4.name: testMetric4},
-			wantError:      fmt.Errorf("there is no metric with name '%s'", testMetric11.name),
+			startState:     map[string]Metric{testMetric4.Name: testMetric4},
+			wantedState:    map[string]Metric{testMetric4.Name: testMetric4},
+			wantError:      fmt.Errorf("there is no metric with name '%s'", testMetric11.Name),
 		},
 	}
 	for _, tt := range tests {
@@ -285,7 +285,7 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 			ms := &MemStorage{
 				metrics: tt.startState,
 			}
-			tt.metricToUpdate.value = tt.newValue
+			tt.metricToUpdate.Value = tt.newValue
 			err := ms.UpdateMetric(tt.metricToUpdate)
 			assert.Equal(t, tt.wantedState, ms.metrics)
 			assert.Equal(t, tt.wantError, err)
@@ -296,15 +296,15 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 // Упрощенная версия теста, без дублирования тестирования методов IsMetricInStorage ->
 // -> AddMetric и UpdateMetric, на которых эта функция основана.
 func TestMemStorage_UpdateOrAddMetric(t *testing.T) {
-	testMetric11 := Metric{name: "testMetric1", value: counter(10)}
+	testMetric11 := Metric{Name: "testMetric1", Value: counter(10)}
 	// одинаковый name с testMetric1, но другое value
-	testMetric12 := Metric{name: "testMetric1", value: counter(15)}
+	testMetric12 := Metric{Name: "testMetric1", Value: counter(15)}
 	// одинаковый name с testMetric1, но другое value и тип value
-	//testMetric13 := Metric{name: "testMetric1", value: gauge(22.2)}
-	testMetric4 := Metric{name: "testMetric4", value: gauge(2.27)}
-	//testMetric5 := Metric{name: "testMetric5", value: 0}
+	//testMetric13 := Metric{Name: "testMetric1", Value: gauge(22.2)}
+	testMetric4 := Metric{Name: "testMetric4", Value: gauge(2.27)}
+	//testMetric5 := Metric{Name: "testMetric5", Value: 0}
 	//testMetric6 := Metric{}
-	//testMetric7 := Metric{name: "testMetric7", value: counter(27)}
+	//testMetric7 := Metric{Name: "testMetric7", Value: counter(27)}
 
 	tests := []struct {
 		name        string
@@ -315,22 +315,22 @@ func TestMemStorage_UpdateOrAddMetric(t *testing.T) {
 		{
 			name:       "Test 1. Add new metric.",
 			metricObj:  testMetric4,
-			startState: map[string]Metric{testMetric11.name: testMetric11},
+			startState: map[string]Metric{testMetric11.Name: testMetric11},
 			wantedState: map[string]Metric{
-				testMetric11.name: testMetric11,
-				testMetric4.name:  testMetric4,
+				testMetric11.Name: testMetric11,
+				testMetric4.Name:  testMetric4,
 			},
 		},
 		{
 			name:      "Test 2. Update existed metric.",
 			metricObj: testMetric12,
 			startState: map[string]Metric{
-				testMetric11.name: testMetric11,
-				testMetric4.name:  testMetric4,
+				testMetric11.Name: testMetric11,
+				testMetric4.Name:  testMetric4,
 			},
 			wantedState: map[string]Metric{
-				testMetric11.name: {name: testMetric11.name, value: counter(25)},
-				testMetric4.name:  testMetric4,
+				testMetric11.Name: {Name: testMetric11.Name, Value: counter(25)},
+				testMetric4.Name:  testMetric4,
 			},
 		},
 	}
@@ -346,15 +346,15 @@ func TestMemStorage_UpdateOrAddMetric(t *testing.T) {
 }
 
 func TestMemStorage_GetAll(t *testing.T) {
-	testMetric11 := Metric{name: "testMetric1", value: counter(10)}
+	testMetric11 := Metric{Name: "testMetric1", Value: counter(10)}
 	// одинаковый name с testMetric1, но другое value
-	//testMetric12 := Metric{name: "testMetric1", value: counter(15)}
+	//testMetric12 := Metric{Name: "testMetric1", Value: counter(15)}
 	// одинаковый name с testMetric1, но другое value и тип value
-	//testMetric13 := Metric{name: "testMetric1", value: gauge(22.2)}
-	testMetric4 := Metric{name: "testMetric4", value: gauge(2.27)}
-	//testMetric5 := Metric{name: "testMetric5", value: 0}
+	//testMetric13 := Metric{Name: "testMetric1", Value: gauge(22.2)}
+	testMetric4 := Metric{Name: "testMetric4", Value: gauge(2.27)}
+	//testMetric5 := Metric{Name: "testMetric5", Value: 0}
 	//testMetric6 := Metric{}
-	//testMetric7 := Metric{name: "testMetric7", value: counter(27)}
+	//testMetric7 := Metric{Name: "testMetric7", Value: counter(27)}
 
 	tests := []struct {
 		name  string
@@ -369,12 +369,12 @@ func TestMemStorage_GetAll(t *testing.T) {
 		{
 			name: "Test 2. State contains metrics.",
 			state: map[string]Metric{
-				testMetric11.name: testMetric11,
-				testMetric4.name:  testMetric4,
+				testMetric11.Name: testMetric11,
+				testMetric4.Name:  testMetric4,
 			},
 			want: map[string]Metric{
-				testMetric11.name: testMetric11,
-				testMetric4.name:  testMetric4,
+				testMetric11.Name: testMetric11,
+				testMetric4.Name:  testMetric4,
 			},
 		},
 	}
@@ -390,15 +390,15 @@ func TestMemStorage_GetAll(t *testing.T) {
 }
 
 func TestMemStorage_GetMetric(t *testing.T) {
-	testMetric11 := Metric{name: "testMetric1", value: counter(10)}
+	testMetric11 := Metric{Name: "testMetric1", Value: counter(10)}
 	// одинаковый name с testMetric1, но другое value
-	//testMetric12 := Metric{name: "testMetric1", value: counter(15)}
+	//testMetric12 := Metric{Name: "testMetric1", Value: counter(15)}
 	// одинаковый name с testMetric1, но другое value и тип value
-	//testMetric13 := Metric{name: "testMetric1", value: gauge(22.2)}
-	testMetric4 := Metric{name: "testMetric4", value: gauge(2.27)}
-	//testMetric5 := Metric{name: "testMetric5", value: 0}
+	//testMetric13 := Metric{Name: "testMetric1", Value: gauge(22.2)}
+	testMetric4 := Metric{Name: "testMetric4", Value: gauge(2.27)}
+	//testMetric5 := Metric{Name: "testMetric5", Value: 0}
 	//testMetric6 := Metric{}
-	//testMetric7 := Metric{name: "testMetric7", value: counter(27)}
+	//testMetric7 := Metric{Name: "testMetric7", Value: counter(27)}
 
 	tests := []struct {
 		name       string
@@ -409,15 +409,15 @@ func TestMemStorage_GetMetric(t *testing.T) {
 	}{
 		{
 			name:       "Test 1. State contains requested metric.",
-			state:      map[string]Metric{testMetric11.name: testMetric11},
-			metricName: testMetric11.name,
+			state:      map[string]Metric{testMetric11.Name: testMetric11},
+			metricName: testMetric11.Name,
 			wantMetric: testMetric11,
 			wantOk:     true,
 		},
 		{
 			name:       "Test 2. State doesn't contain requested metric.",
-			state:      map[string]Metric{testMetric4.name: testMetric4},
-			metricName: testMetric11.name,
+			state:      map[string]Metric{testMetric4.Name: testMetric4},
+			metricName: testMetric11.Name,
 			wantMetric: Metric{},
 			wantOk:     false,
 		},
@@ -436,15 +436,15 @@ func TestMemStorage_GetMetric(t *testing.T) {
 
 func TestNewMemStorage(t *testing.T) {
 
-	testMetric11 := Metric{name: "testMetric1", value: counter(10)}
+	testMetric11 := Metric{Name: "testMetric1", Value: counter(10)}
 	// одинаковый name с testMetric1, но другое value
-	//testMetric12 := Metric{name: "testMetric1", value: counter(15)}
+	//testMetric12 := Metric{Name: "testMetric1", Value: counter(15)}
 	// одинаковый name с testMetric1, но другое value и тип value
-	//testMetric13 := Metric{name: "testMetric1", value: gauge(22.2)}
-	testMetric4 := Metric{name: "testMetric4", value: gauge(2.27)}
-	//testMetric5 := Metric{name: "testMetric5", value: 0}
+	//testMetric13 := Metric{Name: "testMetric1", Value: gauge(22.2)}
+	testMetric4 := Metric{Name: "testMetric4", Value: gauge(2.27)}
+	//testMetric5 := Metric{Name: "testMetric5", Value: 0}
 	//testMetric6 := Metric{}
-	//testMetric7 := Metric{name: "testMetric7", value: counter(27)}
+	//testMetric7 := Metric{Name: "testMetric7", Value: counter(27)}
 
 	tests := []struct {
 		name       string
@@ -464,13 +464,13 @@ func TestNewMemStorage(t *testing.T) {
 		{
 			name: "Test 3. Arg metrics filled with metrics.",
 			argMetrics: map[string]Metric{
-				testMetric11.name: testMetric11,
-				testMetric4.name:  testMetric4,
+				testMetric11.Name: testMetric11,
+				testMetric4.Name:  testMetric4,
 			},
 			want: MemStorage{
 				metrics: map[string]Metric{
-					testMetric11.name: testMetric11,
-					testMetric4.name:  testMetric4,
+					testMetric11.Name: testMetric11,
+					testMetric4.Name:  testMetric4,
 				},
 			},
 		},
@@ -498,7 +498,7 @@ func TestNewMetric(t *testing.T) {
 		{
 			name:      "Test 1. Counter type metric, with correct value.",
 			args:      args{name: "testMetric11", typeName: "counter", rawValue: int64(10)},
-			want:      &Metric{name: "testMetric11", value: counter(10)},
+			want:      &Metric{Name: "testMetric11", Value: counter(10)},
 			wantError: nil,
 		},
 		{
@@ -516,7 +516,7 @@ func TestNewMetric(t *testing.T) {
 		{
 			name:      "Test 4. Gauge type metric, with correct value.",
 			args:      args{name: "testMetric2", typeName: "gauge", rawValue: 11.2},
-			want:      &Metric{name: "testMetric2", value: gauge(11.2)},
+			want:      &Metric{Name: "testMetric2", Value: gauge(11.2)},
 			wantError: nil,
 		},
 		{
