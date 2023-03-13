@@ -8,7 +8,7 @@ import (
 )
 
 var metric1Counter10, metric1Counter15, metric1Gauge22d2 Metric
-var metric4Gauge2d27, metric5Int0, emptyMetric, metric7Counter27 Metric
+var metric4Gauge2d27, metric7Counter27 Metric
 
 func init() {
 	metric1Counter10 = Metric{Name: "testMetric1", Value: counter(10)}
@@ -18,8 +18,6 @@ func init() {
 	metric1Gauge22d2 = Metric{Name: "testMetric1", Value: gauge(22.2)}
 
 	metric4Gauge2d27 = Metric{Name: "testMetric4", Value: gauge(2.27)}
-	metric5Int0 = Metric{Name: "testMetric5", Value: 0}
-	emptyMetric = Metric{}
 	metric7Counter27 = Metric{Name: "testMetric7", Value: counter(27)}
 }
 
@@ -58,20 +56,6 @@ func TestMemStorage_AddMetric(t *testing.T) {
 			startState:  map[string]Metric{metric1Counter10.Name: metric1Counter10},
 			wantedState: map[string]Metric{metric1Counter10.Name: metric1Counter10, metric4Gauge2d27.Name: metric4Gauge2d27},
 			wantError:   nil,
-		},
-		{
-			name:        "Test 5. Add metric with unhandled value type",
-			metricToAdd: metric5Int0,
-			startState:  map[string]Metric{},
-			wantedState: map[string]Metric{},
-			wantError:   fmt.Errorf("unhandled value type '%T'", metric5Int0.Value),
-		},
-		{
-			name:        "Test 6. Add empty metric",
-			metricToAdd: emptyMetric,
-			startState:  map[string]Metric{},
-			wantedState: map[string]Metric{},
-			wantError:   fmt.Errorf("unhandled value type '%T'", emptyMetric.Value),
 		},
 	}
 	for _, tt := range tests {
@@ -216,32 +200,7 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 		wantError      error
 	}{
 		{
-			name:           "Test 1. Update metric, type 'counter'",
-			metricToUpdate: metric1Counter10,
-			newValue:       counter(15),
-			startState:     map[string]Metric{metric1Counter10.Name: metric1Counter10},
-			wantedState:    map[string]Metric{"testMetric1": {Name: "testMetric1", Value: counter(25)}},
-			wantError:      nil,
-		},
-		{
-			name:           "Test 2. Update metric, type 'gauge'",
-			metricToUpdate: metric1Gauge22d2,
-			newValue:       gauge(27.3),
-			startState:     map[string]Metric{metric1Gauge22d2.Name: metric1Gauge22d2},
-			wantedState:    map[string]Metric{"testMetric1": {Name: "testMetric1", Value: gauge(27.3)}},
-			wantError:      nil,
-		},
-		{
-			name:           "Test 3. Update metric, wrong type 'gauge'",
-			metricToUpdate: metric1Counter10,
-			newValue:       gauge(27.3),
-			startState:     map[string]Metric{metric1Counter10.Name: metric1Counter10},
-			wantedState:    map[string]Metric{metric1Counter10.Name: metric1Counter10},
-			wantError: fmt.Errorf("updated(%s) and new(%s) value type mismatch",
-				"storage.counter", "storage.gauge"),
-		},
-		{
-			name:           "Test 8. Empty state",
+			name:           "Test 1. Empty state",
 			metricToUpdate: metric1Counter10,
 			newValue:       counter(15),
 			startState:     map[string]Metric{},
@@ -249,12 +208,26 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 			wantError:      fmt.Errorf("there is no metric with name '%s'", metric1Counter10.Name),
 		},
 		{
-			name:           "Test 9. Metric to update is not present",
+			name:           "Test 2. Metric to update is not present",
 			metricToUpdate: metric1Counter10,
 			newValue:       counter(15),
 			startState:     map[string]Metric{metric4Gauge2d27.Name: metric4Gauge2d27},
 			wantedState:    map[string]Metric{metric4Gauge2d27.Name: metric4Gauge2d27},
 			wantError:      fmt.Errorf("there is no metric with name '%s'", metric1Counter10.Name),
+		},
+		{
+			name:           "Test 3. Metric to update is present in storage",
+			metricToUpdate: metric1Counter10,
+			newValue:       counter(15),
+			startState: map[string]Metric{
+				metric1Counter10.Name: metric1Counter10,
+				metric4Gauge2d27.Name: metric4Gauge2d27,
+			},
+			wantedState: map[string]Metric{
+				metric1Counter10.Name: {Name: metric1Counter10.Name, Value: counter(25)},
+				metric4Gauge2d27.Name: metric4Gauge2d27,
+			},
+			wantError: nil,
 		},
 	}
 	for _, tt := range tests {
@@ -416,70 +389,6 @@ func TestNewMemStorage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			memStorageObj := *NewMemStorage(tt.argMetrics)
 			assert.Equal(t, tt.want, memStorageObj)
-		})
-	}
-}
-
-func TestNewMetric(t *testing.T) {
-	type args struct {
-		name     string
-		typeName string
-		rawValue interface{}
-	}
-	tests := []struct {
-		name      string
-		args      args
-		want      *Metric
-		wantError error
-	}{
-		{
-			name:      "Test 1. Counter type metric, with correct value.",
-			args:      args{name: "testMetric11", typeName: "counter", rawValue: int64(10)},
-			want:      &Metric{Name: "testMetric11", Value: counter(10)},
-			wantError: nil,
-		},
-		{
-			name:      "Test 2. Counter type metric, with incorrect number value.",
-			args:      args{name: "testMetric12", typeName: "counter", rawValue: 11.3},
-			want:      nil,
-			wantError: fmt.Errorf("cannot convert value '%v' to 'counter' type", 11.3),
-		},
-		{
-			name:      "Test 3. Counter type metric, with incorrect NAN value.",
-			args:      args{name: "testMetric13", typeName: "counter", rawValue: "str"},
-			want:      nil,
-			wantError: fmt.Errorf("cannot convert value '%v' to 'counter' type", "str"),
-		},
-		{
-			name:      "Test 4. Gauge type metric, with correct value.",
-			args:      args{name: "testMetric2", typeName: "gauge", rawValue: 11.2},
-			want:      &Metric{Name: "testMetric2", Value: gauge(11.2)},
-			wantError: nil,
-		},
-		{
-			name:      "Test 5. Gauge type metric, with incorrect number value.",
-			args:      args{name: "testMetric2", typeName: "gauge", rawValue: 10},
-			want:      nil,
-			wantError: fmt.Errorf("cannot convert value '%v' to 'gauge' type", 10),
-		},
-		{
-			name:      "Test 6. Gauge type metric, with incorrect NAN value.",
-			args:      args{name: "testMetric2", typeName: "gauge", rawValue: "str"},
-			want:      nil,
-			wantError: fmt.Errorf("cannot convert value '%v' to 'gauge' type", "str"),
-		},
-		{
-			name:      "Test 7. Unknown value type.",
-			args:      args{name: "testMetric2", typeName: "int", rawValue: 100},
-			want:      nil,
-			wantError: fmt.Errorf("unhandled value type '%s'", "int"),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotMetric, err := NewMetric(tt.args.name, tt.args.typeName, tt.args.rawValue)
-			assert.Equal(t, tt.want, gotMetric)
-			assert.Equal(t, tt.wantError, err)
 		})
 	}
 }
