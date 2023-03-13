@@ -172,6 +172,7 @@ type response struct {
 	body        string
 }
 
+// todo: добавить проверку content-type
 func TestGetRootPageHandler(t *testing.T) {
 	s := NewServer()
 	ts := httptest.NewServer(s.Router)
@@ -204,6 +205,91 @@ func TestGetRootPageHandler(t *testing.T) {
 			request:         requestArgs{method: http.MethodPost, url: "/"},
 			wantResponse:    response{statusCode: http.StatusMethodNotAllowed, body: ""},
 			memStorageState: map[string]storage.Metric{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s.MetricStorage = storage.NewMemStorage(tt.memStorageState)
+			statusCode, body := sendTestRequest(t, ts, tt.request)
+			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
+			assert.Equal(t, tt.wantResponse.body, body)
+		})
+	}
+}
+
+func TestGetMetricHandler(t *testing.T) {
+	s := NewServer()
+	ts := httptest.NewServer(s.Router)
+	defer ts.Close()
+
+	filledState := map[string]storage.Metric{
+		metric1.Name: *metric1,
+		metric2.Name: *metric2,
+		metric3.Name: *metric3,
+	}
+	emptyState := map[string]storage.Metric{}
+
+	tests := []struct {
+		name            string
+		request         requestArgs
+		wantResponse    response
+		memStorageState map[string]storage.Metric
+	}{
+		{
+			name:            "Test 1. Correct url, empty state.",
+			request:         requestArgs{method: http.MethodGet, url: "/value/counter/PollCount"},
+			wantResponse:    response{statusCode: http.StatusNotFound, contentType: "", body: "unknown metric\n"},
+			memStorageState: emptyState,
+		},
+		{
+			name:            "Test 2. Correct url, metric in filled state. Counter type",
+			request:         requestArgs{method: http.MethodGet, url: "/value/counter/PollCount"},
+			wantResponse:    response{statusCode: http.StatusOK, contentType: "", body: "10"},
+			memStorageState: filledState,
+		},
+		{
+			name:            "Test 3. Correct url, metric in filled state. Gauge type",
+			request:         requestArgs{method: http.MethodGet, url: "/value/gauge/RandomValue"},
+			wantResponse:    response{statusCode: http.StatusOK, contentType: "", body: "12.133"},
+			memStorageState: filledState,
+		},
+		{
+			name:            "Test 4. Correct url, metric NOT in filled state.",
+			request:         requestArgs{method: http.MethodGet, url: "/value/gauge/AnotherMetric"},
+			wantResponse:    response{statusCode: http.StatusNotFound, contentType: "", body: "unknown metric\n"},
+			memStorageState: filledState,
+		},
+		{
+			// todo: пока что я не проверяю типы, а только наличие метрики с соотв. названием
+			//  мб стоит дополнить. Хотя бы на проверку counter\gauge
+			name:            "Test 5. Incorrect url. WrongType of metric",
+			request:         requestArgs{method: http.MethodGet, url: "/value/gauge/PollCount"},
+			wantResponse:    response{statusCode: http.StatusOK, contentType: "", body: "10"},
+			memStorageState: filledState,
+		},
+		{
+			name:            "Test 6. Incorrect url. Skipped type part",
+			request:         requestArgs{method: http.MethodGet, url: "/value/PollCount"},
+			wantResponse:    response{statusCode: http.StatusNotFound, contentType: "", body: "404 page not found\n"},
+			memStorageState: filledState,
+		},
+		{
+			name:            "Test 7. Incorrect url. Skipped metricName part",
+			request:         requestArgs{method: http.MethodGet, url: "/value/counter/"},
+			wantResponse:    response{statusCode: http.StatusNotFound, contentType: "", body: "404 page not found\n"},
+			memStorageState: filledState,
+		},
+		{
+			name:            "Test 8. Incorrect url. Only 'value' part",
+			request:         requestArgs{method: http.MethodGet, url: "/value"},
+			wantResponse:    response{statusCode: http.StatusNotFound, contentType: "", body: "404 page not found\n"},
+			memStorageState: filledState,
+		},
+		{
+			name:            "Test 9. Correct url, but wrong method",
+			request:         requestArgs{method: http.MethodPost, url: "/value/counter/PollCount"},
+			wantResponse:    response{statusCode: http.StatusMethodNotAllowed, contentType: "", body: ""},
+			memStorageState: filledState,
 		},
 	}
 	for _, tt := range tests {
