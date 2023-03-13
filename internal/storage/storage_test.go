@@ -7,16 +7,25 @@ import (
 	"testing"
 )
 
-func TestMemStorage_AddMetric(t *testing.T) {
-	testMetric11 := Metric{Name: "testMetric1", Value: counter(10)}
-	// одинаковый name с testMetric1, но другое value
-	testMetric12 := Metric{Name: "testMetric1", Value: counter(15)}
-	// одинаковый name с testMetric1, но другое value и тип value
-	testMetric13 := Metric{Name: "testMetric1", Value: gauge(22.2)}
-	testMetric4 := Metric{Name: "testMetric4", Value: gauge(2.27)}
-	testMetric5 := Metric{Name: "testMetric5", Value: 0}
-	testMetric6 := Metric{}
+var testMetric11, testMetric12, testMetric13 Metric
+var testMetric4, testMetric5, testMetric6, testMetric7 Metric
 
+func init() {
+	testMetric11 = Metric{Name: "testMetric1", Value: counter(10)}
+	// одинаковый name с testMetric1, но другое value
+	testMetric12 = Metric{Name: "testMetric1", Value: counter(15)}
+	// одинаковый name с testMetric1, но другое value и тип value
+	testMetric13 = Metric{Name: "testMetric1", Value: gauge(22.2)}
+
+	testMetric4 = Metric{Name: "testMetric4", Value: gauge(2.27)}
+	testMetric5 = Metric{Name: "testMetric5", Value: 0}
+	testMetric6 = Metric{}
+	testMetric7 = Metric{Name: "testMetric7", Value: counter(27)}
+}
+
+// todo: почистить
+
+func TestMemStorage_AddMetric(t *testing.T) {
 	tests := []struct {
 		name        string
 		metricToAdd Metric
@@ -80,16 +89,6 @@ func TestMemStorage_AddMetric(t *testing.T) {
 }
 
 func TestMemStorage_DeleteMetric(t *testing.T) {
-	testMetric11 := Metric{Name: "testMetric1", Value: counter(10)}
-	// одинаковый name с testMetric1, но другое value
-	//testMetric12 := Metric{Name: "testMetric1", Value: counter(15)}
-	// одинаковый name с testMetric1, но другое value и тип value
-	testMetric13 := Metric{Name: "testMetric1", Value: gauge(22.2)}
-	testMetric4 := Metric{Name: "testMetric4", Value: gauge(2.27)}
-	//testMetric5 := Metric{Name: "testMetric5", Value: 0}
-	//testMetric6 := Metric{}
-	testMetric7 := Metric{Name: "testMetric7", Value: counter(27)}
-
 	tests := []struct {
 		name           string
 		metricToDelete Metric
@@ -162,16 +161,6 @@ func TestMemStorage_DeleteMetric(t *testing.T) {
 }
 
 func TestMemStorage_IsMetricInStorage(t *testing.T) {
-	testMetric1 := Metric{Name: "testMetric1", Value: counter(10)}
-	// одинаковый name с testMetric1, но другое value
-	//testMetric2 := Metric{Name: "testMetric1", Value: counter(15)}
-	// одинаковый name с testMetric1, но другое value и тип value
-	testMetric3 := Metric{Name: "testMetric1", Value: gauge(22.2)}
-	testMetric4 := Metric{Name: "testMetric4", Value: gauge(2.27)}
-	//testMetric5 := Metric{Name: "testMetric5", Value: 0}
-	//testMetric6 := Metric{}
-	testMetric7 := Metric{Name: "testMetric7", Value: counter(27)}
-
 	tests := []struct {
 		name          string
 		metricToCheck Metric
@@ -180,31 +169,31 @@ func TestMemStorage_IsMetricInStorage(t *testing.T) {
 	}{
 		{
 			name:          "Test 1. Searched metric present in state. State contains only that metric.",
-			metricToCheck: testMetric1,
-			startState:    map[string]Metric{testMetric1.Name: testMetric1},
+			metricToCheck: testMetric11,
+			startState:    map[string]Metric{testMetric11.Name: testMetric11},
 			wantedResult:  true,
 		},
 		{
 			name:          "Test 2. Searched metric present in state. Multiple metrics in state.",
-			metricToCheck: testMetric1,
-			startState:    map[string]Metric{testMetric1.Name: testMetric1, testMetric4.Name: testMetric4},
+			metricToCheck: testMetric11,
+			startState:    map[string]Metric{testMetric11.Name: testMetric11, testMetric4.Name: testMetric4},
 			wantedResult:  true,
 		},
 		{
 			name:          "Test 3. Metric name present in state, but value differs",
-			metricToCheck: testMetric1,
-			startState:    map[string]Metric{testMetric3.Name: testMetric3, testMetric4.Name: testMetric4},
+			metricToCheck: testMetric11,
+			startState:    map[string]Metric{testMetric13.Name: testMetric13, testMetric4.Name: testMetric4},
 			wantedResult:  true,
 		},
 		{
 			name:          "Test 4. Metric is not present in state.",
-			metricToCheck: testMetric1,
+			metricToCheck: testMetric11,
 			startState:    map[string]Metric{testMetric7.Name: testMetric7, testMetric4.Name: testMetric4},
 			wantedResult:  false,
 		},
 		{
 			name:          "Test 5. Empty state.",
-			metricToCheck: testMetric1,
+			metricToCheck: testMetric11,
 			startState:    map[string]Metric{},
 			wantedResult:  false,
 		},
@@ -220,16 +209,6 @@ func TestMemStorage_IsMetricInStorage(t *testing.T) {
 }
 
 func TestMemStorage_UpdateMetric(t *testing.T) {
-	testMetric11 := Metric{Name: "testMetric1", Value: counter(10)}
-	// одинаковый name с testMetric1, но другое value
-	//testMetric12 := Metric{Name: "testMetric1", Value: counter(15)}
-	// одинаковый name с testMetric1, но другое value и тип value
-	testMetric13 := Metric{Name: "testMetric1", Value: gauge(22.2)}
-	testMetric4 := Metric{Name: "testMetric4", Value: gauge(2.27)}
-	//testMetric5 := Metric{Name: "testMetric5", Value: 0}
-	//testMetric6 := Metric{}
-	//testMetric7 := Metric{Name: "testMetric7", Value: counter(27)}
-
 	tests := []struct {
 		name           string
 		metricToUpdate Metric
@@ -296,15 +275,6 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 // Упрощенная версия теста, без дублирования тестирования методов IsMetricInStorage ->
 // -> AddMetric и UpdateMetric, на которых эта функция основана.
 func TestMemStorage_UpdateOrAddMetric(t *testing.T) {
-	testMetric11 := Metric{Name: "testMetric1", Value: counter(10)}
-	// одинаковый name с testMetric1, но другое value
-	testMetric12 := Metric{Name: "testMetric1", Value: counter(15)}
-	// одинаковый name с testMetric1, но другое value и тип value
-	//testMetric13 := Metric{Name: "testMetric1", Value: gauge(22.2)}
-	testMetric4 := Metric{Name: "testMetric4", Value: gauge(2.27)}
-	//testMetric5 := Metric{Name: "testMetric5", Value: 0}
-	//testMetric6 := Metric{}
-	//testMetric7 := Metric{Name: "testMetric7", Value: counter(27)}
 
 	tests := []struct {
 		name        string
@@ -346,16 +316,6 @@ func TestMemStorage_UpdateOrAddMetric(t *testing.T) {
 }
 
 func TestMemStorage_GetAll(t *testing.T) {
-	testMetric11 := Metric{Name: "testMetric1", Value: counter(10)}
-	// одинаковый name с testMetric1, но другое value
-	//testMetric12 := Metric{Name: "testMetric1", Value: counter(15)}
-	// одинаковый name с testMetric1, но другое value и тип value
-	//testMetric13 := Metric{Name: "testMetric1", Value: gauge(22.2)}
-	testMetric4 := Metric{Name: "testMetric4", Value: gauge(2.27)}
-	//testMetric5 := Metric{Name: "testMetric5", Value: 0}
-	//testMetric6 := Metric{}
-	//testMetric7 := Metric{Name: "testMetric7", Value: counter(27)}
-
 	tests := []struct {
 		name  string
 		state map[string]Metric
@@ -390,16 +350,6 @@ func TestMemStorage_GetAll(t *testing.T) {
 }
 
 func TestMemStorage_GetMetric(t *testing.T) {
-	testMetric11 := Metric{Name: "testMetric1", Value: counter(10)}
-	// одинаковый name с testMetric1, но другое value
-	//testMetric12 := Metric{Name: "testMetric1", Value: counter(15)}
-	// одинаковый name с testMetric1, но другое value и тип value
-	//testMetric13 := Metric{Name: "testMetric1", Value: gauge(22.2)}
-	testMetric4 := Metric{Name: "testMetric4", Value: gauge(2.27)}
-	//testMetric5 := Metric{Name: "testMetric5", Value: 0}
-	//testMetric6 := Metric{}
-	//testMetric7 := Metric{Name: "testMetric7", Value: counter(27)}
-
 	tests := []struct {
 		name       string
 		state      map[string]Metric
@@ -435,17 +385,6 @@ func TestMemStorage_GetMetric(t *testing.T) {
 }
 
 func TestNewMemStorage(t *testing.T) {
-
-	testMetric11 := Metric{Name: "testMetric1", Value: counter(10)}
-	// одинаковый name с testMetric1, но другое value
-	//testMetric12 := Metric{Name: "testMetric1", Value: counter(15)}
-	// одинаковый name с testMetric1, но другое value и тип value
-	//testMetric13 := Metric{Name: "testMetric1", Value: gauge(22.2)}
-	testMetric4 := Metric{Name: "testMetric4", Value: gauge(2.27)}
-	//testMetric5 := Metric{Name: "testMetric5", Value: 0}
-	//testMetric6 := Metric{}
-	//testMetric7 := Metric{Name: "testMetric7", Value: counter(27)}
-
 	tests := []struct {
 		name       string
 		argMetrics map[string]Metric
