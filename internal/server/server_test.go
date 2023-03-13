@@ -381,6 +381,7 @@ func sendTestRequest(t *testing.T, ts *httptest.Server, r requestArgs) (int, str
 	require.NoError(t, err)
 
 	// читаю ответ сервера
+	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
