@@ -7,159 +7,24 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 )
 
 // Переменные для формирования состояния MemStorage
 var metric1, metric2, metric3 *storage.Metric
+var metric1upd20, metric2upd235, unknownMetric *storage.Metric
 
 func init() {
 	metric1, _ = storage.NewMetric("PollCount", "counter", int64(10))
+	metric1upd20, _ = storage.NewMetric("PollCount", "counter", int64(30))
 	metric2, _ = storage.NewMetric("RandomValue", "gauge", 12.133)
+	metric2upd235, _ = storage.NewMetric("RandomValue", "gauge", 23.5)
 	metric3, _ = storage.NewMetric("Alloc", "gauge", 7.77)
+	unknownMetric, _ = storage.NewMetric("UnknownMetric", "counter", int64(10))
 }
 
 // В рамках этой функции реализован и тест parseMetricParams, т.к. последнее является неотъемлимой
 // частью ServeHTTP(выделана для лучшего восприятия)
-func TestMetricReqHandler_ServeHTTP(t *testing.T) {
-	type request struct {
-		url    string
-		method string
-	}
-	type response struct {
-		statusCode int
-		body       string
-	}
-	type metricArgs struct {
-		name     string
-		typeName string
-		rawValue interface{}
-	}
-	tests := []struct {
-		name         string
-		request      request
-		wantResponse response
-		wantMetric   metricArgs
-	}{
-		{
-			name:         "Test 1. Correct request(counter).",
-			request:      request{url: `/update/counter/PollCount/10`, method: http.MethodPost},
-			wantResponse: response{statusCode: http.StatusOK, body: ""},
-			wantMetric:   metricArgs{name: "PollCount", typeName: "counter", rawValue: int64(10)},
-		},
-		{
-			name:    "Test 2. Incorrect http method.",
-			request: request{url: `/update/counter/PollCount/10`, method: http.MethodGet},
-			wantResponse: response{
-				statusCode: http.StatusMethodNotAllowed,
-				body:       "Only POST method allowed",
-			},
-			wantMetric: metricArgs{},
-		},
-		{
-			name:    "Test 3. Incorrect url path(shorter).",
-			request: request{url: `/update/counter/PollCount`, method: http.MethodPost},
-			wantResponse: response{
-				statusCode: http.StatusNotFound,
-				body:       "Некорректный URL запроса. Ожидаемое число частей пути URL: 4, получено 3",
-			},
-			wantMetric: metricArgs{},
-		},
-		{
-			name:    "Test 4. Incorrect url path(longer).",
-			request: request{url: `/update/counter/PollCount/10/someinfo`, method: http.MethodPost},
-			wantResponse: response{
-				statusCode: http.StatusNotFound,
-				body:       "Некорректный URL запроса. Ожидаемое число частей пути URL: 4, получено 5",
-			},
-			wantMetric: metricArgs{},
-		},
-		{
-			name:    "Test 5. Incorrect url order.",
-			request: request{url: `/update/PollCount/counter/10`, method: http.MethodPost},
-			wantResponse: response{
-				statusCode: http.StatusNotImplemented,
-				body:       "unhandled value type",
-			},
-			wantMetric: metricArgs{},
-		},
-		{
-			name:    "Test 6. Unknown metric type.",
-			request: request{url: `/update/integer/PollCount/10`, method: http.MethodPost},
-			wantResponse: response{
-				statusCode: http.StatusNotImplemented,
-				body:       "unhandled value type",
-			},
-			wantMetric: metricArgs{},
-		},
-		{
-			name:    "Test 8. Incorrect metric value for metric type.",
-			request: request{url: `/update/counter/PollCount/10.3`, method: http.MethodPost},
-			wantResponse: response{
-				statusCode: http.StatusBadRequest,
-				body:       "Ошибка приведения значения '10.3' метрики к типу 'counter'",
-			},
-			wantMetric: metricArgs{},
-		},
-		{
-			name:    "Test 9. Unknown metric.",
-			request: request{url: `/update/counter/SomeMetric/10`, method: http.MethodPost},
-			wantResponse: response{
-				statusCode: http.StatusOK,
-				body:       "",
-			},
-			wantMetric: metricArgs{name: "SomeMetric", typeName: "counter", rawValue: int64(10)},
-		},
-		{
-			name:    "Test 10. Correct gauge type metric.",
-			request: request{url: `/update/gauge/RandomValue/13.223`, method: http.MethodPost},
-			wantResponse: response{
-				statusCode: http.StatusOK,
-				body:       "",
-			},
-			wantMetric: metricArgs{name: "RandomValue", typeName: "gauge", rawValue: 13.223},
-		},
-		{
-			name:    "Test 10. Incorrect first part of URL.",
-			request: request{url: `/updater/gauge/RandomValue/13.223`, method: http.MethodPost},
-			wantResponse: response{
-				statusCode: http.StatusNotFound,
-				body:       "Incorrect root part of URL. Expected 'update', got 'updater'",
-			},
-			wantMetric: metricArgs{name: "RandomValue", typeName: "gauge", rawValue: 13.223},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// тестовый запрос
-			tr := httptest.NewRequest(tt.request.method, tt.request.url, nil)
-			// тестовый писатель
-			trw := httptest.NewRecorder()
-			// handler
-			h := NewDefaultMetricHandler()
-			h.MetricStorage = storage.NewMemStorage(map[string]storage.Metric{})
-			h.ServeHTTP(trw, tr)
-			// получаю респонс из писателя
-			tResponse := trw.Result()
-
-			defer tResponse.Body.Close()
-			tBody, err := io.ReadAll(tResponse.Body)
-			if assert.NoError(t, err) {
-				assert.Equal(t, tt.wantResponse.body, strings.TrimSpace(string(tBody)))
-			}
-			// если статус ответа запроса отличается - смысла проверять добавление метрики в стейт нет
-			require.Equal(t, tt.wantResponse.statusCode, tResponse.StatusCode)
-
-			if tResponse.StatusCode == http.StatusOK {
-				metric, err := storage.NewMetric(tt.wantMetric.name, tt.wantMetric.typeName, tt.wantMetric.rawValue)
-				wantStorage := storage.NewMemStorage(map[string]storage.Metric{tt.wantMetric.name: *metric})
-				assert.NoError(t, err)
-				assert.Equal(t, wantStorage, h.MetricStorage)
-			}
-		})
-	}
-}
 
 type requestArgs struct {
 	method string
@@ -170,6 +35,170 @@ type response struct {
 	statusCode  int
 	contentType string
 	body        string
+}
+
+// todo: переименовать в POST/AddUpdate handler, т.к. он не только обновляет
+func TestUpdateMetricHandler(t *testing.T) {
+	s := NewServer()
+	ts := httptest.NewServer(s.Router)
+	defer ts.Close()
+
+	type metricArgs struct {
+		name     string
+		typeName string
+		rawValue interface{}
+	}
+	tests := []struct {
+		name         string
+		request      requestArgs
+		wantResponse response
+		initState    map[string]storage.Metric
+		wantedState  map[string]storage.Metric
+	}{
+		{
+			name:         "Test 1. Correct request. Counter type. Add metric. Empty state",
+			request:      requestArgs{url: `/update/counter/PollCount/10`, method: http.MethodPost},
+			wantResponse: response{statusCode: http.StatusOK, contentType: "", body: ""},
+			initState:    map[string]storage.Metric{},
+			wantedState:  map[string]storage.Metric{metric1.Name: *metric1},
+		},
+		{
+			name:         "Test 2. Correct request. Counter type. Add metric. Filled state",
+			request:      requestArgs{url: `/update/counter/PollCount/10`, method: http.MethodPost},
+			wantResponse: response{statusCode: http.StatusOK, contentType: "", body: ""},
+			initState: map[string]storage.Metric{
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
+		},
+		{
+			name:         "Test 3. Correct request. Gauge type. Add metric. Empty state",
+			request:      requestArgs{url: `/update/gauge/RandomValue/12.133`, method: http.MethodPost},
+			wantResponse: response{statusCode: http.StatusOK, contentType: "", body: ""},
+			initState:    map[string]storage.Metric{},
+			wantedState:  map[string]storage.Metric{metric2.Name: *metric2},
+		},
+		{
+			name:         "Test 4. Correct request. Gauge type. Add metric. Filled state",
+			request:      requestArgs{url: `/update/gauge/RandomValue/12.133`, method: http.MethodPost},
+			wantResponse: response{statusCode: http.StatusOK, contentType: "", body: ""},
+			initState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric3.Name: *metric3,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
+		},
+		{
+			name:         "Test 5. Correct request. Counter type. Update metric.",
+			request:      requestArgs{url: `/update/counter/PollCount/20`, method: http.MethodPost},
+			wantResponse: response{statusCode: http.StatusOK, contentType: "", body: ""},
+			initState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric3.Name: *metric3,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1upd20.Name: *metric1upd20,
+				metric3.Name:      *metric3,
+			},
+		},
+		{
+			name:         "Test 6. Correct request. Gauge type. Update metric.",
+			request:      requestArgs{url: `/update/gauge/RandomValue/23.5`, method: http.MethodPost},
+			wantResponse: response{statusCode: http.StatusOK, contentType: "", body: ""},
+			initState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1.Name:       *metric1,
+				metric2upd235.Name: *metric2upd235,
+			},
+		},
+		{
+			name:    "Test 7. Incorrect http method.",
+			request: requestArgs{url: `/update/counter/PollCount/10`, method: http.MethodPut},
+			wantResponse: response{
+				statusCode:  http.StatusMethodNotAllowed,
+				contentType: "",
+				body:        "",
+			},
+		},
+		{
+			name:    "Test 8. Incorrect url path(shorter).",
+			request: requestArgs{url: `/update/counter/PollCount`, method: http.MethodPost},
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "404 page not found\n",
+			},
+		},
+		{
+			name:    "Test 9. Incorrect url path(longer).",
+			request: requestArgs{url: `/update/counter/PollCount/10/someinfo`, method: http.MethodPost},
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "404 page not found\n",
+			},
+		},
+		{
+			name:    "Test 10. Incorrect metric type.",
+			request: requestArgs{url: `/update/PollCount/RandomValue/10`, method: http.MethodPost},
+			wantResponse: response{
+				statusCode:  http.StatusNotImplemented,
+				contentType: "text/plain; charset=utf-8",
+				body:        "unhandled value type\n",
+			},
+		},
+		{
+			name:    "Test 11. Incorrect metric value for metric type.",
+			request: requestArgs{url: `/update/counter/PollCount/10.3`, method: http.MethodPost},
+			wantResponse: response{
+				statusCode:  http.StatusBadRequest,
+				contentType: "text/plain; charset=utf-8",
+				body:        "Ошибка приведения значения '10.3' метрики к типу 'counter'\n",
+			},
+		},
+		{
+			name:    "Test 12. Unknown metric.",
+			request: requestArgs{url: `/update/counter/UnknownMetric/10`, method: http.MethodPost},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "",
+				body:        "",
+			},
+			initState:   map[string]storage.Metric{},
+			wantedState: map[string]storage.Metric{unknownMetric.Name: *unknownMetric},
+		},
+		{
+			name:    "Test 13. Incorrect first part of URL.",
+			request: requestArgs{url: `/updater/gauge/RandomValue/13.223`, method: http.MethodPost},
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "404 page not found\n",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s.MetricStorage = storage.NewMemStorage(tt.initState)
+			statusCode, contentType, body := sendTestRequest(t, ts, tt.request)
+			require.Equal(t, tt.wantResponse.statusCode, statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, contentType)
+			assert.Equal(t, tt.wantResponse.body, body)
+			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll())
+		})
+	}
 }
 
 // todo: добавить проверку content-type
