@@ -11,6 +11,15 @@ import (
 	"testing"
 )
 
+// Переменные для формирования состояния MemStorage
+var metric1, metric2, metric3 *storage.Metric
+
+func init() {
+	metric1, _ = storage.NewMetric("PollCount", "counter", int64(10))
+	metric2, _ = storage.NewMetric("RandomValue", "gauge", 12.133)
+	metric3, _ = storage.NewMetric("Alloc", "gauge", 7.77)
+}
+
 // В рамках этой функции реализован и тест parseMetricParams, т.к. последнее является неотъемлимой
 // частью ServeHTTP(выделана для лучшего восприятия)
 func TestMetricReqHandler_ServeHTTP(t *testing.T) {
@@ -152,61 +161,54 @@ func TestMetricReqHandler_ServeHTTP(t *testing.T) {
 	}
 }
 
-type requestParams struct {
+type requestArgs struct {
 	method string
 	url    string
 }
 
 type response struct {
-	statusCode int
-	// todo: content-type
-	body string
+	statusCode  int
+	contentType string
+	body        string
 }
 
-func TestSimple(t *testing.T) {
+func TestGetRootPageHandler(t *testing.T) {
 	s := NewServer()
-
-	//наполню сторедж тестовыми данными
-	metric1, _ := storage.NewMetric("PollCount", "counter", int64(10))
-	metric2, _ := storage.NewMetric("RandomValue", "gauge", 12.133)
-	metric3, _ := storage.NewMetric("Alloc", "gauge", 7.77)
-	s.MetricStorage.AddMetric(*metric1)
-	s.MetricStorage.AddMetric(*metric2)
-	s.MetricStorage.AddMetric(*metric3)
-
 	ts := httptest.NewServer(s.Router)
 	defer ts.Close()
 
 	tests := []struct {
-		name         string
-		request      requestParams
-		wantResponse response
+		name            string
+		request         requestArgs
+		wantResponse    response
+		memStorageState map[string]storage.Metric
 	}{
-		// todo: почему то порядок элементов меняется постоянно
 		{
-			name:         "Test 1. Simple root url test.",
-			request:      requestParams{method: http.MethodGet, url: "/"},
-			wantResponse: response{statusCode: 200, body: "<h1>Metrics</h1>\r\n<ul>\r\n    \r\n        <li>Alloc: 7.77</li>\r\n    \r\n        <li>PollCount: 10</li>\r\n    \r\n        <li>RandomValue: 12.133</li>\r\n    \r\n</ul>"},
+			name:            "Test 1. Correct request, empty state.",
+			request:         requestArgs{method: http.MethodGet, url: "/"},
+			wantResponse:    response{statusCode: http.StatusOK, body: "<h1>Metrics</h1>\r\n<ul>\r\n    \r\n</ul>"},
+			memStorageState: map[string]storage.Metric{},
 		},
 		{
-			name:         "Test 2. Simple get url test.",
-			request:      requestParams{method: http.MethodGet, url: "/value/counter/PollCount"},
-			wantResponse: response{statusCode: 200, body: "10"},
+			name:         "Test 2. Correct request, with filled state.",
+			request:      requestArgs{method: http.MethodGet, url: "/"},
+			wantResponse: response{statusCode: http.StatusOK, body: "<h1>Metrics</h1>\r\n<ul>\r\n    \r\n        <li>Alloc: 7.77</li>\r\n    \r\n        <li>PollCount: 10</li>\r\n    \r\n        <li>RandomValue: 12.133</li>\r\n    \r\n</ul>"},
+			memStorageState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
 		},
 		{
-			name:         "Test 3. Simple post url test.",
-			request:      requestParams{method: http.MethodPost, url: "/update/counter/PollCount/20"},
-			wantResponse: response{statusCode: http.StatusOK, body: ""},
-		},
-		{
-			name:         "Test 4. Simple get url test after a change.",
-			request:      requestParams{method: http.MethodGet, url: "/value/counter/PollCount"},
-			wantResponse: response{statusCode: 200, body: "30"},
+			name:            "Test 3. Incorrect method, empty state.",
+			request:         requestArgs{method: http.MethodPost, url: "/"},
+			wantResponse:    response{statusCode: http.StatusMethodNotAllowed, body: ""},
+			memStorageState: map[string]storage.Metric{},
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			s.MetricStorage = storage.NewMemStorage(tt.memStorageState)
 			statusCode, body := sendTestRequest(t, ts, tt.request)
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.body, body)
@@ -214,7 +216,7 @@ func TestSimple(t *testing.T) {
 	}
 }
 
-func sendTestRequest(t *testing.T, ts *httptest.Server, r requestParams) (int, string) {
+func sendTestRequest(t *testing.T, ts *httptest.Server, r requestArgs) (int, string) {
 	// создаю реквест
 	req, err := http.NewRequest(r.method, ts.URL+r.url, nil)
 	require.NoError(t, err)
