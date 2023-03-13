@@ -2,12 +2,12 @@ package server
 
 import (
 	"fmt"
-	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"html/template"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -107,12 +107,17 @@ func (mrh MetricReqHandler) parseMetricParams(r *http.Request) (m *storage.Metri
 
 type Server struct {
 	Router        chi.Router
+	LayoutsDir    string
 	MetricStorage storage.MetricRepository
 }
 
 func NewServer() *Server {
 	server := Server{}
 	server.Router = server.NewRouter()
+
+	workingDir, _ := os.Getwd()
+	server.LayoutsDir = filepath.Join(workingDir, "/internal/server/html_layouts")
+
 	server.MetricStorage = storage.NewMemStorage(map[string]storage.Metric{})
 	return &server
 }
@@ -135,7 +140,10 @@ func (s *Server) NewRouter() chi.Router {
 }
 
 func (s *Server) handlerRootPage(writer http.ResponseWriter, request *http.Request) {
-	rootPathLayout := "./internal/server/html_layouts/main_page.gohtml"
+	if s.LayoutsDir == "" {
+		http.Error(writer, "Not initialised workingDir path", http.StatusInternalServerError)
+		return
+	}
 	pageData := struct {
 		PageTitle string
 		Metrics   map[string]storage.Metric
@@ -143,7 +151,7 @@ func (s *Server) handlerRootPage(writer http.ResponseWriter, request *http.Reque
 		PageTitle: "Metrics",
 		Metrics:   s.MetricStorage.GetAll(),
 	}
-	tmpl, err := template.ParseFiles(filepath.Join(internal.ProjectDir, rootPathLayout))
+	tmpl, err := template.ParseFiles(filepath.Join(s.LayoutsDir, "main_page.gohtml"))
 	if err != nil {
 		fmt.Println(err)
 		// todo: реализовать ошибку

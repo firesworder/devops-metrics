@@ -204,6 +204,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 // todo: добавить проверку content-type
 func TestGetRootPageHandler(t *testing.T) {
 	s := NewServer()
+	s.LayoutsDir = "./html_layouts/"
 	ts := httptest.NewServer(s.Router)
 	defer ts.Close()
 
