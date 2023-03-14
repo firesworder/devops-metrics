@@ -42,11 +42,6 @@ func TestAddUpdateMetricHandler(t *testing.T) {
 	ts := httptest.NewServer(s.Router)
 	defer ts.Close()
 
-	type metricArgs struct {
-		name     string
-		typeName string
-		rawValue interface{}
-	}
 	tests := []struct {
 		name         string
 		request      requestArgs
