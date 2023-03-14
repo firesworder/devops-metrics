@@ -80,7 +80,7 @@ func Test_sendMetric(t *testing.T) {
 				actualRequestURL = r.URL.Path
 			}))
 			defer svr.Close()
-			serverURL = svr.URL
+			ServerURL = svr.URL
 			sendMetric(tt.args.paramName, tt.args.paramValue)
 			assert.Equal(t, tt.wantRequestURL, actualRequestURL)
 		})

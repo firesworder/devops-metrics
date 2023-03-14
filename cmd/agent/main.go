@@ -10,6 +10,7 @@ const reportInterval = 10 * time.Second
 
 func main() {
 	// подготовка тикеров на обновление и отправку
+	agent.ServerURL = `http://localhost:8080`
 	pollTicker := time.NewTicker(pollInterval)
 	reportTicker := time.NewTicker(reportInterval)
 	for {

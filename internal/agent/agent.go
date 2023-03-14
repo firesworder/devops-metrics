@@ -75,9 +75,9 @@ func sendMetric(paramName string, paramValue interface{}) {
 	var requestURL string
 	switch value := paramValue.(type) {
 	case gauge:
-		requestURL = fmt.Sprintf("%s/update/%s/%s/%f", serverURL, "gauge", paramName, value)
+		requestURL = fmt.Sprintf("%s/update/%s/%s/%f", ServerURL, "gauge", paramName, value)
 	case counter:
-		requestURL = fmt.Sprintf("%s/update/%s/%s/%d", serverURL, "counter", paramName, value)
+		requestURL = fmt.Sprintf("%s/update/%s/%s/%d", ServerURL, "counter", paramName, value)
 	default:
 		fmt.Println("Передан незнакомый тип метрики! Отправка метрики отменена.")
 		return
