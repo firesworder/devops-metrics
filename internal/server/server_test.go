@@ -37,8 +37,7 @@ type response struct {
 	body        string
 }
 
-// todo: переименовать в POST/AddUpdate handler, т.к. он не только обновляет
-func TestUpdateMetricHandler(t *testing.T) {
+func TestAddUpdateMetricHandler(t *testing.T) {
 	s := NewServer()
 	ts := httptest.NewServer(s.Router)
 	defer ts.Close()
@@ -201,8 +200,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 	}
 }
 
-// todo: добавить проверку content-type
-func TestGetRootPageHandler(t *testing.T) {
+func TestShowAllMetricsHandler(t *testing.T) {
 	s := NewServer()
 	s.LayoutsDir = "./html_layouts/"
 	ts := httptest.NewServer(s.Router)
@@ -317,8 +315,8 @@ func TestGetMetricHandler(t *testing.T) {
 			memStorageState: filledState,
 		},
 		{
-			// todo: пока что я не проверяю типы, а только наличие метрики с соотв. названием
-			//  мб стоит дополнить. Хотя бы на проверку counter\gauge
+			// Пока что я не проверяю типы, а только наличие метрики с соотв. названием
+			// мб стоит дополнить. Хотя бы на проверку counter\gauge
 			name:    "Test 5. Incorrect url. WrongType of metric",
 			request: requestArgs{method: http.MethodGet, url: "/value/gauge/PollCount"},
 			wantResponse: response{

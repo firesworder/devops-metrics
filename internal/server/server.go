@@ -38,15 +38,15 @@ func (s *Server) NewRouter() chi.Router {
 	r.Use(middleware.Recoverer)
 
 	r.Route("/", func(r chi.Router) {
-		r.Get("/", s.handlerRootPage)
+		r.Get("/", s.handlerShowAllMetrics)
 		r.Get("/value/{typeName}/{metricName}", s.handlerGet)
-		r.Post("/update/{typeName}/{metricName}/{metricValue}", s.handlerUpdate)
+		r.Post("/update/{typeName}/{metricName}/{metricValue}", s.handlerAddUpdateMetric)
 	})
 
 	return r
 }
 
-func (s *Server) handlerRootPage(writer http.ResponseWriter, request *http.Request) {
+func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http.Request) {
 	if s.LayoutsDir == "" {
 		http.Error(writer, "Not initialised workingDir path", http.StatusInternalServerError)
 		return
@@ -75,6 +75,7 @@ func (s *Server) handlerRootPage(writer http.ResponseWriter, request *http.Reque
 func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
 	_, metricName := chi.URLParam(request, "typeName"), chi.URLParam(request, "metricName")
 	metric, ok := s.MetricStorage.GetMetric(metricName)
+	// todo: добавить проверку типа !ok || reflect.Type !=
 	if !ok {
 		http.Error(writer, "unknown metric", http.StatusNotFound)
 		return
@@ -82,7 +83,7 @@ func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
 	fmt.Fprintf(writer, "%v", metric.Value)
 }
 
-func (s *Server) handlerUpdate(writer http.ResponseWriter, request *http.Request) {
+func (s *Server) handlerAddUpdateMetric(writer http.ResponseWriter, request *http.Request) {
 	typeName := chi.URLParam(request, "typeName")
 	metricName := chi.URLParam(request, "metricName")
 	metricValue := chi.URLParam(request, "metricValue")
