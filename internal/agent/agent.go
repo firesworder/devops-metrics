@@ -15,7 +15,7 @@ var memstats runtime.MemStats
 var PollCount counter
 var RandomValue gauge
 
-var serverURL = `http://localhost:8080`
+var ServerURL = `http://localhost:8080`
 
 func init() {
 	memstats = runtime.MemStats{}
