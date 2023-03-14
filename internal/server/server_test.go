@@ -165,7 +165,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 			wantResponse: response{
 				statusCode:  http.StatusBadRequest,
 				contentType: "text/plain; charset=utf-8",
-				body:        "Ошибка приведения значения '10.3' метрики к типу 'counter'\n",
+				body:        "cannot cast metric value '10.3' to type 'counter'\n",
 			},
 		},
 		{

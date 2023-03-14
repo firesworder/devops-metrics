@@ -102,7 +102,7 @@ func (s *Server) handlerUpdate(writer http.ResponseWriter, request *http.Request
 	if parseErr != nil {
 		http.Error(
 			writer,
-			fmt.Sprintf("Ошибка приведения значения '%s' метрики к типу '%s'", metricValue, typeName),
+			fmt.Sprintf("cannot cast metric value '%s' to type '%s'", metricValue, typeName),
 			http.StatusBadRequest,
 		)
 		return
