@@ -9,37 +9,26 @@ import (
 )
 
 func TestUpdateMetrics(t *testing.T) {
-	tests := []struct {
-		name string
-	}{
-		{"Test 1. Update metrics"},
+	runtime.ReadMemStats(&memstats)
+	allocMetricBefore := memstats.Alloc
+	pollCountBefore := PollCount
+	randomValueBefore := RandomValue
+
+	// нагрузка, чтобы повлиять на значения параметров в runtime.memstats
+	demoSlice := []string{"demo"}
+	for i := 0; i < 100; i++ {
+		demoSlice = append(demoSlice, "demo")
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			runtime.ReadMemStats(&memstats)
-			allocMetricBefore := memstats.Alloc
-			pollCountBefore := PollCount
-			randomValueBefore := RandomValue
 
-			// нагрузка, чтобы повлиять на значения параметров в runtime.memstats
-			demoSlice := []string{"demo"}
-			for i := 0; i < 100; i++ {
-				demoSlice = append(demoSlice, "demo")
-			}
+	UpdateMetrics()
+	allocMetricAfter := memstats.Alloc
+	pollCountAfter := PollCount
+	randomValueAfter := RandomValue
 
-			UpdateMetrics()
-			allocMetricAfter := memstats.Alloc
-			pollCountAfter := PollCount
-			randomValueAfter := RandomValue
-
-			assert.NotEqual(t, allocMetricBefore, allocMetricAfter,
-				"Значения метрик не обновились")
-			assert.Equal(t, true, pollCountBefore+1 == pollCountAfter,
-				"PollCount не обновился корректно")
-			assert.NotEqual(t, randomValueBefore, randomValueAfter,
-				"RandomValue не обновился")
-		})
-	}
+	assert.NotEqual(t, allocMetricBefore, allocMetricAfter, "metric values were not updated")
+	assert.Equal(t, true, pollCountBefore+1 == pollCountAfter,
+		"PollCount was not updated correctly")
+	assert.NotEqual(t, randomValueBefore, randomValueAfter, "RandomValue was not updated")
 }
 
 func Test_sendMetric(t *testing.T) {
