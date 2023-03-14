@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"github.com/firesworder/devopsmetrics/internal/server"
+	"log"
 	"net/http"
 )
 
@@ -12,9 +12,5 @@ func main() {
 		Addr:    "localhost:8080",
 		Handler: serverParams.Router,
 	}
-	err := serverObj.ListenAndServe()
-	if err != nil {
-		fmt.Println("Произошла ошибка при запуске сервера:", err)
-		return
-	}
+	log.Fatal(serverObj.ListenAndServe())
 }
