@@ -58,16 +58,16 @@ func (s *Server) handlerRootPage(writer http.ResponseWriter, request *http.Reque
 		PageTitle: "Metrics",
 		Metrics:   s.MetricStorage.GetAll(),
 	}
+
 	tmpl, err := template.ParseFiles(filepath.Join(s.LayoutsDir, "main_page.gohtml"))
 	if err != nil {
-		fmt.Println(err)
-		// todo: реализовать ошибку
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	err = tmpl.Execute(writer, pageData)
 	if err != nil {
-		fmt.Println(err)
-		// todo: реализовать ошибку
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
