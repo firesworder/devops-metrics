@@ -28,81 +28,78 @@ func UpdateMetrics() {
 	RandomValue = gauge(rand.Float64())
 }
 
+// todo: хорошо бы покрыть тестами и переписать на фреймворк(хотя не понятно, что тестировать)
 func SendMetrics() {
-	sendMetric("Alloc", gauge(memstats.Alloc))
-	sendMetric("BuckHashSys", gauge(memstats.BuckHashSys))
-	sendMetric("Frees", gauge(memstats.Frees))
+	_ = sendMetric("Alloc", gauge(memstats.Alloc))
+	_ = sendMetric("BuckHashSys", gauge(memstats.BuckHashSys))
+	_ = sendMetric("Frees", gauge(memstats.Frees))
 
-	sendMetric("GCCPUFraction", gauge(memstats.GCCPUFraction))
-	sendMetric("GCSys", gauge(memstats.GCSys))
-	sendMetric("HeapAlloc", gauge(memstats.HeapAlloc))
+	_ = sendMetric("GCCPUFraction", gauge(memstats.GCCPUFraction))
+	_ = sendMetric("GCSys", gauge(memstats.GCSys))
+	_ = sendMetric("HeapAlloc", gauge(memstats.HeapAlloc))
 
-	sendMetric("HeapIdle", gauge(memstats.HeapIdle))
-	sendMetric("HeapInuse", gauge(memstats.HeapInuse))
-	sendMetric("HeapObjects", gauge(memstats.HeapObjects))
+	_ = sendMetric("HeapIdle", gauge(memstats.HeapIdle))
+	_ = sendMetric("HeapInuse", gauge(memstats.HeapInuse))
+	_ = sendMetric("HeapObjects", gauge(memstats.HeapObjects))
 
-	sendMetric("HeapReleased", gauge(memstats.HeapReleased))
-	sendMetric("HeapSys", gauge(memstats.HeapSys))
-	sendMetric("LastGC", gauge(memstats.LastGC))
+	_ = sendMetric("HeapReleased", gauge(memstats.HeapReleased))
+	_ = sendMetric("HeapSys", gauge(memstats.HeapSys))
+	_ = sendMetric("LastGC", gauge(memstats.LastGC))
 
-	sendMetric("Lookups", gauge(memstats.Lookups))
-	sendMetric("MCacheInuse", gauge(memstats.MCacheInuse))
-	sendMetric("MCacheSys", gauge(memstats.MCacheSys))
+	_ = sendMetric("Lookups", gauge(memstats.Lookups))
+	_ = sendMetric("MCacheInuse", gauge(memstats.MCacheInuse))
+	_ = sendMetric("MCacheSys", gauge(memstats.MCacheSys))
 
-	sendMetric("MSpanInuse", gauge(memstats.MSpanInuse))
-	sendMetric("MSpanSys", gauge(memstats.MSpanSys))
-	sendMetric("Mallocs", gauge(memstats.Mallocs))
+	_ = sendMetric("MSpanInuse", gauge(memstats.MSpanInuse))
+	_ = sendMetric("MSpanSys", gauge(memstats.MSpanSys))
+	_ = sendMetric("Mallocs", gauge(memstats.Mallocs))
 
-	sendMetric("NextGC", gauge(memstats.NextGC))
-	sendMetric("NumForcedGC", gauge(memstats.NumForcedGC))
-	sendMetric("NumGC", gauge(memstats.NumGC))
+	_ = sendMetric("NextGC", gauge(memstats.NextGC))
+	_ = sendMetric("NumForcedGC", gauge(memstats.NumForcedGC))
+	_ = sendMetric("NumGC", gauge(memstats.NumGC))
 
-	sendMetric("OtherSys", gauge(memstats.OtherSys))
-	sendMetric("PauseTotalNs", gauge(memstats.PauseTotalNs))
-	sendMetric("StackInuse", gauge(memstats.StackInuse))
+	_ = sendMetric("OtherSys", gauge(memstats.OtherSys))
+	_ = sendMetric("PauseTotalNs", gauge(memstats.PauseTotalNs))
+	_ = sendMetric("StackInuse", gauge(memstats.StackInuse))
 
-	sendMetric("StackSys", gauge(memstats.StackSys))
-	sendMetric("Sys", gauge(memstats.Sys))
-	sendMetric("TotalAlloc", gauge(memstats.TotalAlloc))
+	_ = sendMetric("StackSys", gauge(memstats.StackSys))
+	_ = sendMetric("Sys", gauge(memstats.Sys))
+	_ = sendMetric("TotalAlloc", gauge(memstats.TotalAlloc))
 
 	// Кастомные метрики
-	sendMetric("PollCount", counter(PollCount))
-	sendMetric("RandomValue", gauge(RandomValue))
+	_ = sendMetric("PollCount", counter(PollCount))
+	_ = sendMetric("RandomValue", gauge(RandomValue))
 }
 
-func sendMetric(paramName string, paramValue interface{}) {
+func sendMetric(paramName string, paramValue interface{}) (err error) {
 	client := &http.Client{}
 	var requestURL string
+	// todo: переписать как один спринтф, передавая тип строкой
 	switch value := paramValue.(type) {
 	case gauge:
 		requestURL = fmt.Sprintf("%s/update/%s/%s/%f", ServerURL, "gauge", paramName, value)
 	case counter:
 		requestURL = fmt.Sprintf("%s/update/%s/%s/%d", ServerURL, "counter", paramName, value)
 	default:
-		fmt.Println("Передан незнакомый тип метрики! Отправка метрики отменена.")
-		return
+		return fmt.Errorf("unhandled metric type '%T'", value)
 	}
+
 	request, err := http.NewRequest(http.MethodPost, requestURL, nil)
 	if err != nil {
-		fmt.Println("Произошла ошибка при создании запроса:  ", err)
+		return err
 	}
+
 	request.Header.Add("Content-Type", "text/plain")
 	response, err := client.Do(request)
 	if err != nil {
-		fmt.Println("Произошла ошибка при отправке запроса:", err)
-		return
-	} else {
-		fmt.Printf("Запрос отправлен с метрикой '%s', статус ответа %d\n", paramName, response.StatusCode)
+		return err
 	}
 
 	// закрываю тело ответа
 	defer response.Body.Close()
-	payload, err := io.ReadAll(response.Body)
+	_, err = io.ReadAll(response.Body)
 	if err != nil {
-		fmt.Println("Произошла ошибка чтения тела ответа: ", err)
-		return
-	} else {
-		fmt.Println("Тело ответа: ", string(payload))
+		return err
 	}
-	fmt.Println("____________________________")
+	return nil
 }
