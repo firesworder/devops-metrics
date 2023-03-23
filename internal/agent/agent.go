@@ -8,6 +8,8 @@ import (
 	"runtime"
 )
 
+// todo: переписать на использование фреймворка
+
 type gauge float64
 type counter int64
 
@@ -28,7 +30,6 @@ func UpdateMetrics() {
 	RandomValue = gauge(rand.Float64())
 }
 
-// todo: хорошо бы покрыть тестами и переписать на фреймворк(хотя не понятно, что тестировать)
 func SendMetrics() {
 	errorByMetric := make(map[string]error)
 	errorByMetric["Alloc"] = sendMetric("Alloc", gauge(memstats.Alloc))
@@ -90,7 +91,6 @@ func checkMetricSendingErrors(errorsMap map[string]error, PollCount counter, Ran
 func sendMetric(paramName string, paramValue interface{}) (err error) {
 	client := &http.Client{}
 	var requestURL string
-	// todo: переписать как один спринтф, передавая тип строкой
 	switch value := paramValue.(type) {
 	case gauge:
 		requestURL = fmt.Sprintf("%s/update/%s/%s/%f", ServerURL, "gauge", paramName, value)

@@ -75,7 +75,6 @@ func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http
 func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
 	metricName := chi.URLParam(request, "metricName")
 	metric, ok := s.MetricStorage.GetMetric(metricName)
-	// todo: добавить проверку типа !ok || reflect.Type !=
 	if !ok {
 		http.Error(writer, "unknown metric", http.StatusNotFound)
 		return
