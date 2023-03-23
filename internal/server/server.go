@@ -73,7 +73,7 @@ func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http
 }
 
 func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
-	_, metricName := chi.URLParam(request, "typeName"), chi.URLParam(request, "metricName")
+	metricName := chi.URLParam(request, "metricName")
 	metric, ok := s.MetricStorage.GetMetric(metricName)
 	// todo: добавить проверку типа !ok || reflect.Type !=
 	if !ok {
