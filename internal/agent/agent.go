@@ -30,45 +30,61 @@ func UpdateMetrics() {
 
 // todo: хорошо бы покрыть тестами и переписать на фреймворк(хотя не понятно, что тестировать)
 func SendMetrics() {
-	_ = sendMetric("Alloc", gauge(memstats.Alloc))
-	_ = sendMetric("BuckHashSys", gauge(memstats.BuckHashSys))
-	_ = sendMetric("Frees", gauge(memstats.Frees))
+	errorByMetric := make(map[string]error)
+	errorByMetric["Alloc"] = sendMetric("Alloc", gauge(memstats.Alloc))
+	errorByMetric["BuckHashSys"] = sendMetric("BuckHashSys", gauge(memstats.BuckHashSys))
+	errorByMetric["Frees"] = sendMetric("Frees", gauge(memstats.Frees))
 
-	_ = sendMetric("GCCPUFraction", gauge(memstats.GCCPUFraction))
-	_ = sendMetric("GCSys", gauge(memstats.GCSys))
-	_ = sendMetric("HeapAlloc", gauge(memstats.HeapAlloc))
+	errorByMetric["GCCPUFraction"] = sendMetric("GCCPUFraction", gauge(memstats.GCCPUFraction))
+	errorByMetric["GCSys"] = sendMetric("GCSys", gauge(memstats.GCSys))
+	errorByMetric["HeapAlloc"] = sendMetric("HeapAlloc", gauge(memstats.HeapAlloc))
 
-	_ = sendMetric("HeapIdle", gauge(memstats.HeapIdle))
-	_ = sendMetric("HeapInuse", gauge(memstats.HeapInuse))
-	_ = sendMetric("HeapObjects", gauge(memstats.HeapObjects))
+	errorByMetric["HeapIdle"] = sendMetric("HeapIdle", gauge(memstats.HeapIdle))
+	errorByMetric["HeapInuse"] = sendMetric("HeapInuse", gauge(memstats.HeapInuse))
+	errorByMetric["HeapObjects"] = sendMetric("HeapObjects", gauge(memstats.HeapObjects))
 
-	_ = sendMetric("HeapReleased", gauge(memstats.HeapReleased))
-	_ = sendMetric("HeapSys", gauge(memstats.HeapSys))
-	_ = sendMetric("LastGC", gauge(memstats.LastGC))
+	errorByMetric["HeapReleased"] = sendMetric("HeapReleased", gauge(memstats.HeapReleased))
+	errorByMetric["HeapSys"] = sendMetric("HeapSys", gauge(memstats.HeapSys))
+	errorByMetric["LastGC"] = sendMetric("LastGC", gauge(memstats.LastGC))
 
-	_ = sendMetric("Lookups", gauge(memstats.Lookups))
-	_ = sendMetric("MCacheInuse", gauge(memstats.MCacheInuse))
-	_ = sendMetric("MCacheSys", gauge(memstats.MCacheSys))
+	errorByMetric["Lookups"] = sendMetric("Lookups", gauge(memstats.Lookups))
+	errorByMetric["MCacheInuse"] = sendMetric("MCacheInuse", gauge(memstats.MCacheInuse))
+	errorByMetric["MCacheSys"] = sendMetric("MCacheSys", gauge(memstats.MCacheSys))
 
-	_ = sendMetric("MSpanInuse", gauge(memstats.MSpanInuse))
-	_ = sendMetric("MSpanSys", gauge(memstats.MSpanSys))
-	_ = sendMetric("Mallocs", gauge(memstats.Mallocs))
+	errorByMetric["MSpanInuse"] = sendMetric("MSpanInuse", gauge(memstats.MSpanInuse))
+	errorByMetric["MSpanSys"] = sendMetric("MSpanSys", gauge(memstats.MSpanSys))
+	errorByMetric["Mallocs"] = sendMetric("Mallocs", gauge(memstats.Mallocs))
 
-	_ = sendMetric("NextGC", gauge(memstats.NextGC))
-	_ = sendMetric("NumForcedGC", gauge(memstats.NumForcedGC))
-	_ = sendMetric("NumGC", gauge(memstats.NumGC))
+	errorByMetric["NextGC"] = sendMetric("NextGC", gauge(memstats.NextGC))
+	errorByMetric["NumForcedGC"] = sendMetric("NumForcedGC", gauge(memstats.NumForcedGC))
+	errorByMetric["NumGC"] = sendMetric("NumGC", gauge(memstats.NumGC))
 
-	_ = sendMetric("OtherSys", gauge(memstats.OtherSys))
-	_ = sendMetric("PauseTotalNs", gauge(memstats.PauseTotalNs))
-	_ = sendMetric("StackInuse", gauge(memstats.StackInuse))
+	errorByMetric["OtherSys"] = sendMetric("OtherSys", gauge(memstats.OtherSys))
+	errorByMetric["PauseTotalNs"] = sendMetric("PauseTotalNs", gauge(memstats.PauseTotalNs))
+	errorByMetric["StackInuse"] = sendMetric("StackInuse", gauge(memstats.StackInuse))
 
-	_ = sendMetric("StackSys", gauge(memstats.StackSys))
-	_ = sendMetric("Sys", gauge(memstats.Sys))
-	_ = sendMetric("TotalAlloc", gauge(memstats.TotalAlloc))
+	errorByMetric["StackSys"] = sendMetric("StackSys", gauge(memstats.StackSys))
+	errorByMetric["Sys"] = sendMetric("Sys", gauge(memstats.Sys))
+	errorByMetric["TotalAlloc"] = sendMetric("TotalAlloc", gauge(memstats.TotalAlloc))
 
 	// Кастомные метрики
-	_ = sendMetric("PollCount", counter(PollCount))
-	_ = sendMetric("RandomValue", gauge(RandomValue))
+	errorByMetric["PollCount"] = sendMetric("PollCount", counter(PollCount))
+	errorByMetric["RandomValue"] = sendMetric("RandomValue", gauge(RandomValue))
+
+	checkMetricSendingErrors(errorByMetric, PollCount, RandomValue)
+}
+
+func checkMetricSendingErrors(errorsMap map[string]error, PollCount counter, RandomValue gauge) {
+	var errorsCount counter
+	for metricName := range errorsMap {
+		if errorsMap[metricName] != nil {
+			errorsCount++
+			fmt.Printf("Metric '%s' has error: %s\n", metricName, errorsMap[metricName])
+		}
+	}
+	if errorsCount > 0 {
+		fmt.Printf("Found %d errors, for PollCount: %d and RandomValue: %f", errorsCount, PollCount, RandomValue)
+	}
 }
 
 func sendMetric(paramName string, paramValue interface{}) (err error) {
