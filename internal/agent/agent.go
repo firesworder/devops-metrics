@@ -3,6 +3,7 @@ package agent
 import (
 	"fmt"
 	"github.com/go-resty/resty/v2"
+	"log"
 	"math/rand"
 	"runtime"
 )
@@ -28,64 +29,48 @@ func UpdateMetrics() {
 }
 
 func SendMetrics() {
-	errorByMetric := make(map[string]error)
-	errorByMetric["Alloc"] = sendMetric("Alloc", gauge(memstats.Alloc))
-	errorByMetric["BuckHashSys"] = sendMetric("BuckHashSys", gauge(memstats.BuckHashSys))
-	errorByMetric["Frees"] = sendMetric("Frees", gauge(memstats.Frees))
+	sendMetric("Alloc", gauge(memstats.Alloc))
+	sendMetric("BuckHashSys", gauge(memstats.BuckHashSys))
+	sendMetric("Frees", gauge(memstats.Frees))
 
-	errorByMetric["GCCPUFraction"] = sendMetric("GCCPUFraction", gauge(memstats.GCCPUFraction))
-	errorByMetric["GCSys"] = sendMetric("GCSys", gauge(memstats.GCSys))
-	errorByMetric["HeapAlloc"] = sendMetric("HeapAlloc", gauge(memstats.HeapAlloc))
+	sendMetric("GCCPUFraction", gauge(memstats.GCCPUFraction))
+	sendMetric("GCSys", gauge(memstats.GCSys))
+	sendMetric("HeapAlloc", gauge(memstats.HeapAlloc))
 
-	errorByMetric["HeapIdle"] = sendMetric("HeapIdle", gauge(memstats.HeapIdle))
-	errorByMetric["HeapInuse"] = sendMetric("HeapInuse", gauge(memstats.HeapInuse))
-	errorByMetric["HeapObjects"] = sendMetric("HeapObjects", gauge(memstats.HeapObjects))
+	sendMetric("HeapIdle", gauge(memstats.HeapIdle))
+	sendMetric("HeapInuse", gauge(memstats.HeapInuse))
+	sendMetric("HeapObjects", gauge(memstats.HeapObjects))
 
-	errorByMetric["HeapReleased"] = sendMetric("HeapReleased", gauge(memstats.HeapReleased))
-	errorByMetric["HeapSys"] = sendMetric("HeapSys", gauge(memstats.HeapSys))
-	errorByMetric["LastGC"] = sendMetric("LastGC", gauge(memstats.LastGC))
+	sendMetric("HeapReleased", gauge(memstats.HeapReleased))
+	sendMetric("HeapSys", gauge(memstats.HeapSys))
+	sendMetric("LastGC", gauge(memstats.LastGC))
 
-	errorByMetric["Lookups"] = sendMetric("Lookups", gauge(memstats.Lookups))
-	errorByMetric["MCacheInuse"] = sendMetric("MCacheInuse", gauge(memstats.MCacheInuse))
-	errorByMetric["MCacheSys"] = sendMetric("MCacheSys", gauge(memstats.MCacheSys))
+	sendMetric("Lookups", gauge(memstats.Lookups))
+	sendMetric("MCacheInuse", gauge(memstats.MCacheInuse))
+	sendMetric("MCacheSys", gauge(memstats.MCacheSys))
 
-	errorByMetric["MSpanInuse"] = sendMetric("MSpanInuse", gauge(memstats.MSpanInuse))
-	errorByMetric["MSpanSys"] = sendMetric("MSpanSys", gauge(memstats.MSpanSys))
-	errorByMetric["Mallocs"] = sendMetric("Mallocs", gauge(memstats.Mallocs))
+	sendMetric("MSpanInuse", gauge(memstats.MSpanInuse))
+	sendMetric("MSpanSys", gauge(memstats.MSpanSys))
+	sendMetric("Mallocs", gauge(memstats.Mallocs))
 
-	errorByMetric["NextGC"] = sendMetric("NextGC", gauge(memstats.NextGC))
-	errorByMetric["NumForcedGC"] = sendMetric("NumForcedGC", gauge(memstats.NumForcedGC))
-	errorByMetric["NumGC"] = sendMetric("NumGC", gauge(memstats.NumGC))
+	sendMetric("NextGC", gauge(memstats.NextGC))
+	sendMetric("NumForcedGC", gauge(memstats.NumForcedGC))
+	sendMetric("NumGC", gauge(memstats.NumGC))
 
-	errorByMetric["OtherSys"] = sendMetric("OtherSys", gauge(memstats.OtherSys))
-	errorByMetric["PauseTotalNs"] = sendMetric("PauseTotalNs", gauge(memstats.PauseTotalNs))
-	errorByMetric["StackInuse"] = sendMetric("StackInuse", gauge(memstats.StackInuse))
+	sendMetric("OtherSys", gauge(memstats.OtherSys))
+	sendMetric("PauseTotalNs", gauge(memstats.PauseTotalNs))
+	sendMetric("StackInuse", gauge(memstats.StackInuse))
 
-	errorByMetric["StackSys"] = sendMetric("StackSys", gauge(memstats.StackSys))
-	errorByMetric["Sys"] = sendMetric("Sys", gauge(memstats.Sys))
-	errorByMetric["TotalAlloc"] = sendMetric("TotalAlloc", gauge(memstats.TotalAlloc))
+	sendMetric("StackSys", gauge(memstats.StackSys))
+	sendMetric("Sys", gauge(memstats.Sys))
+	sendMetric("TotalAlloc", gauge(memstats.TotalAlloc))
 
 	// Кастомные метрики
-	errorByMetric["PollCount"] = sendMetric("PollCount", counter(PollCount))
-	errorByMetric["RandomValue"] = sendMetric("RandomValue", gauge(RandomValue))
-
-	checkMetricSendingErrors(errorByMetric, PollCount, RandomValue)
+	sendMetric("PollCount", counter(PollCount))
+	sendMetric("RandomValue", gauge(RandomValue))
 }
 
-func checkMetricSendingErrors(errorsMap map[string]error, PollCount counter, RandomValue gauge) {
-	var errorsCount counter
-	for metricName := range errorsMap {
-		if errorsMap[metricName] != nil {
-			errorsCount++
-			fmt.Printf("Metric '%s' has error: %s\n", metricName, errorsMap[metricName])
-		}
-	}
-	if errorsCount > 0 {
-		fmt.Printf("Found %d errors, for PollCount: %d and RandomValue: %f", errorsCount, PollCount, RandomValue)
-	}
-}
-
-func sendMetric(paramName string, paramValue interface{}) (err error) {
+func sendMetric(paramName string, paramValue interface{}) {
 	client := resty.New()
 	var requestURL string
 	switch value := paramValue.(type) {
@@ -94,14 +79,13 @@ func sendMetric(paramName string, paramValue interface{}) (err error) {
 	case counter:
 		requestURL = fmt.Sprintf("%s/update/%s/%s/%d", ServerURL, "counter", paramName, value)
 	default:
-		return fmt.Errorf("unhandled metric type '%T'", value)
+		log.Printf("unhandled metric type '%T'", value)
 	}
 
-	_, err = client.R().
+	_, err := client.R().
 		SetHeader("Content-Type", "text/plain").
 		Post(requestURL)
 	if err != nil {
-		return err
+		log.Println(err)
 	}
-	return nil
 }

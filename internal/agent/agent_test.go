@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -41,31 +40,26 @@ func Test_sendMetric(t *testing.T) {
 		name           string
 		args           args
 		wantRequestURL string
-		wantError      error
 	}{
 		{
 			name:           "Test 1. Gauge metric.",
 			args:           args{paramName: "Alloc", paramValue: gauge(12.133)},
 			wantRequestURL: "/update/gauge/Alloc/12.133000",
-			wantError:      nil,
 		},
 		{
 			name:           "Test 2. Counter metric.",
 			args:           args{paramName: "PollCount", paramValue: counter(10)},
 			wantRequestURL: "/update/counter/PollCount/10",
-			wantError:      nil,
 		},
 		{
 			name:           "Test 3. Metric with unknown type.",
 			args:           args{paramName: "Alloc", paramValue: int64(10)},
 			wantRequestURL: "",
-			wantError:      fmt.Errorf("unhandled metric type '%T'", int64(10)),
 		},
 		{
 			name:           "Test 4. Metric with nil value.",
 			args:           args{paramName: "Alloc", paramValue: nil},
 			wantRequestURL: "",
-			wantError:      fmt.Errorf("unhandled metric type '%T'", nil),
 		},
 	}
 	for _, tt := range tests {
@@ -76,9 +70,8 @@ func Test_sendMetric(t *testing.T) {
 			}))
 			defer svr.Close()
 			ServerURL = svr.URL
-			err := sendMetric(tt.args.paramName, tt.args.paramValue)
+			sendMetric(tt.args.paramName, tt.args.paramValue)
 			assert.Equal(t, tt.wantRequestURL, actualRequestURL)
-			assert.Equal(t, tt.wantError, err)
 		})
 	}
 }
