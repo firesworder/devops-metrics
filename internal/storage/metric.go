@@ -1,38 +1,59 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 )
+
+// todo: переписать ошибки на статические
 
 type gauge float64
 type counter int64
+
+var (
+	ErrUnhandledValueType = errors.New("unhandled value type")
+)
 
 type Metric struct {
 	Name  string
 	Value interface{}
 }
 
-// todo: более гибко обрабатывать. Забрать парсинг из хандлера
 func NewMetric(name string, typeName string, rawValue interface{}) (*Metric, error) {
-	var value interface{}
+	var metricValue interface{}
 	switch typeName {
 	case "counter":
-		valueInt, ok := rawValue.(int64)
-		if !ok {
-			return nil, fmt.Errorf("cannot convert value '%v' to 'counter' type", rawValue)
+		switch castedValue := rawValue.(type) {
+		case string:
+			valueInt, err := strconv.ParseInt(castedValue, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			metricValue = counter(valueInt)
+		case int64:
+			metricValue = counter(castedValue)
+		default:
+			return nil, fmt.Errorf("cannot convert value '%T':'%v' to 'counter' type", rawValue, rawValue)
 		}
-		value = counter(valueInt)
 	case "gauge":
-		valueFloat, ok := rawValue.(float64)
-		if !ok {
+		switch castedValue := rawValue.(type) {
+		case string:
+			valueFloat, err := strconv.ParseFloat(castedValue, 64)
+			if err != nil {
+				return nil, err
+			}
+			metricValue = gauge(valueFloat)
+		case float64:
+			metricValue = gauge(castedValue)
+		default:
 			return nil, fmt.Errorf("cannot convert value '%v' to 'gauge' type", rawValue)
 		}
-		value = gauge(valueFloat)
 	default:
-		return nil, fmt.Errorf("unhandled value type '%s'", typeName)
+		return nil, fmt.Errorf("%w '%s'", ErrUnhandledValueType, typeName)
 	}
-	return &Metric{Name: name, Value: value}, nil
+	return &Metric{Name: name, Value: metricValue}, nil
 }
 
 func (m *Metric) Update(value interface{}) error {

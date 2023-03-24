@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"github.com/go-chi/chi/v5"
@@ -9,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 )
 
 type Server struct {
@@ -87,30 +87,13 @@ func (s *Server) handlerAddUpdateMetric(writer http.ResponseWriter, request *htt
 	metricName := chi.URLParam(request, "metricName")
 	metricValue := chi.URLParam(request, "metricValue")
 
-	var paramValue interface{}
-	var parseErr error
-	// todo: убрать избыточный парсинг, перенести в metric
-	switch typeName {
-	case "counter":
-		paramValue, parseErr = strconv.ParseInt(metricValue, 10, 64)
-	case "gauge":
-		paramValue, parseErr = strconv.ParseFloat(metricValue, 64)
-	default:
-		http.Error(writer, "unhandled value type", http.StatusNotImplemented)
-		return
-	}
-	if parseErr != nil {
-		http.Error(
-			writer,
-			fmt.Sprintf("cannot cast metric value '%s' to type '%s'", metricValue, typeName),
-			http.StatusBadRequest,
-		)
-		return
-	}
-
-	m, metricError := storage.NewMetric(metricName, typeName, paramValue)
+	m, metricError := storage.NewMetric(metricName, typeName, metricValue)
 	if metricError != nil {
-		http.Error(writer, metricError.Error(), http.StatusBadRequest)
+		if errors.Is(metricError, storage.ErrUnhandledValueType) {
+			http.Error(writer, metricError.Error(), http.StatusNotImplemented)
+		} else {
+			http.Error(writer, metricError.Error(), http.StatusBadRequest)
+		}
 		return
 	}
 
