@@ -150,7 +150,7 @@ func TestAddUpdateMetricHandler(t *testing.T) {
 			wantResponse: response{
 				statusCode:  http.StatusNotImplemented,
 				contentType: "text/plain; charset=utf-8",
-				body:        "unhandled value type\n",
+				body:        "unhandled value type 'PollCount'\n",
 			},
 		},
 		{
@@ -159,7 +159,7 @@ func TestAddUpdateMetricHandler(t *testing.T) {
 			wantResponse: response{
 				statusCode:  http.StatusBadRequest,
 				contentType: "text/plain; charset=utf-8",
-				body:        "cannot cast metric value '10.3' to type 'counter'\n",
+				body:        "strconv.ParseInt: parsing \"10.3\": invalid syntax\n",
 			},
 		},
 		{
