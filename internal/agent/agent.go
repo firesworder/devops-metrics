@@ -2,13 +2,10 @@ package agent
 
 import (
 	"fmt"
-	"io"
+	"github.com/go-resty/resty/v2"
 	"math/rand"
-	"net/http"
 	"runtime"
 )
-
-// todo: переписать на использование фреймворка
 
 type gauge float64
 type counter int64
@@ -89,7 +86,7 @@ func checkMetricSendingErrors(errorsMap map[string]error, PollCount counter, Ran
 }
 
 func sendMetric(paramName string, paramValue interface{}) (err error) {
-	client := &http.Client{}
+	client := resty.New()
 	var requestURL string
 	switch value := paramValue.(type) {
 	case gauge:
@@ -100,20 +97,9 @@ func sendMetric(paramName string, paramValue interface{}) (err error) {
 		return fmt.Errorf("unhandled metric type '%T'", value)
 	}
 
-	request, err := http.NewRequest(http.MethodPost, requestURL, nil)
-	if err != nil {
-		return err
-	}
-
-	request.Header.Add("Content-Type", "text/plain")
-	response, err := client.Do(request)
-	if err != nil {
-		return err
-	}
-
-	// закрываю тело ответа
-	defer response.Body.Close()
-	_, err = io.ReadAll(response.Body)
+	_, err = client.R().
+		SetHeader("Content-Type", "text/plain").
+		Post(requestURL)
 	if err != nil {
 		return err
 	}
