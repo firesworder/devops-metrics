@@ -2,9 +2,9 @@ package agent
 
 import (
 	"fmt"
-	"io"
+	"github.com/go-resty/resty/v2"
+	"log"
 	"math/rand"
-	"net/http"
 	"runtime"
 )
 
@@ -28,78 +28,64 @@ func UpdateMetrics() {
 	RandomValue = gauge(rand.Float64())
 }
 
-// todo: хорошо бы покрыть тестами и переписать на фреймворк(хотя не понятно, что тестировать)
 func SendMetrics() {
-	_ = sendMetric("Alloc", gauge(memstats.Alloc))
-	_ = sendMetric("BuckHashSys", gauge(memstats.BuckHashSys))
-	_ = sendMetric("Frees", gauge(memstats.Frees))
+	sendMetric("Alloc", gauge(memstats.Alloc))
+	sendMetric("BuckHashSys", gauge(memstats.BuckHashSys))
+	sendMetric("Frees", gauge(memstats.Frees))
 
-	_ = sendMetric("GCCPUFraction", gauge(memstats.GCCPUFraction))
-	_ = sendMetric("GCSys", gauge(memstats.GCSys))
-	_ = sendMetric("HeapAlloc", gauge(memstats.HeapAlloc))
+	sendMetric("GCCPUFraction", gauge(memstats.GCCPUFraction))
+	sendMetric("GCSys", gauge(memstats.GCSys))
+	sendMetric("HeapAlloc", gauge(memstats.HeapAlloc))
 
-	_ = sendMetric("HeapIdle", gauge(memstats.HeapIdle))
-	_ = sendMetric("HeapInuse", gauge(memstats.HeapInuse))
-	_ = sendMetric("HeapObjects", gauge(memstats.HeapObjects))
+	sendMetric("HeapIdle", gauge(memstats.HeapIdle))
+	sendMetric("HeapInuse", gauge(memstats.HeapInuse))
+	sendMetric("HeapObjects", gauge(memstats.HeapObjects))
 
-	_ = sendMetric("HeapReleased", gauge(memstats.HeapReleased))
-	_ = sendMetric("HeapSys", gauge(memstats.HeapSys))
-	_ = sendMetric("LastGC", gauge(memstats.LastGC))
+	sendMetric("HeapReleased", gauge(memstats.HeapReleased))
+	sendMetric("HeapSys", gauge(memstats.HeapSys))
+	sendMetric("LastGC", gauge(memstats.LastGC))
 
-	_ = sendMetric("Lookups", gauge(memstats.Lookups))
-	_ = sendMetric("MCacheInuse", gauge(memstats.MCacheInuse))
-	_ = sendMetric("MCacheSys", gauge(memstats.MCacheSys))
+	sendMetric("Lookups", gauge(memstats.Lookups))
+	sendMetric("MCacheInuse", gauge(memstats.MCacheInuse))
+	sendMetric("MCacheSys", gauge(memstats.MCacheSys))
 
-	_ = sendMetric("MSpanInuse", gauge(memstats.MSpanInuse))
-	_ = sendMetric("MSpanSys", gauge(memstats.MSpanSys))
-	_ = sendMetric("Mallocs", gauge(memstats.Mallocs))
+	sendMetric("MSpanInuse", gauge(memstats.MSpanInuse))
+	sendMetric("MSpanSys", gauge(memstats.MSpanSys))
+	sendMetric("Mallocs", gauge(memstats.Mallocs))
 
-	_ = sendMetric("NextGC", gauge(memstats.NextGC))
-	_ = sendMetric("NumForcedGC", gauge(memstats.NumForcedGC))
-	_ = sendMetric("NumGC", gauge(memstats.NumGC))
+	sendMetric("NextGC", gauge(memstats.NextGC))
+	sendMetric("NumForcedGC", gauge(memstats.NumForcedGC))
+	sendMetric("NumGC", gauge(memstats.NumGC))
 
-	_ = sendMetric("OtherSys", gauge(memstats.OtherSys))
-	_ = sendMetric("PauseTotalNs", gauge(memstats.PauseTotalNs))
-	_ = sendMetric("StackInuse", gauge(memstats.StackInuse))
+	sendMetric("OtherSys", gauge(memstats.OtherSys))
+	sendMetric("PauseTotalNs", gauge(memstats.PauseTotalNs))
+	sendMetric("StackInuse", gauge(memstats.StackInuse))
 
-	_ = sendMetric("StackSys", gauge(memstats.StackSys))
-	_ = sendMetric("Sys", gauge(memstats.Sys))
-	_ = sendMetric("TotalAlloc", gauge(memstats.TotalAlloc))
+	sendMetric("StackSys", gauge(memstats.StackSys))
+	sendMetric("Sys", gauge(memstats.Sys))
+	sendMetric("TotalAlloc", gauge(memstats.TotalAlloc))
 
 	// Кастомные метрики
-	_ = sendMetric("PollCount", counter(PollCount))
-	_ = sendMetric("RandomValue", gauge(RandomValue))
+	sendMetric("PollCount", counter(PollCount))
+	sendMetric("RandomValue", gauge(RandomValue))
 }
 
-func sendMetric(paramName string, paramValue interface{}) (err error) {
-	client := &http.Client{}
+func sendMetric(paramName string, paramValue interface{}) {
+	client := resty.New()
 	var requestURL string
-	// todo: переписать как один спринтф, передавая тип строкой
 	switch value := paramValue.(type) {
 	case gauge:
 		requestURL = fmt.Sprintf("%s/update/%s/%s/%f", ServerURL, "gauge", paramName, value)
 	case counter:
 		requestURL = fmt.Sprintf("%s/update/%s/%s/%d", ServerURL, "counter", paramName, value)
 	default:
-		return fmt.Errorf("unhandled metric type '%T'", value)
+		log.Printf("unhandled metric type '%T'", value)
 	}
 
-	request, err := http.NewRequest(http.MethodPost, requestURL, nil)
+	_, err := client.R().
+		SetHeader("Content-Type", "text/plain").
+		Post(requestURL)
 	if err != nil {
-		return err
+		log.Println(err)
 	}
-
-	request.Header.Add("Content-Type", "text/plain")
-	response, err := client.Do(request)
-	if err != nil {
-		return err
-	}
-
-	// закрываю тело ответа
-	defer response.Body.Close()
-	_, err = io.ReadAll(response.Body)
-	if err != nil {
-		return err
-	}
-	return nil
 }

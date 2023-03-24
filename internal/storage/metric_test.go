@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"strconv"
 	"testing"
 )
 
@@ -66,71 +67,114 @@ func TestNewMetric(t *testing.T) {
 		want      *Metric
 		wantError error
 	}{
+		// Counter
 		{
-			name:      "Test 1. Counter type metric, with correct value.",
+			name:      "Test correct counter #1. Correct int64 value.",
 			args:      args{name: "testMetric11", typeName: "counter", rawValue: int64(10)},
 			want:      &Metric{Name: "testMetric11", Value: counter(10)},
 			wantError: nil,
 		},
 		{
-			name:      "Test 2. Counter type metric, with incorrect number value.",
+			name:      "Test correct counter #2. Correct string(int) value.",
+			args:      args{name: "testMetric11", typeName: "counter", rawValue: "10"},
+			want:      &Metric{Name: "testMetric11", Value: counter(10)},
+			wantError: nil,
+		},
+
+		{
+			name:      "Test incorrect counter #1. Incorrect number value.",
 			args:      args{name: "testMetric12", typeName: "counter", rawValue: 11.3},
 			want:      nil,
-			wantError: fmt.Errorf("cannot convert value '%v' to 'counter' type", 11.3),
+			wantError: fmt.Errorf("cannot convert value 'float64':'11.3' to 'counter' type"),
 		},
 		{
-			name:      "Test 3. Counter type metric, with incorrect NAN value.",
+			name:      "Test incorrect counter #2. Incorrect string(NAN) value.",
 			args:      args{name: "testMetric13", typeName: "counter", rawValue: "str"},
 			want:      nil,
-			wantError: fmt.Errorf("cannot convert value '%v' to 'counter' type", "str"),
+			wantError: &strconv.NumError{Num: "str", Func: "ParseInt", Err: fmt.Errorf("invalid syntax")},
 		},
 		{
-			name:      "Test 4. Gauge type metric, with correct value.",
+			name:      "Test incorrect counter #3. Incorrect nil value type.",
+			args:      args{name: "testMetric1", typeName: "counter", rawValue: nil},
+			want:      nil,
+			wantError: fmt.Errorf("cannot convert value '<nil>':'<nil>' to 'counter' type"),
+		},
+		{
+			name:      "Test incorrect counter #4. Incorrect int(not int64!) value.",
+			args:      args{name: "testMetric11", typeName: "counter", rawValue: int(10)},
+			want:      nil,
+			wantError: fmt.Errorf("cannot convert value 'int':'10' to 'counter' type"),
+		},
+		{
+			name:      "Test incorrect counter #5. Incorrect string(not int) value.",
+			args:      args{name: "testMetric11", typeName: "counter", rawValue: "10.2"},
+			want:      nil,
+			wantError: &strconv.NumError{Num: "10.2", Func: "ParseInt", Err: fmt.Errorf("invalid syntax")},
+		},
+
+		// Gauge
+		{
+			name:      "Test correct gauge #1. Correct float64 value.",
 			args:      args{name: "testMetric2", typeName: "gauge", rawValue: 11.2},
 			want:      &Metric{Name: "testMetric2", Value: gauge(11.2)},
 			wantError: nil,
 		},
 		{
-			name:      "Test 5. Gauge type metric, with incorrect number value.",
+			name:      "Test correct gauge #2. Correct(float) string value.",
+			args:      args{name: "testMetric11", typeName: "gauge", rawValue: "11.2"},
+			want:      &Metric{Name: "testMetric11", Value: gauge(11.2)},
+			wantError: nil,
+		},
+		{
+			name:      "Test correct gauge #3. Int string value.",
+			args:      args{name: "testMetric11", typeName: "gauge", rawValue: "10"},
+			want:      &Metric{Name: "testMetric11", Value: gauge(10)},
+			wantError: nil,
+		},
+
+		{
+			name:      "Test incorrect gauge #1. Incorrect number value.",
 			args:      args{name: "testMetric2", typeName: "gauge", rawValue: 10},
 			want:      nil,
-			wantError: fmt.Errorf("cannot convert value '%v' to 'gauge' type", 10),
+			wantError: fmt.Errorf("cannot convert value 'int':'10' to 'gauge' type"),
 		},
 		{
-			name:      "Test 6. Gauge type metric, with incorrect NAN value.",
+			name:      "Test incorrect gauge #2. Incorrect NAN value.",
 			args:      args{name: "testMetric2", typeName: "gauge", rawValue: "str"},
 			want:      nil,
-			wantError: fmt.Errorf("cannot convert value '%v' to 'gauge' type", "str"),
+			wantError: &strconv.NumError{Num: "str", Func: "ParseFloat", Err: fmt.Errorf("invalid syntax")},
 		},
 		{
-			name:      "Test 7. Counter type metric, nil value type.",
-			args:      args{name: "testMetric1", typeName: "counter", rawValue: nil},
-			want:      nil,
-			wantError: fmt.Errorf("cannot convert value '%v' to 'counter' type", nil),
-		},
-		{
-			name:      "Test 8. Gauge type metric, nil value type.",
+			name:      "Test incorrect gauge #3. Incorrect nil value type.",
 			args:      args{name: "testMetric2", typeName: "gauge", rawValue: nil},
 			want:      nil,
-			wantError: fmt.Errorf("cannot convert value '%v' to 'gauge' type", nil),
+			wantError: fmt.Errorf("cannot convert value '<nil>':'<nil>' to 'gauge' type"),
 		},
 		{
-			name:      "Test 9. Unknown value type.",
+			name:      "Test incorrect gauge #4. Incorrect type float32(instead of float64) value.",
+			args:      args{name: "testMetric2", typeName: "gauge", rawValue: float32(11.2)},
+			want:      nil,
+			wantError: fmt.Errorf("cannot convert value 'float32':'11.2' to 'gauge' type"),
+		},
+
+		// others
+		{
+			name:      "Test others #1. Unknown value type.",
 			args:      args{name: "testMetric2", typeName: "int", rawValue: 100},
 			want:      nil,
-			wantError: fmt.Errorf("unhandled value type '%s'", "int"),
+			wantError: fmt.Errorf("%w '%s'", ErrUnhandledValueType, "int"),
 		},
 		{
-			name:      "Test 10. Empty name.",
+			name:      "Test others #2. Empty name.",
 			args:      args{name: "", typeName: "counter", rawValue: int64(100)},
 			want:      &Metric{Name: "", Value: counter(100)},
 			wantError: nil,
 		},
 		{
-			name:      "Test 11. Empty type.",
+			name:      "Test others #3. Empty type.",
 			args:      args{name: "metric1", typeName: "", rawValue: int64(100)},
 			want:      nil,
-			wantError: fmt.Errorf("unhandled value type '%s'", ""),
+			wantError: fmt.Errorf("%w '%s'", ErrUnhandledValueType, ""),
 		},
 	}
 	for _, tt := range tests {
