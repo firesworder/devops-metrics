@@ -48,7 +48,7 @@ func NewMetric(name string, typeName string, rawValue interface{}) (*Metric, err
 		case float64:
 			metricValue = gauge(castedValue)
 		default:
-			return nil, fmt.Errorf("cannot convert value '%v' to 'gauge' type", rawValue)
+			return nil, fmt.Errorf("cannot convert value '%T':'%v' to 'gauge' type", rawValue, rawValue)
 		}
 	default:
 		return nil, fmt.Errorf("%w '%s'", ErrUnhandledValueType, typeName)
