@@ -1,6 +1,9 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
+	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,7 +15,7 @@ import (
 
 // Переменные для формирования состояния MemStorage
 var metric1, metric2, metric3 *storage.Metric
-var metric1upd20, metric2upd235, unknownMetric *storage.Metric
+var metric1upd20, metric2upd235, unknownMetric, unknownMetric2 *storage.Metric
 
 func init() {
 	metric1, _ = storage.NewMetric("PollCount", "counter", int64(10))
@@ -21,6 +24,7 @@ func init() {
 	metric2upd235, _ = storage.NewMetric("RandomValue", "gauge", 23.5)
 	metric3, _ = storage.NewMetric("Alloc", "gauge", 7.77)
 	unknownMetric, _ = storage.NewMetric("UnknownMetric", "counter", int64(10))
+	unknownMetric2, _ = storage.NewMetric("UnknownMetric", "gauge", 7.77)
 }
 
 // В рамках этой функции реализован и тест parseMetricParams, т.к. последнее является неотъемлимой
@@ -29,6 +33,12 @@ func init() {
 type requestArgs struct {
 	method string
 	url    string
+	body   *body
+}
+
+type body struct {
+	content     []byte
+	contentType string
 }
 
 type response struct {
@@ -367,9 +377,214 @@ func TestGetMetricHandler(t *testing.T) {
 	}
 }
 
+func TestAddUpdateMetricJSONHandler(t *testing.T) {
+	// todo: смесь разных форматов записи
+	floatVal := 12.33
+	messageMetric1 := message.NewMetrics("PollCount", "counter", int64(10))
+	messageMetric1upd := message.NewMetrics("PollCount", "counter", int64(20))
+	messageMetric1upd20 := message.NewMetrics("PollCount", "counter", int64(30))
+	messageMetric2 := message.NewMetrics("RandomValue", "gauge", 12.133)
+	messageMetric2upd235 := message.NewMetrics("RandomValue", "gauge", 23.5)
+	messageMetricUnknown := message.NewMetrics("UnknownMetric", "counter", int64(10))
+	messageMetricUnknown2 := message.NewMetrics("UnknownMetric", "gauge", 7.77)
+	messageIncorrectType := &message.Metrics{ID: "PollCount", MType: "unknown", Value: &floatVal, Delta: nil}
+	messageIncorrectValueForType := &message.Metrics{ID: "PollCount", MType: "counter", Value: &floatVal, Delta: nil}
+
+	s := NewServer()
+	ts := httptest.NewServer(s.Router)
+	defer ts.Close()
+
+	const url = "/update"
+	const method = http.MethodPost
+
+	tests := []struct {
+		name string
+		requestArgs
+		requestMessage      *message.Metrics
+		wantResponse        response
+		wantResponseMessage *message.Metrics
+		initState           map[string]storage.Metric
+		wantedState         map[string]storage.Metric
+	}{
+		{
+			name:                "Test correct counter #1. Add metric. Empty state",
+			requestMessage:      messageMetric1,
+			wantResponse:        response{statusCode: http.StatusOK, contentType: "application/json"},
+			wantResponseMessage: messageMetric1,
+			initState:           map[string]storage.Metric{},
+			wantedState:         map[string]storage.Metric{metric1.Name: *metric1},
+		},
+		{
+			name:                "Test correct counter #2. Add metric. Filled state",
+			requestMessage:      messageMetric1,
+			wantResponse:        response{statusCode: http.StatusOK, contentType: "application/json"},
+			wantResponseMessage: messageMetric1,
+			initState: map[string]storage.Metric{
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
+		},
+		{
+			name:                "Test correct counter #3. Update metric.",
+			requestMessage:      messageMetric1upd,
+			wantResponse:        response{statusCode: http.StatusOK, contentType: "application/json"},
+			wantResponseMessage: messageMetric1upd20,
+			initState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric3.Name: *metric3,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1upd20.Name: *metric1upd20,
+				metric3.Name:      *metric3,
+			},
+		},
+		{
+			name:                "Test correct counter #4. Unknown metric.",
+			requestMessage:      messageMetricUnknown,
+			wantResponse:        response{statusCode: http.StatusOK, contentType: "application/json"},
+			wantResponseMessage: messageMetricUnknown,
+			initState:           map[string]storage.Metric{},
+			wantedState:         map[string]storage.Metric{unknownMetric.Name: *unknownMetric},
+		},
+
+		{
+			name:                "Test correct gauge #1. Add metric. Empty state",
+			requestMessage:      messageMetric2,
+			wantResponse:        response{statusCode: http.StatusOK, contentType: "application/json"},
+			wantResponseMessage: messageMetric2,
+			initState:           map[string]storage.Metric{},
+			wantedState:         map[string]storage.Metric{metric2.Name: *metric2},
+		},
+		{
+			name:                "Test correct gauge #2. Add metric. Filled state",
+			requestMessage:      messageMetric2,
+			wantResponse:        response{statusCode: http.StatusOK, contentType: "application/json"},
+			wantResponseMessage: messageMetric2,
+			initState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric3.Name: *metric3,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
+		},
+		{
+			name:                "Test correct gauge #3. Update metric.",
+			requestMessage:      messageMetric2upd235,
+			wantResponse:        response{statusCode: http.StatusOK, contentType: "application/json"},
+			wantResponseMessage: messageMetric2upd235,
+			initState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1.Name:       *metric1,
+				metric2upd235.Name: *metric2upd235,
+			},
+		},
+		{
+			name:                "Test correct gauge #4. Unknown metric.",
+			requestMessage:      messageMetricUnknown2,
+			wantResponse:        response{statusCode: http.StatusOK, contentType: "application/json"},
+			wantResponseMessage: messageMetricUnknown2,
+			initState:           map[string]storage.Metric{},
+			wantedState:         map[string]storage.Metric{unknownMetric2.Name: *unknownMetric2},
+		},
+
+		// todo: реализовать отдельно тесты эти
+		{
+			name:           "Test incorrect #1. Incorrect http method.",
+			requestArgs:    requestArgs{url: url, method: http.MethodPut},
+			requestMessage: messageMetric1,
+			wantResponse: response{
+				statusCode:  http.StatusMethodNotAllowed,
+				contentType: "",
+				body:        "",
+			},
+			wantResponseMessage: nil,
+		},
+		{
+			name:           "Test incorrect #2. Incorrect metric type.",
+			requestMessage: messageIncorrectType,
+			wantResponse: response{
+				statusCode:  http.StatusNotImplemented,
+				contentType: "text/plain; charset=utf-8",
+				body:        "unhandled value type 'PollCount'\n",
+			},
+			wantResponseMessage: nil,
+		},
+		{
+			name:           "Test incorrect #3. Incorrect metric value for metric type.",
+			requestMessage: messageIncorrectValueForType,
+			wantResponse: response{
+				statusCode:  http.StatusBadRequest,
+				contentType: "text/plain; charset=utf-8",
+				body:        "strconv.ParseInt: parsing \"10.3\": invalid syntax\n",
+			},
+			wantResponseMessage: nil,
+		},
+		{
+			name:           "Test incorrect #4. Incorrect URL.",
+			requestArgs:    requestArgs{url: `/upd`, method: http.MethodPost},
+			requestMessage: messageMetric1,
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "404 page not found\n",
+			},
+			wantResponseMessage: nil,
+		},
+		// неправильно отправленный контент
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s.MetricStorage = storage.NewMemStorage(tt.initState)
+			reqBody, err := json.Marshal(tt.requestMessage)
+			require.NoError(t, err)
+			tt.requestArgs.body = &body{contentType: "application/json", content: reqBody}
+
+			if tt.requestArgs.method == "" {
+				tt.requestArgs.method = method
+			}
+			if tt.requestArgs.url == "" {
+				tt.requestArgs.url = url
+			}
+			statusCode, contentType, respBody := sendTestRequest(t, ts, tt.requestArgs)
+
+			var respMessage *message.Metrics
+			if statusCode == http.StatusOK {
+				respMessage = &message.Metrics{}
+				err = json.Unmarshal([]byte(respBody), &respMessage)
+				require.NoError(t, err)
+			}
+
+			require.Equal(t, tt.wantResponse.statusCode, statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, contentType)
+			assert.Equal(t, tt.wantResponseMessage, respMessage)
+			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll())
+		})
+	}
+}
+
+// todo: перевести на resty
 func sendTestRequest(t *testing.T, ts *httptest.Server, r requestArgs) (int, string, string) {
 	// создаю реквест
-	req, err := http.NewRequest(r.method, ts.URL+r.url, nil)
+	var req *http.Request
+	var err error
+	if r.body != nil {
+		bodyReader := bytes.NewReader(r.body.content)
+		req, err = http.NewRequest(r.method, ts.URL+r.url, bodyReader)
+		req.Header.Set("Content-Type", r.body.contentType)
+	} else {
+		req, err = http.NewRequest(r.method, ts.URL+r.url, nil)
+	}
 	require.NoError(t, err)
 
 	// делаю реквест на дефолтном клиенте
@@ -378,8 +593,8 @@ func sendTestRequest(t *testing.T, ts *httptest.Server, r requestArgs) (int, str
 
 	// читаю ответ сервера
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	return resp.StatusCode, resp.Header.Get("content-type"), string(body)
+	return resp.StatusCode, resp.Header.Get("Content-Type"), string(respBody)
 }

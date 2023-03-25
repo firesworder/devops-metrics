@@ -1,8 +1,10 @@
 package server
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -41,6 +43,7 @@ func (s *Server) NewRouter() chi.Router {
 		r.Get("/", s.handlerShowAllMetrics)
 		r.Get("/value/{typeName}/{metricName}", s.handlerGet)
 		r.Post("/update/{typeName}/{metricName}/{metricValue}", s.handlerAddUpdateMetric)
+		r.Post("/update", s.handlerJSONAddUpdateMetric)
 	})
 
 	return r
@@ -102,4 +105,45 @@ func (s *Server) handlerAddUpdateMetric(writer http.ResponseWriter, request *htt
 		http.Error(writer, errorObj.Error(), http.StatusBadRequest)
 		return
 	}
+}
+
+func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request *http.Request) {
+	var metricMessage message.Metrics
+
+	if err := json.NewDecoder(request.Body).Decode(&metricMessage); err != nil {
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	m, metricError := storage.NewMetricFromMessage(&metricMessage)
+	if metricError != nil {
+		if errors.Is(metricError, storage.ErrUnhandledValueType) {
+			http.Error(writer, metricError.Error(), http.StatusNotImplemented)
+		} else {
+			http.Error(writer, metricError.Error(), http.StatusBadRequest)
+		}
+		return
+	}
+
+	errorObj := s.MetricStorage.UpdateOrAddMetric(*m)
+	if errorObj != nil {
+		http.Error(writer, errorObj.Error(), http.StatusBadRequest)
+		return
+	}
+
+	updatedMetric, ok := s.MetricStorage.GetMetric(m.Name)
+	if !ok {
+		// ошибка не должна произойти, но мало ли
+		http.Error(writer, "metric was not updated", http.StatusInternalServerError)
+		return
+	}
+
+	responseMsg := updatedMetric.GetMessageMetric()
+	msgJson, err := json.Marshal(responseMsg)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.Write(msgJson)
 }
