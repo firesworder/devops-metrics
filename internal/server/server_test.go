@@ -598,3 +598,163 @@ func sendTestRequest(t *testing.T, ts *httptest.Server, r requestArgs) (int, str
 
 	return resp.StatusCode, resp.Header.Get("Content-Type"), string(respBody)
 }
+
+// todo: в геттер(оба) добавить поиск метрики не только по имени, но и по типу
+func TestGetMetricJSONHandler(t *testing.T) {
+	counterMetricValue, gaugeMetricValue := int64(10), 12.133
+	filledState := map[string]storage.Metric{
+		metric1.Name: *metric1,
+		metric2.Name: *metric2,
+		metric3.Name: *metric3,
+	}
+	emptyState := map[string]storage.Metric{}
+
+	const url = "/value"
+	const method = http.MethodPost
+
+	s := NewServer()
+	ts := httptest.NewServer(s.Router)
+	defer ts.Close()
+
+	tests := []struct {
+		name                string
+		request             requestArgs
+		requestMessage      *message.Metrics
+		wantResponse        response
+		wantResponseMessage *message.Metrics
+		memStorageState     map[string]storage.Metric
+	}{
+		{
+			name:           "Test correct counter #1. Correct request, metric is not present.",
+			request:        requestArgs{method: method, url: url},
+			requestMessage: &message.Metrics{ID: "PollCount", MType: "counter"},
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "unknown metric\n",
+			},
+			wantResponseMessage: nil,
+			memStorageState:     emptyState,
+		},
+		{
+			name:           "Test correct counter #2. Correct request, metric is present.",
+			request:        requestArgs{method: method, url: url},
+			requestMessage: &message.Metrics{ID: "PollCount", MType: "counter"},
+			wantResponse: response{
+				statusCode: http.StatusOK, contentType: "application/json",
+			},
+			wantResponseMessage: &message.Metrics{ID: "PollCount", MType: "counter", Delta: &counterMetricValue},
+			memStorageState:     filledState,
+		},
+
+		{
+			name:           "Test correct gauge #1. Correct request, metric is not present.",
+			request:        requestArgs{method: method, url: url},
+			requestMessage: &message.Metrics{ID: "RandomValue", MType: "gauge"},
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "unknown metric\n",
+			},
+			wantResponseMessage: nil,
+			memStorageState:     emptyState,
+		},
+		{
+			name:           "Test correct gauge #2. Correct request, metric is present.",
+			request:        requestArgs{method: method, url: url},
+			requestMessage: &message.Metrics{ID: "RandomValue", MType: "gauge"},
+			wantResponse: response{
+				statusCode: http.StatusOK, contentType: "application/json",
+			},
+			wantResponseMessage: &message.Metrics{ID: "RandomValue", MType: "gauge", Value: &gaugeMetricValue},
+			memStorageState:     filledState,
+		},
+
+		{
+			// Пока что я не проверяю типы, а только наличие метрики с соотв. названием
+			// мб стоит дополнить. Хотя бы на проверку counter\gauge
+			name:           "Test correct(?) others #1. Requested metric type differs with one in state",
+			request:        requestArgs{method: method, url: url},
+			requestMessage: &message.Metrics{ID: "RandomValue", MType: "counter"},
+			wantResponse: response{
+				statusCode: http.StatusOK, contentType: "application/json",
+			},
+			wantResponseMessage: &message.Metrics{ID: "RandomValue", MType: "gauge", Value: &gaugeMetricValue},
+			memStorageState:     filledState,
+		},
+		{
+			name:           "Test correct(?) others #1. Unknown type",
+			request:        requestArgs{method: method, url: url},
+			requestMessage: &message.Metrics{ID: "RandomValue", MType: "decimal"},
+			wantResponse: response{
+				statusCode: http.StatusOK, contentType: "application/json",
+			},
+			wantResponseMessage: &message.Metrics{ID: "RandomValue", MType: "gauge", Value: &gaugeMetricValue},
+			memStorageState:     filledState,
+		},
+
+		{
+			name:           "Test incorrect #1. Incorrect url.",
+			request:        requestArgs{method: method, url: "/metric-value"},
+			requestMessage: &message.Metrics{ID: "RandomValue", MType: "gauge"},
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "404 page not found\n",
+			},
+			wantResponseMessage: nil,
+			memStorageState:     filledState,
+		},
+		{
+			name:           "Test incorrect #2. Metric name is not present",
+			request:        requestArgs{method: method, url: url},
+			requestMessage: &message.Metrics{ID: "SomeMetric", MType: "gauge"},
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "404 page not found\n",
+			},
+			wantResponseMessage: nil,
+			memStorageState:     filledState,
+		},
+		{
+			name:                "Test incorrect #3. Wrong http method",
+			request:             requestArgs{method: http.MethodPut, url: url},
+			requestMessage:      &message.Metrics{ID: "RandomValue", MType: "gauge"},
+			wantResponse:        response{statusCode: http.StatusMethodNotAllowed, contentType: "", body: ""},
+			wantResponseMessage: nil,
+			memStorageState:     filledState,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s.MetricStorage = storage.NewMemStorage(tt.memStorageState)
+			reqBody, err := json.Marshal(tt.requestMessage)
+			require.NoError(t, err)
+			tt.request.body = &body{contentType: "application/json", content: reqBody}
+
+			if tt.request.method == "" {
+				tt.request.method = method
+			}
+			if tt.request.url == "" {
+				tt.request.url = url
+			}
+			statusCode, contentType, respBody := sendTestRequest(t, ts, tt.request)
+
+			var respMessage *message.Metrics
+			if statusCode == http.StatusOK {
+				respMessage = &message.Metrics{}
+				err = json.Unmarshal([]byte(respBody), &respMessage)
+				require.NoError(t, err)
+			}
+
+			require.Equal(t, tt.wantResponse.statusCode, statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, contentType)
+			assert.Equal(t, tt.wantResponseMessage, respMessage)
+
+			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, contentType)
+			//assert.Equal(t, tt.wantResponse.body, body)
+		})
+	}
+}

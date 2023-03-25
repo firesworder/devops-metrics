@@ -44,6 +44,7 @@ func (s *Server) NewRouter() chi.Router {
 		r.Get("/value/{typeName}/{metricName}", s.handlerGet)
 		r.Post("/update/{typeName}/{metricName}/{metricValue}", s.handlerAddUpdateMetric)
 		r.Post("/update", s.handlerJSONAddUpdateMetric)
+		r.Post("/value", s.handlerJSONGetMetric)
 	})
 
 	return r
@@ -139,6 +140,34 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 	}
 
 	responseMsg := updatedMetric.GetMessageMetric()
+	msgJson, err := json.Marshal(responseMsg)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.Write(msgJson)
+}
+
+func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.Request) {
+	var metricMessage message.Metrics
+
+	if err := json.NewDecoder(request.Body).Decode(&metricMessage); err != nil {
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	metric, ok := s.MetricStorage.GetMetric(metricMessage.ID)
+	if !ok {
+		http.Error(
+			writer,
+			fmt.Sprintf("metric with name '%s' not found", metricMessage.ID),
+			http.StatusNotFound,
+		)
+		return
+	}
+
+	responseMsg := metric.GetMessageMetric()
 	msgJson, err := json.Marshal(responseMsg)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
