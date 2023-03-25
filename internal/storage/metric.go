@@ -3,6 +3,7 @@ package storage
 import (
 	"errors"
 	"fmt"
+	"github.com/firesworder/devopsmetrics/internal/message"
 	"reflect"
 	"strconv"
 )
@@ -56,6 +57,24 @@ func NewMetric(name string, typeName string, rawValue interface{}) (*Metric, err
 	return &Metric{Name: name, Value: metricValue}, nil
 }
 
+func NewMetricFromMessage(metrics *message.Metrics) (newMetric *Metric, err error) {
+	switch metrics.MType {
+	case "counter":
+		if metrics.Delta == nil {
+			return nil, fmt.Errorf("param 'delta' cannot be nil for type 'counter'")
+		}
+		newMetric, err = NewMetric(metrics.ID, metrics.MType, *metrics.Delta)
+	case "gauge":
+		if metrics.Value == nil {
+			return nil, fmt.Errorf("param 'delta' cannot  be nil for type 'gauge'")
+		}
+		newMetric, err = NewMetric(metrics.ID, metrics.MType, *metrics.Value)
+	default:
+		return nil, fmt.Errorf("%w '%s'", ErrUnhandledValueType, metrics.MType)
+	}
+	return
+}
+
 func (m *Metric) Update(value interface{}) error {
 	if reflect.TypeOf(m.Value) != reflect.TypeOf(value) {
 		return fmt.Errorf("current(%T) and new(%T) value type mismatch",
@@ -69,4 +88,19 @@ func (m *Metric) Update(value interface{}) error {
 		m.Value = m.Value.(counter) + value
 	}
 	return nil
+}
+
+func (m *Metric) GetMessageMetric() (messageMetric message.Metrics) {
+	messageMetric.ID = m.Name
+	switch value := m.Value.(type) {
+	case gauge:
+		messageMetric.MType = "gauge"
+		mValue := float64(value)
+		messageMetric.Value = &mValue
+	case counter:
+		messageMetric.MType = "counter"
+		mDelta := int64(value)
+		messageMetric.Delta = &mDelta
+	}
+	return
 }
