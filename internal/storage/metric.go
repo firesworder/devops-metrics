@@ -57,6 +57,7 @@ func NewMetric(name string, typeName string, rawValue interface{}) (*Metric, err
 	return &Metric{Name: name, Value: metricValue}, nil
 }
 
+// todo: описать тесты
 func NewMetricFromMessage(metrics *message.Metrics) (newMetric *Metric, err error) {
 	switch metrics.MType {
 	case "counter":
@@ -66,7 +67,7 @@ func NewMetricFromMessage(metrics *message.Metrics) (newMetric *Metric, err erro
 		newMetric, err = NewMetric(metrics.ID, metrics.MType, *metrics.Delta)
 	case "gauge":
 		if metrics.Value == nil {
-			return nil, fmt.Errorf("param 'delta' cannot  be nil for type 'gauge'")
+			return nil, fmt.Errorf("param 'value' cannot be nil for type 'gauge'")
 		}
 		newMetric, err = NewMetric(metrics.ID, metrics.MType, *metrics.Value)
 	default:
