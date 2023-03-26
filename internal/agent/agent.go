@@ -1,10 +1,12 @@
 package agent
 
 import (
-	"fmt"
+	"encoding/json"
+	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/go-resty/resty/v2"
 	"log"
 	"math/rand"
+	"net/url"
 	"runtime"
 )
 
@@ -15,7 +17,11 @@ var memstats runtime.MemStats
 var PollCount counter
 var RandomValue gauge
 
+// todo: реализовать две версии отправки сообщений.
+//  одна через json, вторая - старая, через url. Можно реализовать sendMetricJson и вызывать нужный потом
+
 var ServerURL = `http://localhost:8080`
+var AddUpdateMetricUrl = `/update`
 
 func init() {
 	memstats = runtime.MemStats{}
@@ -70,22 +76,43 @@ func SendMetrics() {
 	sendMetric("RandomValue", gauge(RandomValue))
 }
 
+// todo добавить возвр. ответа + ошибки
 func sendMetric(paramName string, paramValue interface{}) {
 	client := resty.New()
-	var requestURL string
+	var msg message.Metrics
+	msg.ID = paramName
 	switch value := paramValue.(type) {
 	case gauge:
-		requestURL = fmt.Sprintf("%s/update/%s/%s/%f", ServerURL, "gauge", paramName, value)
+		msg.MType = "gauge"
+		float64Val := float64(value)
+		msg.Value = &float64Val
 	case counter:
-		requestURL = fmt.Sprintf("%s/update/%s/%s/%d", ServerURL, "counter", paramName, value)
+		msg.MType = "counter"
+		int64Val := int64(value)
+		msg.Delta = &int64Val
 	default:
 		log.Printf("unhandled metric type '%T'", value)
+		return
 	}
 
-	_, err := client.R().
-		SetHeader("Content-Type", "text/plain").
-		Post(requestURL)
+	jsonBody, err := json.Marshal(msg)
 	if err != nil {
 		log.Println(err)
+		return
+	}
+
+	reqUrl, err := url.JoinPath(ServerURL, AddUpdateMetricUrl)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	_, err = client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(jsonBody).
+		Post(reqUrl)
+	if err != nil {
+		log.Println(err)
+		return
 	}
 }
