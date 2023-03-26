@@ -344,8 +344,8 @@ func TestGetMetricHandler(t *testing.T) {
 			memStorageState: filledState,
 		},
 		{
-			name:    "Test 8. Incorrect url. Only 'value' part",
-			request: requestArgs{method: http.MethodGet, url: "/value"},
+			name:    "Test 8. Incorrect url",
+			request: requestArgs{method: http.MethodGet, url: "/val"},
 			wantResponse: response{
 				statusCode:  http.StatusNotFound,
 				contentType: "text/plain; charset=utf-8",
