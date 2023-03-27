@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -817,6 +818,39 @@ func TestGetMetricJSONHandler(t *testing.T) {
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
 			assert.Equal(t, tt.wantResponse.body, body)
+		})
+	}
+}
+
+func TestServer_initServerAddress(t *testing.T) {
+	tests := []struct {
+		name              string
+		envs              map[string]string
+		wantServerAddress string
+	}{
+		{
+			name:              "Test 1. Env serverAddress is not set.",
+			envs:              map[string]string{},
+			wantServerAddress: "localhost:8080",
+		},
+		{
+			name:              "Test 2. Env serverAddress is set.",
+			envs:              map[string]string{"ADDRESS": "localhost:3030"},
+			wantServerAddress: "localhost:8080",
+		},
+		{
+			name:              "Test 3. Empty env serverAddress.",
+			envs:              map[string]string{"ADDRESS": ""},
+			wantServerAddress: "localhost:8080",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// сброс влияния других тестов
+			os.Clearenv()
+			srv := Server{}
+			srv.initServerAddress()
+			assert.Equal(t, tt.wantServerAddress, srv.ServerAddress)
 		})
 	}
 }

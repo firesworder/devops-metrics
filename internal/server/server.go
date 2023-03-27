@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/caarlos0/env/v7"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"github.com/go-chi/chi/v5"
@@ -15,6 +16,7 @@ import (
 )
 
 type Server struct {
+	ServerAddress string `env:"ADDRESS" envDefault:"localhost:8080"`
 	Router        chi.Router
 	LayoutsDir    string
 	MetricStorage storage.MetricRepository
@@ -22,6 +24,7 @@ type Server struct {
 
 func NewServer() *Server {
 	server := Server{}
+	server.initServerAddress()
 	server.Router = server.NewRouter()
 
 	workingDir, _ := os.Getwd()
@@ -29,6 +32,13 @@ func NewServer() *Server {
 
 	server.MetricStorage = storage.NewMemStorage(map[string]storage.Metric{})
 	return &server
+}
+
+func (s *Server) initServerAddress() {
+	err := env.Parse(s)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (s *Server) NewRouter() chi.Router {
