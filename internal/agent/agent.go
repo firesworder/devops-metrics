@@ -21,7 +21,7 @@ var RandomValue gauge
 //  одна через json, вторая - старая, через url. Можно реализовать sendMetricJson и вызывать нужный потом
 
 var ServerURL = `http://localhost:8080`
-var AddUpdateMetricUrl = `/update`
+var AddUpdateMetricURL = `/update`
 
 func init() {
 	memstats = runtime.MemStats{}
@@ -101,7 +101,7 @@ func sendMetric(paramName string, paramValue interface{}) {
 		return
 	}
 
-	reqUrl, err := url.JoinPath(ServerURL, AddUpdateMetricUrl)
+	reqURL, err := url.JoinPath(ServerURL, AddUpdateMetricURL)
 	if err != nil {
 		log.Println(err)
 		return
@@ -110,7 +110,7 @@ func sendMetric(paramName string, paramValue interface{}) {
 	_, err = client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(jsonBody).
-		Post(reqUrl)
+		Post(reqURL)
 	if err != nil {
 		log.Println(err)
 		return

@@ -140,13 +140,13 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 	}
 
 	responseMsg := updatedMetric.GetMessageMetric()
-	msgJson, err := json.Marshal(responseMsg)
+	msgJSON, err := json.Marshal(responseMsg)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
-	writer.Write(msgJson)
+	writer.Write(msgJSON)
 }
 
 func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.Request) {
@@ -168,11 +168,11 @@ func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.
 	}
 
 	responseMsg := metric.GetMessageMetric()
-	msgJson, err := json.Marshal(responseMsg)
+	msgJSON, err := json.Marshal(responseMsg)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	writer.Header().Set("Content-Type", "application/json")
-	writer.Write(msgJson)
+	writer.Write(msgJSON)
 }
