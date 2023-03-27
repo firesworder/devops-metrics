@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/stretchr/testify/assert"
 	"strconv"
 	"testing"
@@ -182,6 +183,73 @@ func TestNewMetric(t *testing.T) {
 			gotMetric, err := NewMetric(tt.args.name, tt.args.typeName, tt.args.rawValue)
 			assert.Equal(t, tt.want, gotMetric)
 			assert.Equal(t, tt.wantError, err)
+		})
+	}
+}
+
+func TestNewMetricFromMessage(t *testing.T) {
+	float64Val, int64Val := 12.133, int64(10)
+	tests := []struct {
+		name       string
+		message    *message.Metrics
+		wantMetric *Metric
+		wantErr    error
+	}{
+		{
+			name:       "Test correct counter #1.",
+			message:    &message.Metrics{ID: "PollCount", MType: "counter", Delta: &int64Val},
+			wantMetric: &Metric{Name: "PollCount", Value: counter(int64Val)},
+			wantErr:    nil,
+		},
+		{
+			name:       "Test correct gauge #1.",
+			message:    &message.Metrics{ID: "RandomValue", MType: "gauge", Value: &float64Val},
+			wantMetric: &Metric{Name: "RandomValue", Value: gauge(float64Val)},
+			wantErr:    nil,
+		},
+		{
+			name:       "Test correct others #1. Empty name",
+			message:    &message.Metrics{ID: "", MType: "counter", Delta: &int64Val},
+			wantMetric: &Metric{Name: "", Value: counter(int64Val)},
+			wantErr:    nil,
+		},
+
+		{
+			name:       "Test incorrect counter #1. No value params.",
+			message:    &message.Metrics{ID: "PollCount", MType: "counter"},
+			wantMetric: nil,
+			wantErr:    fmt.Errorf("param 'delta' cannot be nil for type 'counter'"),
+		},
+		{
+			name:       "Test incorrect counter #2. No 'delta' param, but 'value'.",
+			message:    &message.Metrics{ID: "PollCount", MType: "counter", Value: &float64Val},
+			wantMetric: nil,
+			wantErr:    fmt.Errorf("param 'delta' cannot be nil for type 'counter'"),
+		},
+		{
+			name:       "Test incorrect gauge #1. No value params.",
+			message:    &message.Metrics{ID: "RandomValue", MType: "gauge"},
+			wantMetric: nil,
+			wantErr:    fmt.Errorf("param 'value' cannot be nil for type 'gauge'"),
+		},
+		{
+			name:       "Test incorrect gauge #2. No 'value' param.",
+			message:    &message.Metrics{ID: "RandomValue", MType: "gauge", Delta: &int64Val},
+			wantMetric: nil,
+			wantErr:    fmt.Errorf("param 'value' cannot be nil for type 'gauge'"),
+		},
+		{
+			name:       "Test incorrect others #1. Unknown metric value type.",
+			message:    &message.Metrics{ID: "RandomValue", MType: "sometype", Delta: &int64Val, Value: &float64Val},
+			wantMetric: nil,
+			wantErr:    fmt.Errorf("%w '%s'", ErrUnhandledValueType, "sometype"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metric, err := NewMetricFromMessage(tt.message)
+			assert.Equal(t, tt.wantErr, err)
+			assert.Equal(t, tt.wantMetric, metric)
 		})
 	}
 }
