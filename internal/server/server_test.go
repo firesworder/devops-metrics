@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 )
@@ -846,8 +845,6 @@ func TestServer_initServerAddress(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// сброс влияния других тестов
-			os.Clearenv()
 			srv := Server{}
 			srv.initServerAddress()
 			assert.Equal(t, tt.wantServerAddress, srv.ServerAddress)

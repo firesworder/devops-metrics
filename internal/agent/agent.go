@@ -18,6 +18,7 @@ type counter int64
 var memstats runtime.MemStats
 var PollCount counter
 var RandomValue gauge
+var ServerURL string
 
 type Environment struct {
 	ServerAddress  string        `env:"ADDRESS" envDefault:"localhost:8080"`
@@ -32,6 +33,7 @@ var Env Environment
 
 func init() {
 	initEnv()
+	ServerURL = (&url.URL{Scheme: "http", Host: Env.ServerAddress}).String()
 	memstats = runtime.MemStats{}
 	runtime.ReadMemStats(&memstats)
 }
@@ -94,8 +96,7 @@ func SendMetrics() {
 // todo добавить возвр. ответа + ошибки
 func sendMetric(paramName string, paramValue interface{}) {
 	client := resty.New()
-	baseURL := url.URL{Scheme: "http", Host: Env.ServerAddress}
-	client.SetBaseURL(baseURL.String())
+	client.SetBaseURL(ServerURL)
 	var msg message.Metrics
 	msg.ID = paramName
 	switch value := paramValue.(type) {

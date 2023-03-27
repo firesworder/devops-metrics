@@ -72,7 +72,10 @@ func TestInitEnv(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// сброс влияния других тестов
 			Env = Environment{}
-			os.Clearenv()
+			for _, key := range [3]string{"ADDRESS", "REPORT_INTERVAL", "POLL_INTERVAL"} {
+				err := os.Unsetenv(key)
+				require.NoError(t, err)
+			}
 
 			for key, value := range tt.envVars {
 				err := os.Setenv(key, value)
@@ -172,7 +175,7 @@ func Test_sendMetric(t *testing.T) {
 				gotRequest.msg = &msg
 			}))
 			defer svr.Close()
-			Env.ServerAddress = svr.URL
+			ServerURL = svr.URL
 			sendMetric(tt.args.paramName, tt.args.paramValue)
 			require.Equal(t, tt.wantRequest, gotRequest)
 		})
@@ -186,7 +189,7 @@ func TestSendMetrics(t *testing.T) {
 		gotMetricsReq = append(gotMetricsReq, r.URL.Path)
 	}))
 	defer svr.Close()
-	Env.ServerAddress = svr.URL
+	ServerURL = svr.URL
 	SendMetrics()
 	assert.Lenf(t, gotMetricsReq, metricsCount, "Expected %d requests, got %d", metricsCount, len(gotMetricsReq))
 }
