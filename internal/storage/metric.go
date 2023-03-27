@@ -57,7 +57,6 @@ func NewMetric(name string, typeName string, rawValue interface{}) (*Metric, err
 	return &Metric{Name: name, Value: metricValue}, nil
 }
 
-// todo: описать тесты
 func NewMetricFromMessage(metrics *message.Metrics) (newMetric *Metric, err error) {
 	switch metrics.MType {
 	case "counter":

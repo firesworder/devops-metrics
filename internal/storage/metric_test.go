@@ -253,3 +253,45 @@ func TestNewMetricFromMessage(t *testing.T) {
 		})
 	}
 }
+
+func TestMetric_GetMessageMetric(t *testing.T) {
+	int64Val, float64Val := int64(10), float64(12.133)
+	tests := []struct {
+		name              string
+		metric            Metric
+		wantMessageMetric message.Metrics
+	}{
+		{
+			name:              "Test correct counter #1.",
+			metric:            Metric{Name: "PollCount", Value: counter(int64Val)},
+			wantMessageMetric: message.Metrics{ID: "PollCount", MType: "counter", Delta: &int64Val},
+		},
+		{
+			name:              "Test correct gauge #1.",
+			metric:            Metric{Name: "RandomValue", Value: gauge(float64Val)},
+			wantMessageMetric: message.Metrics{ID: "RandomValue", MType: "gauge", Value: &float64Val},
+		},
+
+		{
+			name:              "Test incorrect #1. Empty metric.",
+			metric:            Metric{},
+			wantMessageMetric: message.Metrics{},
+		},
+		{
+			name:              "Test incorrect #2. Metric only with name.",
+			metric:            Metric{Name: "Metric"},
+			wantMessageMetric: message.Metrics{ID: "Metric"},
+		},
+		{
+			name:              "Test incorrect #3. Metric with unknown type.",
+			metric:            Metric{Name: "RandomValue", Value: int8(11)},
+			wantMessageMetric: message.Metrics{ID: "RandomValue"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotMessage := tt.metric.GetMessageMetric()
+			assert.Equal(t, tt.wantMessageMetric, gotMessage)
+		})
+	}
+}
