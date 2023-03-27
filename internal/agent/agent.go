@@ -94,8 +94,8 @@ func SendMetrics() {
 // todo добавить возвр. ответа + ошибки
 func sendMetric(paramName string, paramValue interface{}) {
 	client := resty.New()
-	baseUrl := url.URL{Scheme: "http", Host: Env.ServerAddress}
-	client.SetBaseURL(baseUrl.String())
+	baseURL := url.URL{Scheme: "http", Host: Env.ServerAddress}
+	client.SetBaseURL(baseURL.String())
 	var msg message.Metrics
 	msg.ID = paramName
 	switch value := paramValue.(type) {
