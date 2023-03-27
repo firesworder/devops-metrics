@@ -83,7 +83,7 @@ func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "unknown metric", http.StatusNotFound)
 		return
 	}
-	fmt.Fprintf(writer, "%v", metric.Value)
+	writer.Write([]byte(metric.GetValueString()))
 }
 
 func (s *Server) handlerAddUpdateMetric(writer http.ResponseWriter, request *http.Request) {

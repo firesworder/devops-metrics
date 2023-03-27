@@ -295,3 +295,33 @@ func TestMetric_GetMessageMetric(t *testing.T) {
 		})
 	}
 }
+
+func TestMetric_GetValueString(t *testing.T) {
+	tests := []struct {
+		name   string
+		metric Metric
+		want   string
+	}{
+		{
+			name:   "Test correct counter.",
+			metric: Metric{Name: "PollCount", Value: counter(10)},
+			want:   "10",
+		},
+		{
+			name:   "Test correct gauge.",
+			metric: Metric{Name: "Alloc", Value: gauge(22.2)},
+			want:   "22.200",
+		},
+
+		{
+			name:   "Test incorrect. Unknown type.",
+			metric: Metric{Name: "UnknownMetric", Value: int8(11)},
+			want:   "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.metric.GetValueString())
+		})
+	}
+}

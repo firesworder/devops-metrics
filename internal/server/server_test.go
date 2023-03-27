@@ -297,9 +297,9 @@ func TestGetMetricHandler(t *testing.T) {
 		},
 		{
 			name:    "Test 3. Correct url, metric in filled state. Gauge type",
-			request: requestArgs{method: http.MethodGet, url: "/value/gauge/RandomValue"},
+			request: requestArgs{method: http.MethodGet, url: "/value/gauge/Alloc"},
 			wantResponse: response{
-				statusCode: http.StatusOK, contentType: "text/plain; charset=utf-8", body: "12.133",
+				statusCode: http.StatusOK, contentType: "text/plain; charset=utf-8", body: "7.770",
 			},
 			memStorageState: filledState,
 		},
