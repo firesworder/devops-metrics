@@ -21,7 +21,7 @@ var RandomValue gauge
 //  одна через json, вторая - старая, через url. Можно реализовать sendMetricJson и вызывать нужный потом
 
 var ServerURL = `http://localhost:8080`
-var AddUpdateMetricURL = `/update`
+var AddUpdateMetricURL = `/update/`
 
 func init() {
 	memstats = runtime.MemStats{}

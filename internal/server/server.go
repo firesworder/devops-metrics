@@ -43,8 +43,8 @@ func (s *Server) NewRouter() chi.Router {
 		r.Get("/", s.handlerShowAllMetrics)
 		r.Get("/value/{typeName}/{metricName}", s.handlerGet)
 		r.Post("/update/{typeName}/{metricName}/{metricValue}", s.handlerAddUpdateMetric)
-		r.Post("/update", s.handlerJSONAddUpdateMetric)
-		r.Post("/value", s.handlerJSONGetMetric)
+		r.Post("/update/", s.handlerJSONAddUpdateMetric)
+		r.Post("/value/", s.handlerJSONGetMetric)
 	})
 
 	return r

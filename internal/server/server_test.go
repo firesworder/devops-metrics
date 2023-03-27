@@ -387,7 +387,7 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			name: "Test correct counter #1. Add metric. Empty state",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/update",
+				url:         "/update/",
 				contentType: "application/json",
 				body:        `{"id":"PollCount","type":"counter","delta":10}`,
 			},
@@ -403,7 +403,7 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			name: "Test correct counter #2. Add metric. Filled state",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/update",
+				url:         "/update/",
 				contentType: "application/json",
 				body:        `{"id":"PollCount","type":"counter","delta":10}`,
 			},
@@ -426,7 +426,7 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			name: "Test correct counter #3. Update metric.",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/update",
+				url:         "/update/",
 				contentType: "application/json",
 				body:        `{"id":"PollCount","type":"counter","delta":20}`,
 			},
@@ -448,7 +448,7 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			name: "Test correct counter #4. Unknown metric.",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/update",
+				url:         "/update/",
 				contentType: "application/json",
 				body:        `{"id":"UnknownMetric","type":"counter","delta":10}`,
 			},
@@ -465,7 +465,7 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			name: "Test correct gauge #1. Add metric. Empty state",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/update",
+				url:         "/update/",
 				contentType: "application/json",
 				body:        `{"id":"RandomValue","type":"gauge","value":12.133}`,
 			},
@@ -481,7 +481,7 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			name: "Test correct gauge #2. Add metric. Filled state",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/update",
+				url:         "/update/",
 				contentType: "application/json",
 				body:        `{"id":"RandomValue","type":"gauge","value":12.133}`,
 			},
@@ -504,7 +504,7 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			name: "Test correct gauge #3. Update metric.",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/update",
+				url:         "/update/",
 				contentType: "application/json",
 				body:        `{"id":"RandomValue","type":"gauge","value":23.5}`,
 			},
@@ -526,7 +526,7 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			name: "Test correct gauge #4. Unknown metric.",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/update",
+				url:         "/update/",
 				contentType: "application/json",
 				body:        `{"id":"UnknownMetric","type":"gauge","value":7.77}`,
 			},
@@ -544,7 +544,7 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			name: "Test incorrect #1. Incorrect http method.",
 			requestArgs: requestArgs{
 				method:      http.MethodPut,
-				url:         "/update",
+				url:         "/update/",
 				contentType: "application/json",
 				body:        `{"id":"PollCount","type":"counter","value":10}`,
 			},
@@ -560,7 +560,7 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			name: "Test incorrect #2. Incorrect metric type.",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/update",
+				url:         "/update/",
 				contentType: "application/json",
 				body:        `{"id":"PollCount","type":"PollCount","value":10}`,
 			},
@@ -576,7 +576,7 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			name: "Test incorrect #3. Incorrect request body. Field value, but for type counter.",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/update",
+				url:         "/update/",
 				contentType: "application/json",
 				body:        `{"id":"PollCount","type":"counter","value":10.3}`,
 			},
@@ -592,7 +592,7 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			name: "Test incorrect #4. Incorrect request body. Field delta, but for type gauge.",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/update",
+				url:         "/update/",
 				contentType: "application/json",
 				body:        `{"id":"PollCount","type":"gauge","delta":10}`,
 			},
@@ -608,7 +608,7 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			name: "Test incorrect #5. Incorrect metric value for metric type.",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/update",
+				url:         "/update/",
 				contentType: "application/json",
 				body:        `{"id":"PollCount","type":"counter","delta":10.3}`,
 			},
@@ -692,7 +692,7 @@ func TestGetMetricJSONHandler(t *testing.T) {
 			name: "Test correct counter #1. Correct request, metric is not present.",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/value",
+				url:         "/value/",
 				contentType: "application/json",
 				body:        `{"id":"PollCount","type":"counter"}`,
 			},
@@ -707,7 +707,7 @@ func TestGetMetricJSONHandler(t *testing.T) {
 			name: "Test correct counter #2. Correct request, metric is present.",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/value",
+				url:         "/value/",
 				contentType: "application/json",
 				body:        `{"id":"PollCount","type":"counter"}`,
 			},
@@ -723,7 +723,7 @@ func TestGetMetricJSONHandler(t *testing.T) {
 			name: "Test correct gauge #1. Correct request, metric is not present.",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/value",
+				url:         "/value/",
 				contentType: "application/json",
 				body:        `{"id":"RandomValue","type":"gauge"}`,
 			},
@@ -738,7 +738,7 @@ func TestGetMetricJSONHandler(t *testing.T) {
 			name: "Test correct gauge #2. Correct request, metric is present.",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/value",
+				url:         "/value/",
 				contentType: "application/json",
 				body:        `{"id":"RandomValue","type":"gauge"}`,
 			},
@@ -755,7 +755,7 @@ func TestGetMetricJSONHandler(t *testing.T) {
 			name: "Test correct(?) others #1. Requested metric type differs with one in state",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/value",
+				url:         "/value/",
 				contentType: "application/json",
 				body:        `{"id":"RandomValue","type":"counter"}`,
 			},
@@ -770,7 +770,7 @@ func TestGetMetricJSONHandler(t *testing.T) {
 			name: "Test correct(?) others #2. Unknown type",
 			requestArgs: requestArgs{
 				method:      http.MethodPost,
-				url:         "/value",
+				url:         "/value/",
 				contentType: "application/json",
 				body:        `{"id":"PollCount","type":"decimal"}`,
 			},
@@ -801,7 +801,7 @@ func TestGetMetricJSONHandler(t *testing.T) {
 			name: "Test incorrect #2. Wrong http method",
 			requestArgs: requestArgs{
 				method:      http.MethodGet,
-				url:         "/value",
+				url:         "/value/",
 				contentType: "application/json",
 				body:        `{"id":"RandomValue","type":"gauge"}`,
 			},
