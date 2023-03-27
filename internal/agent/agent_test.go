@@ -172,7 +172,7 @@ func Test_sendMetric(t *testing.T) {
 				gotRequest.msg = &msg
 			}))
 			defer svr.Close()
-			ServerURL = svr.URL
+			Env.ServerAddress = svr.URL
 			sendMetric(tt.args.paramName, tt.args.paramValue)
 			require.Equal(t, tt.wantRequest, gotRequest)
 		})
@@ -186,7 +186,7 @@ func TestSendMetrics(t *testing.T) {
 		gotMetricsReq = append(gotMetricsReq, r.URL.Path)
 	}))
 	defer svr.Close()
-	ServerURL = svr.URL
+	Env.ServerAddress = svr.URL
 	SendMetrics()
 	assert.Lenf(t, gotMetricsReq, metricsCount, "Expected %d requests, got %d", metricsCount, len(gotMetricsReq))
 }

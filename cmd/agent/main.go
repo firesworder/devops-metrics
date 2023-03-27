@@ -5,14 +5,10 @@ import (
 	"time"
 )
 
-const pollInterval = 2 * time.Second
-const reportInterval = 10 * time.Second
-
 func main() {
 	// подготовка тикеров на обновление и отправку
-	agent.ServerURL = `http://localhost:8080`
-	pollTicker := time.NewTicker(pollInterval)
-	reportTicker := time.NewTicker(reportInterval)
+	pollTicker := time.NewTicker(agent.Env.PollInterval)
+	reportTicker := time.NewTicker(agent.Env.ReportInterval)
 	for {
 		select {
 		case <-pollTicker.C:

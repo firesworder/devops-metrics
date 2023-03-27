@@ -30,9 +30,6 @@ var Env Environment
 // todo: реализовать две версии отправки сообщений.
 //  одна через json, вторая - старая, через url. Можно реализовать sendMetricJson и вызывать нужный потом
 
-var ServerURL = `http://localhost:8080`
-var AddUpdateMetricURL = `/update/`
-
 func init() {
 	initEnv()
 	memstats = runtime.MemStats{}
@@ -97,6 +94,8 @@ func SendMetrics() {
 // todo добавить возвр. ответа + ошибки
 func sendMetric(paramName string, paramValue interface{}) {
 	client := resty.New()
+	baseUrl := url.URL{Scheme: "http", Host: Env.ServerAddress}
+	client.SetBaseURL(baseUrl.String())
 	var msg message.Metrics
 	msg.ID = paramName
 	switch value := paramValue.(type) {
@@ -119,16 +118,10 @@ func sendMetric(paramName string, paramValue interface{}) {
 		return
 	}
 
-	reqURL, err := url.JoinPath(ServerURL, AddUpdateMetricURL)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
 	_, err = client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(jsonBody).
-		Post(reqURL)
+		Post(`/update/`)
 	if err != nil {
 		log.Println(err)
 		return
