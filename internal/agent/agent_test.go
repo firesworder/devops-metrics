@@ -7,9 +7,87 @@ import (
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"runtime"
 	"testing"
+	"time"
 )
+
+func TestInitEnv(t *testing.T) {
+	tests := []struct {
+		name      string
+		envVars   map[string]string
+		wantEnv   Environment
+		wantPanic bool
+	}{
+		{
+			name:    "Test 1. No env vars.",
+			envVars: map[string]string{},
+			wantEnv: Environment{
+				ServerAddress: "localhost:8080", PollInterval: 2 * time.Second, ReportInterval: 10 * time.Second,
+			},
+			wantPanic: false,
+		},
+		{
+			name: "Test 2. Correct env vars.",
+			envVars: map[string]string{
+				"ADDRESS": "localhost:3030", "REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
+			},
+			wantEnv: Environment{
+				ServerAddress: "localhost:3030", PollInterval: 5 * time.Second, ReportInterval: 20 * time.Second,
+			},
+			wantPanic: false,
+		},
+
+		{
+			name: "Test 3. Incorrect env vars names.",
+			envVars: map[string]string{
+				"address": "localhost:8080", "REPORT_INTERVAL": "25s", "PollInterval": "2s",
+			},
+			wantEnv: Environment{
+				ServerAddress: "localhost:8080", PollInterval: 2 * time.Second, ReportInterval: 25 * time.Second,
+			},
+			wantPanic: false,
+		},
+		{
+			name: "Test 4. Incorrect ADDRESS env value.",
+			envVars: map[string]string{
+				"ADDRESS": "notUrl", "REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
+			},
+			wantEnv: Environment{
+				ServerAddress: "notUrl", PollInterval: 5 * time.Second, ReportInterval: 20 * time.Second,
+			},
+			wantPanic: false,
+		},
+		{
+			name: "Test 5. Incorrect env interval values.",
+			envVars: map[string]string{
+				"ADDRESS": "localhost:8080", "REPORT_INTERVAL": "20", "POLL_INTERVAL": "5s",
+			},
+			wantEnv:   Environment{},
+			wantPanic: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// сброс влияния других тестов
+			Env = Environment{}
+			os.Clearenv()
+
+			for key, value := range tt.envVars {
+				err := os.Setenv(key, value)
+				require.NoError(t, err)
+			}
+
+			if tt.wantPanic {
+				assert.Panics(t, initEnv)
+			} else {
+				initEnv()
+				assert.Equal(t, tt.wantEnv, Env)
+			}
+		})
+	}
+}
 
 func TestUpdateMetrics(t *testing.T) {
 	runtime.ReadMemStats(&memstats)

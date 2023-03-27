@@ -2,12 +2,14 @@ package agent
 
 import (
 	"encoding/json"
+	"github.com/caarlos0/env/v7"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/go-resty/resty/v2"
 	"log"
 	"math/rand"
 	"net/url"
 	"runtime"
+	"time"
 )
 
 type gauge float64
@@ -17,6 +19,14 @@ var memstats runtime.MemStats
 var PollCount counter
 var RandomValue gauge
 
+type Environment struct {
+	ServerAddress  string        `env:"ADDRESS" envDefault:"localhost:8080"`
+	ReportInterval time.Duration `env:"REPORT_INTERVAL" envDefault:"10s"`
+	PollInterval   time.Duration `env:"POLL_INTERVAL" envDefault:"2s"`
+}
+
+var Env Environment
+
 // todo: реализовать две версии отправки сообщений.
 //  одна через json, вторая - старая, через url. Можно реализовать sendMetricJson и вызывать нужный потом
 
@@ -24,8 +34,16 @@ var ServerURL = `http://localhost:8080`
 var AddUpdateMetricURL = `/update/`
 
 func init() {
+	initEnv()
 	memstats = runtime.MemStats{}
 	runtime.ReadMemStats(&memstats)
+}
+
+func initEnv() {
+	err := env.Parse(&Env)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func UpdateMetrics() {
