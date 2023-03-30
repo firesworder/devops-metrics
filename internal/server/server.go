@@ -13,10 +13,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type Server struct {
-	ServerAddress string `env:"ADDRESS" envDefault:"localhost:8080"`
+	ServerAddress string        `env:"ADDRESS" envDefault:"localhost:8080"`
+	StoreInterval time.Duration `env:"STORE_INTERVAL" envDefault:"300s"`
+	StoreFile     string        `env:"STORE_FILE" envDefault:"/tmp/devops-metrics-db.json"`
+	Restore       bool          `env:"RESTORE" envDefault:"true"`
 	Router        chi.Router
 	LayoutsDir    string
 	MetricStorage storage.MetricRepository
@@ -24,7 +28,7 @@ type Server struct {
 
 func NewServer() *Server {
 	server := Server{}
-	server.initServerAddress()
+	server.initEnvParams()
 	server.Router = server.NewRouter()
 
 	workingDir, _ := os.Getwd()
@@ -34,7 +38,8 @@ func NewServer() *Server {
 	return &server
 }
 
-func (s *Server) initServerAddress() {
+// todo: объединить взятие env
+func (s *Server) initEnvParams() {
 	err := env.Parse(s)
 	if err != nil {
 		panic(err)

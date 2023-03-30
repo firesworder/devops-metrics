@@ -846,7 +846,7 @@ func TestServer_initServerAddress(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			srv := Server{}
-			srv.initServerAddress()
+			srv.initEnvParams()
 			assert.Equal(t, tt.wantServerAddress, srv.ServerAddress)
 		})
 	}
