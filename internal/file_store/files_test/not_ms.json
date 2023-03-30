@@ -1,0 +1,12 @@
+{
+  "metrics": [
+    {
+      "Name": "PollCount",
+      "Value": 20
+    },
+    {
+      "Name": "RandomValue",
+      "Value": 30
+    }
+  ]
+}
