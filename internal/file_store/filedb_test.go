@@ -72,7 +72,7 @@ func TestFileStore_Read(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := FileStore{storeFilePath: tt.storeFilePath}
+			f := FileStore{StoreFilePath: tt.storeFilePath}
 			got, err := f.Read()
 			assert.Equal(t, tt.wantErr, err != nil)
 			assert.Equal(t, tt.want, got)
@@ -120,19 +120,19 @@ func TestFileStore_Write(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var f FileStore
 			if tt.storeFilePath != "" {
-				f.storeFilePath = tt.storeFilePath
+				f.StoreFilePath = tt.storeFilePath
 			} else {
-				f.storeFilePath = fmt.Sprintf("files_test/write_test_%d.json", i)
-				defer os.Remove(f.storeFilePath)
+				f.StoreFilePath = fmt.Sprintf("files_test/write_test_%d.json", i)
+				defer os.Remove(f.StoreFilePath)
 			}
-			err := f.Write(tt.ms)
+			err := f.Write(&tt.ms)
 			assert.Equal(t, tt.wantError, err != nil)
 
-			require.FileExists(t, f.storeFilePath)
+			require.FileExists(t, f.StoreFilePath)
 			// todo: вынести получение файла в отдельную функцию
 			wantContent, err := os.ReadFile(tt.wantContentAs)
 			require.NoError(t, err)
-			gotContent, err := os.ReadFile(f.storeFilePath)
+			gotContent, err := os.ReadFile(f.StoreFilePath)
 			require.NoError(t, err)
 			assert.Equal(t, wantContent, gotContent)
 		})
