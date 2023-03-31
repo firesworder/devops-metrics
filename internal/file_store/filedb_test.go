@@ -29,6 +29,33 @@ func init() {
 	//}
 }
 
+func TestNewFileStore(t *testing.T) {
+	type args struct {
+		storeFilePath string
+	}
+	tests := []struct {
+		name string
+		args args
+		want *FileStore
+	}{
+		{
+			name: "Test #1. Not empty filepath.",
+			args: args{storeFilePath: "some/filepath.json"},
+			want: &FileStore{StoreFilePath: "some/filepath.json"},
+		},
+		{
+			name: "Test #1. Empty filepath",
+			args: args{storeFilePath: ""},
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, NewFileStore(tt.args.storeFilePath))
+		})
+	}
+}
+
 func TestFileStore_Read(t *testing.T) {
 	tests := []struct {
 		name          string

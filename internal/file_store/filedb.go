@@ -10,9 +10,18 @@ import (
 )
 
 // todo: сделать частью memstorage
+// todo: добавить инициализации writer/reader в рамках этого пакета?
 type FileStore struct {
 	StoreFilePath string
 	StoreInterval time.Duration // todo: удалить параметр
+}
+
+func NewFileStore(storeFilePath string) *FileStore {
+	// FileStore имеет смысл только с НЕ пустым путем к файлу
+	if storeFilePath != "" {
+		return &FileStore{StoreFilePath: storeFilePath}
+	}
+	return nil
 }
 
 func (f *FileStore) Write(memStorage storage.MetricRepository) error {
@@ -41,6 +50,7 @@ func (f *FileStore) Write(memStorage storage.MetricRepository) error {
 	return nil
 }
 
+// todo: нужно ли создавать файл при открытии?
 func (f *FileStore) Read() (*storage.MemStorage, error) {
 	file, err := os.OpenFile(f.StoreFilePath, os.O_RDONLY, 0644)
 	if err != nil {
