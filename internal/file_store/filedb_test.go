@@ -69,6 +69,12 @@ func TestFileStore_Read(t *testing.T) {
 			want:          nil,
 			wantErr:       true,
 		},
+		{
+			name:          "Test #6. Not existed filepath(no dirs and file).",
+			storeFilePath: "tmp/devops-metrics-db.json",
+			want:          nil,
+			wantErr:       true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -115,6 +121,27 @@ func TestFileStore_Write(t *testing.T) {
 			wantContentAs: "files_test/read_correct_ms_test.json",
 			wantError:     false,
 		},
+		{
+			// создаст файл, в моем случае, на C:/tmp/...
+			name: "Test #4. Incorrect filepath(for Windows os).",
+			ms: *storage.NewMemStorage(map[string]storage.Metric{
+				metricCounter.Name: *metricCounter,
+				metricGauge.Name:   *metricGauge,
+			}),
+			storeFilePath: "/tmp/devops-metrics-db.json",
+			wantContentAs: "files_test/read_correct_ms_test.json",
+			wantError:     false,
+		},
+		{
+			name: "Test #5. Not existed filepath.",
+			ms: *storage.NewMemStorage(map[string]storage.Metric{
+				metricCounter.Name: *metricCounter,
+				metricGauge.Name:   *metricGauge,
+			}),
+			storeFilePath: "/tmp/devops-metrics-db.json",
+			wantContentAs: "files_test/read_correct_ms_test.json",
+			wantError:     false,
+		},
 	}
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -128,13 +155,15 @@ func TestFileStore_Write(t *testing.T) {
 			err := f.Write(&tt.ms)
 			assert.Equal(t, tt.wantError, err != nil)
 
-			require.FileExists(t, f.StoreFilePath)
-			// todo: вынести получение файла в отдельную функцию
-			wantContent, err := os.ReadFile(tt.wantContentAs)
-			require.NoError(t, err)
-			gotContent, err := os.ReadFile(f.StoreFilePath)
-			require.NoError(t, err)
-			assert.Equal(t, wantContent, gotContent)
+			if !tt.wantError {
+				require.FileExists(t, f.StoreFilePath)
+				// todo: вынести получение файла в отдельную функцию
+				wantContent, err := os.ReadFile(tt.wantContentAs)
+				require.NoError(t, err)
+				gotContent, err := os.ReadFile(f.StoreFilePath)
+				require.NoError(t, err)
+				assert.Equal(t, wantContent, gotContent)
+			}
 		})
 	}
 }
