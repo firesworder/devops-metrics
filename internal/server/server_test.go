@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/firesworder/devopsmetrics/internal/file_store"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -9,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Переменные для формирования состояния MemStorage
@@ -821,6 +823,7 @@ func TestGetMetricJSONHandler(t *testing.T) {
 	}
 }
 
+// todo: обновить, т.к. функция изменилась
 func TestServer_initServerAddress(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -848,6 +851,50 @@ func TestServer_initServerAddress(t *testing.T) {
 			srv := Server{}
 			srv.initEnvParams()
 			assert.Equal(t, tt.wantServerAddress, srv.ServerAddress)
+		})
+	}
+}
+
+func TestServer_InitFileStore(t *testing.T) {
+	type ServerArgsPart struct {
+		//ServerAddress string
+		StoreInterval time.Duration
+		StoreFile     string
+		Restore       bool
+		FileStore     *file_store.FileStore
+		//Router        chi.Router
+		//LayoutsDir    string
+		MetricStorage storage.MetricRepository
+	}
+	tests := []struct {
+		name            string
+		beforeInitSArgs ServerArgsPart
+		wantFSArg       *file_store.FileStore
+	}{
+		{
+			name: "Test #1. All default params.",
+			beforeInitSArgs: ServerArgsPart{
+				StoreInterval: 300 * time.Second,
+				StoreFile:     "/tmp/devops-metrics-db.json",
+				Restore:       true,
+				FileStore:     nil,
+				MetricStorage: storage.NewMemStorage(map[string]storage.Metric{}),
+			},
+			wantFSArg: &file_store.FileStore{StoreFilePath: "/tmp/devops-metrics-db.json"},
+		},
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Server{
+				StoreInterval: tt.beforeInitSArgs.StoreInterval,
+				StoreFile:     tt.beforeInitSArgs.StoreFile,
+				Restore:       tt.beforeInitSArgs.Restore,
+				FileStore:     tt.beforeInitSArgs.FileStore,
+				MetricStorage: tt.beforeInitSArgs.MetricStorage,
+			}
+			s.InitFileStore()
+			assert.Equal(t, tt.wantFSArg, s.FileStore)
 		})
 	}
 }

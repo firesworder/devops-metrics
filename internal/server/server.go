@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/caarlos0/env/v7"
+	"github.com/firesworder/devopsmetrics/internal/file_store"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"github.com/go-chi/chi/v5"
@@ -21,6 +22,7 @@ type Server struct {
 	StoreInterval time.Duration `env:"STORE_INTERVAL" envDefault:"300s"`
 	StoreFile     string        `env:"STORE_FILE" envDefault:"/tmp/devops-metrics-db.json"`
 	Restore       bool          `env:"RESTORE" envDefault:"true"`
+	FileStore     *file_store.FileStore
 	Router        chi.Router
 	LayoutsDir    string
 	MetricStorage storage.MetricRepository
@@ -29,6 +31,7 @@ type Server struct {
 func NewServer() *Server {
 	server := Server{}
 	server.initEnvParams()
+	server.InitFileStore()
 	server.Router = server.NewRouter()
 
 	workingDir, _ := os.Getwd()
@@ -36,6 +39,14 @@ func NewServer() *Server {
 
 	server.MetricStorage = storage.NewMemStorage(map[string]storage.Metric{})
 	return &server
+}
+
+func (s *Server) InitFileStore() {
+	if s.StoreFile != "" {
+		s.FileStore = &file_store.FileStore{StoreFilePath: s.StoreFile}
+		// todo: для реализации загрузки стореджа из файла
+		// todo: для реализации тикерного сохранения стореджа
+	}
 }
 
 // todo: объединить взятие env

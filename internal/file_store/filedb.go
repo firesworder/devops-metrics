@@ -12,7 +12,7 @@ import (
 // todo: сделать частью memstorage
 type FileStore struct {
 	StoreFilePath string
-	StoreInterval time.Duration
+	StoreInterval time.Duration // todo: удалить параметр
 }
 
 func (f *FileStore) Write(memStorage storage.MetricRepository) error {
