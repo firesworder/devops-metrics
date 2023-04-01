@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"html/template"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -93,6 +94,15 @@ func (s *Server) initEnvParams() {
 	}
 }
 
+// todo: выглядит как неочень удобный костыль, переделать потом в рамках MemStorage
+func (s *Server) SyncSaveMetricStorage() error {
+	if s.StoreInterval == 0 && s.FileStore != nil && s.MetricStorage != nil {
+		err := s.FileStore.Write(s.MetricStorage)
+		return err
+	}
+	return nil
+}
+
 func (s *Server) NewRouter() chi.Router {
 	r := chi.NewRouter()
 
@@ -168,6 +178,9 @@ func (s *Server) handlerAddUpdateMetric(writer http.ResponseWriter, request *htt
 		http.Error(writer, errorObj.Error(), http.StatusBadRequest)
 		return
 	}
+	if errorObj = s.SyncSaveMetricStorage(); errorObj != nil {
+		log.Println(errorObj)
+	}
 }
 
 func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request *http.Request) {
@@ -192,6 +205,9 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 	if errorObj != nil {
 		http.Error(writer, errorObj.Error(), http.StatusBadRequest)
 		return
+	}
+	if errorObj = s.SyncSaveMetricStorage(); errorObj != nil {
+		log.Println(errorObj)
 	}
 
 	updatedMetric, ok := s.MetricStorage.GetMetric(m.Name)
