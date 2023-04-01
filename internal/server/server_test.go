@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 )
 
 // Переменные для формирования состояния MemStorage
@@ -857,14 +856,8 @@ func TestServer_initServerAddress(t *testing.T) {
 
 func TestServer_InitFileStore(t *testing.T) {
 	type ServerArgsPart struct {
-		//ServerAddress string
-		StoreInterval time.Duration
-		StoreFile     string
-		Restore       bool
-		FileStore     *file_store.FileStore
-		//Router        chi.Router
-		//LayoutsDir    string
-		MetricStorage storage.MetricRepository
+		StoreFile string
+		FileStore *file_store.FileStore
 	}
 	tests := []struct {
 		name            string
@@ -872,26 +865,28 @@ func TestServer_InitFileStore(t *testing.T) {
 		wantFSArg       *file_store.FileStore
 	}{
 		{
-			name: "Test #1. All default params.",
+			name: "Test #1. StoreFile field is not empty",
 			beforeInitSArgs: ServerArgsPart{
-				StoreInterval: 300 * time.Second,
-				StoreFile:     "/tmp/devops-metrics-db.json",
-				Restore:       true,
-				FileStore:     nil,
-				MetricStorage: storage.NewMemStorage(map[string]storage.Metric{}),
+				StoreFile: "some_file_path/file.json",
+				FileStore: nil,
 			},
-			wantFSArg: &file_store.FileStore{StoreFilePath: "/tmp/devops-metrics-db.json"},
+			wantFSArg: &file_store.FileStore{StoreFilePath: "some_file_path/file.json"},
 		},
-		// TODO: Add test cases.
+		{
+			// todo: проверить, что это устанавливается значение(пустое), хз как envDefault среагирует
+			name: "Test #2. StoreFile is set empty",
+			beforeInitSArgs: ServerArgsPart{
+				StoreFile: "",
+				FileStore: nil,
+			},
+			wantFSArg: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Server{
-				StoreInterval: tt.beforeInitSArgs.StoreInterval,
-				StoreFile:     tt.beforeInitSArgs.StoreFile,
-				Restore:       tt.beforeInitSArgs.Restore,
-				FileStore:     tt.beforeInitSArgs.FileStore,
-				MetricStorage: tt.beforeInitSArgs.MetricStorage,
+				StoreFile: tt.beforeInitSArgs.StoreFile,
+				FileStore: tt.beforeInitSArgs.FileStore,
 			}
 			s.InitFileStore()
 			assert.Equal(t, tt.wantFSArg, s.FileStore)

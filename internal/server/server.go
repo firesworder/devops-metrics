@@ -43,9 +43,7 @@ func NewServer() *Server {
 
 func (s *Server) InitFileStore() {
 	if s.StoreFile != "" {
-		s.FileStore = &file_store.FileStore{StoreFilePath: s.StoreFile}
-		// todo: для реализации загрузки стореджа из файла
-		// todo: для реализации тикерного сохранения стореджа
+		s.FileStore = file_store.NewFileStore(s.StoreFile)
 	}
 }
 
