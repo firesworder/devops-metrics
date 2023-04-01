@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/firesworder/devopsmetrics/internal/file_store"
+	"github.com/firesworder/devopsmetrics/internal/filestore"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1049,12 +1049,12 @@ func TestServer_initEnvParams(t *testing.T) {
 func TestServer_InitFileStore(t *testing.T) {
 	type ServerArgsPart struct {
 		StoreFile string
-		FileStore *file_store.FileStore
+		FileStore *filestore.FileStore
 	}
 	tests := []struct {
 		name            string
 		beforeInitSArgs ServerArgsPart
-		wantFSArg       *file_store.FileStore
+		wantFSArg       *filestore.FileStore
 	}{
 		{
 			name: "Test #1. StoreFile field is not empty",
@@ -1062,7 +1062,7 @@ func TestServer_InitFileStore(t *testing.T) {
 				StoreFile: "some_file_path/file.json",
 				FileStore: nil,
 			},
-			wantFSArg: &file_store.FileStore{StoreFilePath: "some_file_path/file.json"},
+			wantFSArg: &filestore.FileStore{StoreFilePath: "some_file_path/file.json"},
 		},
 		{
 			// todo: проверить, что это устанавливается значение(пустое), хз как envDefault среагирует
@@ -1089,7 +1089,7 @@ func TestServer_InitFileStore(t *testing.T) {
 func TestServer_InitMetricStorage(t *testing.T) {
 	type serverArgs struct {
 		Restore   bool
-		FileStore *file_store.FileStore
+		FileStore *filestore.FileStore
 	}
 
 	tests := []struct {
@@ -1101,7 +1101,7 @@ func TestServer_InitMetricStorage(t *testing.T) {
 			name: "Test #1. Restore=True and StoreFile exist and correct.",
 			serverArgs: serverArgs{
 				Restore:   true,
-				FileStore: file_store.NewFileStore("file_storage_test/correct_ms_test.json"),
+				FileStore: filestore.NewFileStore("file_storage_test/correct_ms_test.json"),
 			},
 			wantMetricStorage: storage.NewMemStorage(map[string]storage.Metric{
 				metric1.Name: *metric1,
@@ -1120,7 +1120,7 @@ func TestServer_InitMetricStorage(t *testing.T) {
 			name: "Test #3. Restore=True and StoreFile exist and incorrect(doesn't have MS in it).",
 			serverArgs: serverArgs{
 				Restore:   true,
-				FileStore: file_store.NewFileStore("file_storage_test/not_ms_test.json"),
+				FileStore: filestore.NewFileStore("file_storage_test/not_ms_test.json"),
 			},
 			wantMetricStorage: storage.NewMemStorage(map[string]storage.Metric{}),
 		},
@@ -1128,7 +1128,7 @@ func TestServer_InitMetricStorage(t *testing.T) {
 			name: "Test #4. Restore=True and StoreFile not exist.",
 			serverArgs: serverArgs{
 				Restore:   true,
-				FileStore: file_store.NewFileStore("not_existed.json"),
+				FileStore: filestore.NewFileStore("not_existed.json"),
 			},
 			wantMetricStorage: storage.NewMemStorage(map[string]storage.Metric{}),
 		},
@@ -1137,7 +1137,7 @@ func TestServer_InitMetricStorage(t *testing.T) {
 			name: "Test #5. Restore=False and StoreFile exist and correct.",
 			serverArgs: serverArgs{
 				Restore:   false,
-				FileStore: file_store.NewFileStore("file_storage_test/correct_ms_test.json"),
+				FileStore: filestore.NewFileStore("file_storage_test/correct_ms_test.json"),
 			},
 			wantMetricStorage: storage.NewMemStorage(map[string]storage.Metric{}),
 		},
@@ -1153,7 +1153,7 @@ func TestServer_InitMetricStorage(t *testing.T) {
 			name: "Test #7. Restore=False and StoreFile exist and and incorrect(doesn't have MS in it).",
 			serverArgs: serverArgs{
 				Restore:   false,
-				FileStore: file_store.NewFileStore("file_storage_test/not_ms_test.json"),
+				FileStore: filestore.NewFileStore("file_storage_test/not_ms_test.json"),
 			},
 			wantMetricStorage: storage.NewMemStorage(map[string]storage.Metric{}),
 		},
@@ -1161,7 +1161,7 @@ func TestServer_InitMetricStorage(t *testing.T) {
 			name: "Test #8. Restore=False and StoreFile not exist.",
 			serverArgs: serverArgs{
 				Restore:   false,
-				FileStore: file_store.NewFileStore("not_existed.json"),
+				FileStore: filestore.NewFileStore("not_existed.json"),
 			},
 			wantMetricStorage: storage.NewMemStorage(map[string]storage.Metric{}),
 		},
@@ -1182,7 +1182,7 @@ func TestServer_InitMetricStorage(t *testing.T) {
 func TestServer_InitRepeatableSave(t *testing.T) {
 	type serverArgs struct {
 		StoreInterval time.Duration
-		FileStore     *file_store.FileStore
+		FileStore     *filestore.FileStore
 		MetricStorage storage.MetricRepository
 	}
 	tests := []struct {
@@ -1194,7 +1194,7 @@ func TestServer_InitRepeatableSave(t *testing.T) {
 			name: "Test #1. StoreInterval > 0 and FileStore != nil. MS != nil.",
 			serverArgs: serverArgs{
 				StoreInterval: 500 * time.Millisecond,
-				FileStore:     file_store.NewFileStore("file_storage_test/test_1.json"),
+				FileStore:     filestore.NewFileStore("file_storage_test/test_1.json"),
 				MetricStorage: storage.NewMemStorage(map[string]storage.Metric{
 					metric1.Name: *metric1,
 					metric2.Name: *metric2,
@@ -1219,7 +1219,7 @@ func TestServer_InitRepeatableSave(t *testing.T) {
 			name: "Test #3. StoreInterval > 0 and FileStore != nil. MS == nil",
 			serverArgs: serverArgs{
 				StoreInterval: 500 * time.Millisecond,
-				FileStore:     file_store.NewFileStore("file_storage_test/test_3.json"),
+				FileStore:     filestore.NewFileStore("file_storage_test/test_3.json"),
 				MetricStorage: nil,
 			},
 			wantFileAs: "",
@@ -1269,7 +1269,7 @@ func TestServer_InitRepeatableSave(t *testing.T) {
 func TestServer_SyncSaveMetricStorage(t *testing.T) {
 	type serverArgs struct {
 		StoreInterval time.Duration
-		FileStore     *file_store.FileStore
+		FileStore     *filestore.FileStore
 		MetricStorage storage.MetricRepository
 	}
 	tests := []struct {
@@ -1281,7 +1281,7 @@ func TestServer_SyncSaveMetricStorage(t *testing.T) {
 			name: "Test #1. StoreInterval == 0 and FileStore != nil. MS != nil.",
 			serverArgs: serverArgs{
 				StoreInterval: 0,
-				FileStore:     file_store.NewFileStore("file_storage_test/test_1.json"),
+				FileStore:     filestore.NewFileStore("file_storage_test/test_1.json"),
 				MetricStorage: storage.NewMemStorage(map[string]storage.Metric{
 					metric1.Name: *metric1,
 					metric2.Name: *metric2,
@@ -1306,7 +1306,7 @@ func TestServer_SyncSaveMetricStorage(t *testing.T) {
 			name: "Test #3. StoreInterval == 0 and FileStore != nil. MS == nil",
 			serverArgs: serverArgs{
 				StoreInterval: 0,
-				FileStore:     file_store.NewFileStore("file_storage_test/test_3.json"),
+				FileStore:     filestore.NewFileStore("file_storage_test/test_3.json"),
 				MetricStorage: nil,
 			},
 			wantFileAs: "",

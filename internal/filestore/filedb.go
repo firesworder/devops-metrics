@@ -1,4 +1,4 @@
-package file_store
+package filestore
 
 import (
 	"encoding/json"

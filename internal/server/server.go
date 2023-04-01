@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/caarlos0/env/v7"
-	"github.com/firesworder/devopsmetrics/internal/file_store"
+	"github.com/firesworder/devopsmetrics/internal/filestore"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"github.com/go-chi/chi/v5"
@@ -25,7 +25,7 @@ type Server struct {
 	// Дефолтное значение для этого поля в initEnvParams
 	StoreFile     string `env:"STORE_FILE"`
 	Restore       bool   `env:"RESTORE" envDefault:"true"`
-	FileStore     *file_store.FileStore
+	FileStore     *filestore.FileStore
 	WriteTicker   *time.Ticker
 	Router        chi.Router
 	LayoutsDir    string
@@ -48,7 +48,7 @@ func NewServer() *Server {
 
 func (s *Server) InitFileStore() {
 	if s.StoreFile != "" {
-		s.FileStore = file_store.NewFileStore(s.StoreFile)
+		s.FileStore = filestore.NewFileStore(s.StoreFile)
 	}
 }
 
