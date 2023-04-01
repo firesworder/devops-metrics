@@ -56,12 +56,13 @@ func (s *Server) InitMetricStorage() {
 	if s.Restore && s.FileStore != nil {
 		var err error
 		s.MetricStorage, err = s.FileStore.Read()
-		log.Println("MemStorage restored from store_file")
 		if err != nil {
 			log.Println(err)
+			log.Println("Empty MemStorage was initialised")
+			s.MetricStorage = storage.NewMemStorage(map[string]storage.Metric{})
 		}
-	}
-	if !s.Restore || s.FileStore != nil {
+		log.Println("MemStorage restored from store_file")
+	} else {
 		s.MetricStorage = storage.NewMemStorage(map[string]storage.Metric{})
 		log.Println("Empty MemStorage was initialised")
 	}
