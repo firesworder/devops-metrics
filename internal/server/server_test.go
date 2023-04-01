@@ -893,3 +893,95 @@ func TestServer_InitFileStore(t *testing.T) {
 		})
 	}
 }
+
+func TestServer_InitMetricStorage(t *testing.T) {
+	type serverArgs struct {
+		Restore   bool
+		FileStore *file_store.FileStore
+	}
+
+	tests := []struct {
+		name string
+		serverArgs
+		wantMetricStorage storage.MetricRepository
+	}{
+		{
+			name: "Test #1. Restore=True and StoreFile exist and correct.",
+			serverArgs: serverArgs{
+				Restore:   true,
+				FileStore: file_store.NewFileStore("file_storage_test/correct_ms_test.json"),
+			},
+			wantMetricStorage: storage.NewMemStorage(map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+			}),
+		},
+		{
+			name: "Test #2. Restore=True and StoreFile path is empty.",
+			serverArgs: serverArgs{
+				Restore:   true,
+				FileStore: nil,
+			},
+			wantMetricStorage: storage.NewMemStorage(map[string]storage.Metric{}),
+		},
+		{
+			name: "Test #3. Restore=True and StoreFile exist and incorrect(doesn't have MS in it).",
+			serverArgs: serverArgs{
+				Restore:   true,
+				FileStore: file_store.NewFileStore("file_storage_test/not_ms_test.json"),
+			},
+			wantMetricStorage: storage.NewMemStorage(map[string]storage.Metric{}),
+		},
+		{
+			name: "Test #4. Restore=True and StoreFile not exist.",
+			serverArgs: serverArgs{
+				Restore:   true,
+				FileStore: file_store.NewFileStore("not_existed.json"),
+			},
+			wantMetricStorage: storage.NewMemStorage(map[string]storage.Metric{}),
+		},
+
+		{
+			name: "Test #5. Restore=False and StoreFile exist and correct.",
+			serverArgs: serverArgs{
+				Restore:   false,
+				FileStore: file_store.NewFileStore("file_storage_test/correct_ms_test.json"),
+			},
+			wantMetricStorage: storage.NewMemStorage(map[string]storage.Metric{}),
+		},
+		{
+			name: "Test #6. Restore=False and StoreFile path is empty.",
+			serverArgs: serverArgs{
+				Restore:   false,
+				FileStore: nil,
+			},
+			wantMetricStorage: storage.NewMemStorage(map[string]storage.Metric{}),
+		},
+		{
+			name: "Test #7. Restore=False and StoreFile exist and and incorrect(doesn't have MS in it).",
+			serverArgs: serverArgs{
+				Restore:   false,
+				FileStore: file_store.NewFileStore("file_storage_test/not_ms_test.json"),
+			},
+			wantMetricStorage: storage.NewMemStorage(map[string]storage.Metric{}),
+		},
+		{
+			name: "Test #8. Restore=False and StoreFile not exist.",
+			serverArgs: serverArgs{
+				Restore:   false,
+				FileStore: file_store.NewFileStore("not_existed.json"),
+			},
+			wantMetricStorage: storage.NewMemStorage(map[string]storage.Metric{}),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			serverObj := Server{
+				FileStore: tt.serverArgs.FileStore,
+				Restore:   tt.serverArgs.Restore,
+			}
+			serverObj.InitMetricStorage()
+		})
+	}
+}
