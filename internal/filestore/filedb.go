@@ -33,10 +33,10 @@ func (f *FileStore) Write(memStorage storage.MetricRepository) error {
 		}
 	}
 	file, err := os.OpenFile(f.StoreFilePath, os.O_WRONLY|os.O_CREATE, 0644)
-	defer file.Close()
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	jsonMS, err := json.Marshal(&memStorage)
 	if err != nil {

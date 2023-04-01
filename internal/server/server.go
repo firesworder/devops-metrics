@@ -73,7 +73,7 @@ func (s *Server) InitRepeatableSave() {
 		go func() {
 			var err error
 			s.WriteTicker = time.NewTicker(s.StoreInterval)
-			for _ = range s.WriteTicker.C {
+			for range s.WriteTicker.C {
 				// нет смысла писать nil MetricStorage
 				if s.MetricStorage == nil {
 					continue
