@@ -1174,6 +1174,7 @@ func TestServer_InitMetricStorage(t *testing.T) {
 				Restore:   tt.serverArgs.Restore,
 			}
 			serverObj.InitMetricStorage()
+			assert.Equal(t, tt.wantMetricStorage, serverObj.MetricStorage)
 		})
 	}
 }
