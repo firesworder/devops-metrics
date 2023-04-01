@@ -22,8 +22,9 @@ type Server struct {
 	// todo: выделить ENV в ENV
 	ServerAddress string        `env:"ADDRESS" envDefault:"localhost:8080"`
 	StoreInterval time.Duration `env:"STORE_INTERVAL" envDefault:"300s"`
-	StoreFile     string        `env:"STORE_FILE" envDefault:"/tmp/devops-metrics-db.json"`
-	Restore       bool          `env:"RESTORE" envDefault:"true"`
+	// Дефолтное значение для этого поля в initEnvParams
+	StoreFile     string `env:"STORE_FILE"`
+	Restore       bool   `env:"RESTORE" envDefault:"true"`
 	FileStore     *file_store.FileStore
 	WriteTicker   *time.Ticker
 	Router        chi.Router
@@ -91,6 +92,14 @@ func (s *Server) initEnvParams() {
 	err := env.Parse(s)
 	if err != nil {
 		panic(err)
+	}
+
+	// библиотека env не дает устанавливать значения "" и иметь envDefault тег одновременно
+	path, isSet := os.LookupEnv("STORE_FILE")
+	if isSet {
+		s.StoreFile = path
+	} else {
+		s.StoreFile = "/tmp/devops-metrics-db.json"
 	}
 }
 
