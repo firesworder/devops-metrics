@@ -8,8 +8,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Переменные для формирования состояния MemStorage
@@ -982,6 +984,91 @@ func TestServer_InitMetricStorage(t *testing.T) {
 				Restore:   tt.serverArgs.Restore,
 			}
 			serverObj.InitMetricStorage()
+		})
+	}
+}
+
+func TestServer_InitRepeatableSave(t *testing.T) {
+	type serverArgs struct {
+		StoreInterval time.Duration
+		FileStore     *file_store.FileStore
+		MetricStorage storage.MetricRepository
+	}
+	tests := []struct {
+		name string
+		serverArgs
+		wantFileAs string
+	}{
+		{
+			name: "Test #1. StoreInterval > 0 and FileStore != nil. MS != nil.",
+			serverArgs: serverArgs{
+				StoreInterval: 500 * time.Millisecond,
+				FileStore:     file_store.NewFileStore("file_storage_test/test_1.json"),
+				MetricStorage: storage.NewMemStorage(map[string]storage.Metric{
+					metric1.Name: *metric1,
+					metric2.Name: *metric2,
+				}),
+			},
+			wantFileAs: "file_storage_test/correct_ms_test.json",
+		},
+		// todo: этот тест никак не отслеживается в assert\require(разве что при panic упадет)
+		{
+			name: "Test #2. StoreInterval > 0 and FileStore == nil. MS != nil.",
+			serverArgs: serverArgs{
+				StoreInterval: 500 * time.Millisecond,
+				FileStore:     nil,
+				MetricStorage: storage.NewMemStorage(map[string]storage.Metric{
+					metric1.Name: *metric1,
+					metric2.Name: *metric2,
+				}),
+			},
+			wantFileAs: "",
+		},
+		{
+			name: "Test #3. StoreInterval > 0 and FileStore != nil. MS == nil",
+			serverArgs: serverArgs{
+				StoreInterval: 500 * time.Millisecond,
+				FileStore:     file_store.NewFileStore("file_storage_test/test_3.json"),
+				MetricStorage: nil,
+			},
+			wantFileAs: "",
+		},
+		// вариант StoreInterval == 0, FileStore != nil - это отдельная функция(и отдельно должна тестироваться)
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Server{
+				StoreInterval: tt.serverArgs.StoreInterval,
+				FileStore:     tt.serverArgs.FileStore,
+				MetricStorage: tt.serverArgs.MetricStorage,
+			}
+			s.InitRepeatableSave()
+			time.Sleep(time.Second) // ждем пока тикер в InitRepeatableSave отработает(горутиной)
+
+			if tt.serverArgs.FileStore == nil {
+				t.Skip("Не знаю как пока тестировать кейсы с FileStore == nil")
+			}
+
+			if tt.wantFileAs == "" {
+				assert.NoFileExists(t, tt.serverArgs.FileStore.StoreFilePath)
+			} else {
+				sf := tt.serverArgs.FileStore.StoreFilePath
+				require.FileExists(t, sf)
+				// todo: эту часть напрямую скопировал из TestFileStore_Write. Мб как то стоит убрать дубль
+				wantContent, err := os.ReadFile(tt.wantFileAs)
+				require.NoError(t, err)
+				gotContent, err := os.ReadFile(sf)
+				require.NoError(t, err)
+				assert.Equal(t, wantContent, gotContent)
+
+				// останавливаем горутину, чтобы она перестала писать файлы
+				s.WriteTicker.Stop()
+				// удаляю созданные сохранением файлы
+				err = os.Remove(sf)
+				require.NoError(t, err)
+				// проверяем, что горутина остановилась и врем.файлы теста были удалены
+				assert.NoFileExists(t, sf)
+			}
 		})
 	}
 }

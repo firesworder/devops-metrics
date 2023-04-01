@@ -24,6 +24,7 @@ type Server struct {
 	StoreFile     string        `env:"STORE_FILE" envDefault:"/tmp/devops-metrics-db.json"`
 	Restore       bool          `env:"RESTORE" envDefault:"true"`
 	FileStore     *file_store.FileStore
+	WriteTicker   *time.Ticker
 	Router        chi.Router
 	LayoutsDir    string
 	MetricStorage storage.MetricRepository
@@ -34,6 +35,7 @@ func NewServer() *Server {
 	server.initEnvParams()
 	server.InitFileStore()
 	server.InitMetricStorage()
+	server.InitRepeatableSave()
 	server.Router = server.NewRouter()
 
 	workingDir, _ := os.Getwd()
@@ -60,6 +62,26 @@ func (s *Server) InitMetricStorage() {
 	if !s.Restore || s.FileStore != nil {
 		s.MetricStorage = storage.NewMemStorage(map[string]storage.Metric{})
 		log.Println("Empty MemStorage was initialised")
+	}
+}
+
+func (s *Server) InitRepeatableSave() {
+	if s.StoreInterval > 0 && s.FileStore != nil {
+		go func() {
+			var err error
+			s.WriteTicker = time.NewTicker(s.StoreInterval)
+			for _ = range s.WriteTicker.C {
+				// нет смысла писать nil MetricStorage
+				if s.MetricStorage == nil {
+					continue
+				}
+
+				err = s.FileStore.Write(s.MetricStorage)
+				if err != nil {
+					log.Println(err)
+				}
+			}
+		}()
 	}
 }
 
