@@ -1253,6 +1253,7 @@ func TestServer_InitRepeatableSave(t *testing.T) {
 
 				// останавливаем горутину, чтобы она перестала писать файлы
 				s.WriteTicker.Stop()
+				time.Sleep(100 * time.Millisecond)
 				// удаляю созданные сохранением файлы
 				err = os.Remove(sf)
 				require.NoError(t, err)
