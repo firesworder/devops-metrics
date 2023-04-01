@@ -18,6 +18,7 @@ import (
 )
 
 type Server struct {
+	// todo: выделить ENV в ENV
 	ServerAddress string        `env:"ADDRESS" envDefault:"localhost:8080"`
 	StoreInterval time.Duration `env:"STORE_INTERVAL" envDefault:"300s"`
 	StoreFile     string        `env:"STORE_FILE" envDefault:"/tmp/devops-metrics-db.json"`
@@ -32,18 +33,33 @@ func NewServer() *Server {
 	server := Server{}
 	server.initEnvParams()
 	server.InitFileStore()
+	server.InitMetricStorage()
 	server.Router = server.NewRouter()
 
 	workingDir, _ := os.Getwd()
 	server.LayoutsDir = filepath.Join(workingDir, "/internal/server/html_layouts")
 
-	server.MetricStorage = storage.NewMemStorage(map[string]storage.Metric{})
 	return &server
 }
 
 func (s *Server) InitFileStore() {
 	if s.StoreFile != "" {
 		s.FileStore = file_store.NewFileStore(s.StoreFile)
+	}
+}
+
+func (s *Server) InitMetricStorage() {
+	if s.Restore && s.FileStore != nil {
+		var err error
+		s.MetricStorage, err = s.FileStore.Read()
+		log.Println("MemStorage restored from store_file")
+		if err != nil {
+			log.Println(err)
+		}
+	}
+	if !s.Restore || s.FileStore != nil {
+		s.MetricStorage = storage.NewMemStorage(map[string]storage.Metric{})
+		log.Println("Empty MemStorage was initialised")
 	}
 }
 
