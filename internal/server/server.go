@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/caarlos0/env/v7"
 	"github.com/firesworder/devopsmetrics/internal/filestore"
@@ -19,17 +20,38 @@ import (
 )
 
 func init() {
-	initEnvParams()
+	InitCmdArgs()
 }
 
 type Environment struct {
-	ServerAddress string        `env:"ADDRESS" envDefault:"localhost:8080"`
-	StoreInterval time.Duration `env:"STORE_INTERVAL" envDefault:"300s"`
+	ServerAddress string        `env:"ADDRESS"`
+	StoreInterval time.Duration `env:"STORE_INTERVAL"`
 	StoreFile     string        `env:"STORE_FILE"`
-	Restore       bool          `env:"RESTORE" envDefault:"true"`
+	Restore       bool          `env:"RESTORE"`
 }
 
 var Env Environment
+
+// InitCmdArgs Определяет флаги командной строки и линкует их с соотв полями объекта Env
+// В рамках этой же функции происходит и заполнение дефолтными значениями
+func InitCmdArgs() {
+	flag.StringVar(&Env.ServerAddress, "a", "localhost:8080", "server address")
+	flag.BoolVar(&Env.Restore, "r", true, "restore memstorage from store file")
+	flag.DurationVar(&Env.StoreInterval, "i", 300*time.Second, "store interval")
+	flag.StringVar(&Env.StoreFile, "f", "/tmp/devops-metrics-db.json", "store file")
+}
+
+// ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения
+func ParseEnvArgs() {
+	// Парсинг аргументов cmd
+	flag.Parse()
+
+	// Парсинг перем окружения
+	err := env.Parse(&Env)
+	if err != nil {
+		panic(err)
+	}
+}
 
 type Server struct {
 	FileStore     *filestore.FileStore
@@ -91,22 +113,6 @@ func (s *Server) InitRepeatableSave() {
 				}
 			}
 		}()
-	}
-}
-
-// todo: объединить взятие env
-func initEnvParams() {
-	err := env.Parse(&Env)
-	if err != nil {
-		panic(err)
-	}
-
-	// библиотека env не дает устанавливать значения "" и иметь envDefault тег одновременно
-	path, isSet := os.LookupEnv("STORE_FILE")
-	if isSet {
-		Env.StoreFile = path
-	} else {
-		Env.StoreFile = "/tmp/devops-metrics-db.json"
 	}
 }
 

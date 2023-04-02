@@ -824,229 +824,6 @@ func TestGetMetricJSONHandler(t *testing.T) {
 	}
 }
 
-// todo: обновить, т.к. функция изменилась
-func TestServer_initEnvParams(t *testing.T) {
-
-	tests := []struct {
-		name           string
-		envVars        map[string]string
-		wantServerEnvs Environment
-		wantPanic      bool
-	}{
-		{
-			name:    "Test address field 1. Env ADDRESS is not set.",
-			envVars: map[string]string{},
-			wantServerEnvs: Environment{
-				ServerAddress: "localhost:8080",
-				StoreInterval: 300 * time.Second,
-				StoreFile:     "/tmp/devops-metrics-db.json",
-				Restore:       true,
-			},
-			wantPanic: false,
-		},
-		{
-			name:    "Test address field 2. Env ADDRESS is set.",
-			envVars: map[string]string{"ADDRESS": "localhost:3030"},
-			wantServerEnvs: Environment{
-				ServerAddress: "localhost:3030",
-				StoreInterval: 300 * time.Second,
-				StoreFile:     "/tmp/devops-metrics-db.json",
-				Restore:       true,
-			},
-			wantPanic: false,
-		},
-		{
-			name:    "Test address field 3. Empty env ADDRESS.",
-			envVars: map[string]string{"ADDRESS": ""},
-			wantServerEnvs: Environment{
-				ServerAddress: "localhost:8080",
-				StoreInterval: 300 * time.Second,
-				StoreFile:     "/tmp/devops-metrics-db.json",
-				Restore:       true,
-			},
-			wantPanic: false,
-		},
-
-		// store interval field
-		{
-			name:    "Test store interval field #1. Env STORE_INTERVAL is not set.",
-			envVars: map[string]string{},
-			wantServerEnvs: Environment{
-				ServerAddress: "localhost:8080",
-				StoreInterval: 300 * time.Second,
-				StoreFile:     "/tmp/devops-metrics-db.json",
-				Restore:       true,
-			},
-			wantPanic: false,
-		},
-		{
-			name:    "Test store interval field #2. Env STORE_INTERVAL is set correctly.",
-			envVars: map[string]string{"STORE_INTERVAL": "20s"},
-			wantServerEnvs: Environment{
-				ServerAddress: "localhost:8080",
-				StoreInterval: 20 * time.Second,
-				StoreFile:     "/tmp/devops-metrics-db.json",
-				Restore:       true,
-			},
-			wantPanic: false,
-		},
-		{
-			name:    "Test store interval field #3. Env STORE_INTERVAL is set, value == 0.",
-			envVars: map[string]string{"STORE_INTERVAL": "0"},
-			wantServerEnvs: Environment{
-				ServerAddress: "localhost:8080",
-				StoreInterval: 0,
-				StoreFile:     "/tmp/devops-metrics-db.json",
-				Restore:       true,
-			},
-			wantPanic: false,
-		},
-		{
-			name:    "Test store interval field #4. Env STORE_INTERVAL is set, but value incorrect.",
-			envVars: map[string]string{"STORE_INTERVAL": "200ч"},
-			wantServerEnvs: Environment{
-				ServerAddress: "localhost:8080",
-				StoreInterval: 300 * time.Second,
-				StoreFile:     "/tmp/devops-metrics-db.json",
-				Restore:       true,
-			},
-			wantPanic: true,
-		},
-		{
-			name:    "Test store interval field #5. Env STORE_INTERVAL is set, but value is empty.",
-			envVars: map[string]string{"STORE_INTERVAL": ""},
-			wantServerEnvs: Environment{
-				ServerAddress: "localhost:8080",
-				StoreInterval: 300 * time.Second,
-				StoreFile:     "/tmp/devops-metrics-db.json",
-				Restore:       true,
-			},
-			wantPanic: false,
-		},
-
-		// StoreFile
-		{
-			name:    "Test store file field #1. Env STORE_FILE is not set.",
-			envVars: map[string]string{},
-			wantServerEnvs: Environment{
-				ServerAddress: "localhost:8080",
-				StoreInterval: 300 * time.Second,
-				StoreFile:     "/tmp/devops-metrics-db.json",
-				Restore:       true,
-			},
-			wantPanic: false,
-		},
-		{
-			name:    "Test store file field #2. Env STORE_FILE is set.",
-			envVars: map[string]string{"STORE_FILE": "new_store.json"},
-			wantServerEnvs: Environment{
-				ServerAddress: "localhost:8080",
-				StoreInterval: 300 * time.Second,
-				StoreFile:     "new_store.json",
-				Restore:       true,
-			},
-			wantPanic: false,
-		},
-		{
-			name:    "Test store file field #3. Env STORE_FILE is set, but value is empty.",
-			envVars: map[string]string{"STORE_FILE": ""},
-			wantServerEnvs: Environment{
-				ServerAddress: "localhost:8080",
-				StoreInterval: 300 * time.Second,
-				StoreFile:     "",
-				Restore:       true,
-			},
-			wantPanic: false,
-		},
-
-		// Restore
-		{
-			name:    "Test restore field #1. Env RESTORE is not set.",
-			envVars: map[string]string{},
-			wantServerEnvs: Environment{
-				ServerAddress: "localhost:8080",
-				StoreInterval: 300 * time.Second,
-				StoreFile:     "/tmp/devops-metrics-db.json",
-				Restore:       true,
-			},
-			wantPanic: false,
-		},
-		{
-			name:    "Test restore field #2. Env RESTORE is set.",
-			envVars: map[string]string{"RESTORE": "false"},
-			wantServerEnvs: Environment{
-				ServerAddress: "localhost:8080",
-				StoreInterval: 300 * time.Second,
-				StoreFile:     "/tmp/devops-metrics-db.json",
-				Restore:       false,
-			},
-			wantPanic: false,
-		},
-		{
-			name:    "Test restore field #3. Env RESTORE is set, but value is incorrect.",
-			envVars: map[string]string{"RESTORE": "0"},
-			wantServerEnvs: Environment{
-				ServerAddress: "localhost:8080",
-				StoreInterval: 300 * time.Second,
-				StoreFile:     "/tmp/devops-metrics-db.json",
-				Restore:       false,
-			},
-			wantPanic: false,
-		},
-		{
-			name:    "Test restore field #4. Env RESTORE is set, but value is empty.",
-			envVars: map[string]string{"RESTORE": ""},
-			wantServerEnvs: Environment{
-				ServerAddress: "localhost:8080",
-				StoreInterval: 300 * time.Second,
-				StoreFile:     "/tmp/devops-metrics-db.json",
-				Restore:       true,
-			},
-			wantPanic: false,
-		},
-		// общие тесты
-		{
-			name: "Test common #1. All envVars are set and correct.",
-			envVars: map[string]string{
-				"ADDRESS":        "localhost:3030",
-				"STORE_INTERVAL": "20s",
-				"STORE_FILE":     "new_store.json",
-				"RESTORE":        "false",
-			},
-			wantServerEnvs: Environment{
-				ServerAddress: "localhost:3030",
-				StoreInterval: 20 * time.Second,
-				StoreFile:     "new_store.json",
-				Restore:       false,
-			},
-			wantPanic: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// сбрасываю значения Env к нулевым(чтобы убрать влияние других тестов)
-			Env = Environment{}
-			// сброс влияния других тестов
-			for _, key := range [4]string{"ADDRESS", "STORE_INTERVAL", "STORE_FILE", "RESTORE"} {
-				err := os.Unsetenv(key)
-				require.NoError(t, err)
-			}
-
-			for key, value := range tt.envVars {
-				err := os.Setenv(key, value)
-				require.NoError(t, err)
-			}
-
-			if tt.wantPanic {
-				assert.Panics(t, initEnvParams)
-			} else {
-				initEnvParams()
-				assert.Equal(t, tt.wantServerEnvs, Env)
-			}
-		})
-	}
-}
-
 func TestServer_InitFileStore(t *testing.T) {
 	type ServerArgsPart struct {
 		StoreFile string
@@ -1344,6 +1121,128 @@ func TestServer_SyncSaveMetricStorage(t *testing.T) {
 				require.NoError(t, err)
 				// проверяем, что врем.файлы теста были удалены
 				assert.NoFileExists(t, sf)
+			}
+		})
+	}
+}
+
+func TestParseEnvArgs(t *testing.T) {
+	tests := []struct {
+		name      string
+		cmdStr    string
+		envVars   map[string]string
+		wantEnv   Environment
+		wantPanic bool
+	}{
+		{
+			name:    "Test correct 1. Empty cmd args and env vars.",
+			cmdStr:  "file.exe",
+			envVars: map[string]string{},
+			wantEnv: Environment{
+				ServerAddress: "localhost:8080",
+				StoreInterval: 300 * time.Second,
+				StoreFile:     "/tmp/devops-metrics-db.json",
+				Restore:       true,
+			},
+			wantPanic: false,
+		},
+		{
+			name:    "Test correct 2. Set cmd args and empty env vars.",
+			cmdStr:  "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false",
+			envVars: map[string]string{},
+			wantEnv: Environment{
+				ServerAddress: "cmd.site",
+				StoreInterval: 20 * time.Second,
+				StoreFile:     "somefile.json",
+				Restore:       false,
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test correct 3. Empty cmd args and set env vars.",
+			cmdStr: "file.exe",
+			envVars: map[string]string{
+				"ADDRESS": "env.site", "STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: Environment{
+				ServerAddress: "env.site",
+				StoreInterval: 60 * time.Second,
+				StoreFile:     "env.json",
+				Restore:       true,
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test correct 4. Set cmd args and set env vars.",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false",
+			envVars: map[string]string{
+				"ADDRESS": "env.site", "STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: Environment{
+				ServerAddress: "env.site",
+				StoreInterval: 60 * time.Second,
+				StoreFile:     "env.json",
+				Restore:       true,
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test correct 5. Partially set cmd args and set env vars. Field ADDRESS",
+			cmdStr: "file.exe -i=20s -f=somefile.json -r=false",
+			envVars: map[string]string{
+				"ADDRESS": "env.site", "STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: Environment{
+				ServerAddress: "env.site",
+				StoreInterval: 60 * time.Second,
+				StoreFile:     "env.json",
+				Restore:       true,
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test correct 6. Set cmd args and partially set env vars. Field ADDRESS",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: Environment{
+				ServerAddress: "cmd.site",
+				StoreInterval: 60 * time.Second,
+				StoreFile:     "env.json",
+				Restore:       true,
+			},
+			wantPanic: false,
+		},
+		// todo: описать более детально тесткейсы(пока только самые простые)
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Устанавливаю env в дефолтные значения(обнулять я его не могу, т.к. flag линки потеряются)
+			Env.ServerAddress = "localhost:8080"
+			Env.Restore = true
+			Env.StoreInterval = 300 * time.Second
+			Env.StoreFile = "/tmp/devops-metrics-db.json"
+
+			// удаляю переменные окружения, если они были до этого установлены
+			for _, key := range [4]string{"ADDRESS", "STORE_FILE", "STORE_INTERVAL", "RESTORE"} {
+				err := os.Unsetenv(key)
+				require.NoError(t, err)
+			}
+			// устанавливаю переменные окружения использованные для теста
+			for key, value := range tt.envVars {
+				err := os.Setenv(key, value)
+				require.NoError(t, err)
+			}
+			// устанавливаю os.Args как эмулятор вызванной команды
+			os.Args = strings.Split(tt.cmdStr, " ")
+
+			// сама проверка корректности парсинга\получения ошибок
+			if tt.wantPanic {
+				assert.Panics(t, ParseEnvArgs)
+			} else {
+				ParseEnvArgs()
+				assert.Equal(t, tt.wantEnv, Env)
 			}
 		})
 	}
