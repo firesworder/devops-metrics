@@ -18,13 +18,20 @@ import (
 	"time"
 )
 
-type Server struct {
-	// todo: выделить ENV в ENV
+func init() {
+	initEnvParams()
+}
+
+type Environment struct {
 	ServerAddress string        `env:"ADDRESS" envDefault:"localhost:8080"`
 	StoreInterval time.Duration `env:"STORE_INTERVAL" envDefault:"300s"`
-	// Дефолтное значение для этого поля в initEnvParams
-	StoreFile     string `env:"STORE_FILE"`
-	Restore       bool   `env:"RESTORE" envDefault:"true"`
+	StoreFile     string        `env:"STORE_FILE"`
+	Restore       bool          `env:"RESTORE" envDefault:"true"`
+}
+
+var Env Environment
+
+type Server struct {
 	FileStore     *filestore.FileStore
 	WriteTicker   *time.Ticker
 	Router        chi.Router
@@ -34,7 +41,6 @@ type Server struct {
 
 func NewServer() *Server {
 	server := Server{}
-	server.initEnvParams()
 	server.InitFileStore()
 	server.InitMetricStorage()
 	server.InitRepeatableSave()
@@ -47,13 +53,13 @@ func NewServer() *Server {
 }
 
 func (s *Server) InitFileStore() {
-	if s.StoreFile != "" {
-		s.FileStore = filestore.NewFileStore(s.StoreFile)
+	if Env.StoreFile != "" {
+		s.FileStore = filestore.NewFileStore(Env.StoreFile)
 	}
 }
 
 func (s *Server) InitMetricStorage() {
-	if s.Restore && s.FileStore != nil {
+	if Env.Restore && s.FileStore != nil {
 		var err error
 		s.MetricStorage, err = s.FileStore.Read()
 		if err != nil {
@@ -69,10 +75,10 @@ func (s *Server) InitMetricStorage() {
 }
 
 func (s *Server) InitRepeatableSave() {
-	if s.StoreInterval > 0 && s.FileStore != nil {
+	if Env.StoreInterval > 0 && s.FileStore != nil {
 		go func() {
 			var err error
-			s.WriteTicker = time.NewTicker(s.StoreInterval)
+			s.WriteTicker = time.NewTicker(Env.StoreInterval)
 			for range s.WriteTicker.C {
 				// нет смысла писать nil MetricStorage
 				if s.MetricStorage == nil {
@@ -89,8 +95,8 @@ func (s *Server) InitRepeatableSave() {
 }
 
 // todo: объединить взятие env
-func (s *Server) initEnvParams() {
-	err := env.Parse(s)
+func initEnvParams() {
+	err := env.Parse(&Env)
 	if err != nil {
 		panic(err)
 	}
@@ -98,15 +104,15 @@ func (s *Server) initEnvParams() {
 	// библиотека env не дает устанавливать значения "" и иметь envDefault тег одновременно
 	path, isSet := os.LookupEnv("STORE_FILE")
 	if isSet {
-		s.StoreFile = path
+		Env.StoreFile = path
 	} else {
-		s.StoreFile = "/tmp/devops-metrics-db.json"
+		Env.StoreFile = "/tmp/devops-metrics-db.json"
 	}
 }
 
 // todo: выглядит как неочень удобный костыль, переделать потом в рамках MemStorage
 func (s *Server) SyncSaveMetricStorage() error {
-	if s.StoreInterval == 0 && s.FileStore != nil && s.MetricStorage != nil {
+	if Env.StoreInterval == 0 && s.FileStore != nil && s.MetricStorage != nil {
 		err := s.FileStore.Write(s.MetricStorage)
 		return err
 	}

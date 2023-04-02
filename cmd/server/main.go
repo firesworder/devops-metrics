@@ -9,7 +9,7 @@ import (
 func main() {
 	serverParams := server.NewServer()
 	serverObj := &http.Server{
-		Addr:    serverParams.ServerAddress,
+		Addr:    server.Env.ServerAddress,
 		Handler: serverParams.Router,
 	}
 	log.Fatal(serverObj.ListenAndServe())

@@ -830,13 +830,13 @@ func TestServer_initEnvParams(t *testing.T) {
 	tests := []struct {
 		name           string
 		envVars        map[string]string
-		wantServerEnvs Server
+		wantServerEnvs Environment
 		wantPanic      bool
 	}{
 		{
 			name:    "Test address field 1. Env ADDRESS is not set.",
 			envVars: map[string]string{},
-			wantServerEnvs: Server{
+			wantServerEnvs: Environment{
 				ServerAddress: "localhost:8080",
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "/tmp/devops-metrics-db.json",
@@ -847,7 +847,7 @@ func TestServer_initEnvParams(t *testing.T) {
 		{
 			name:    "Test address field 2. Env ADDRESS is set.",
 			envVars: map[string]string{"ADDRESS": "localhost:3030"},
-			wantServerEnvs: Server{
+			wantServerEnvs: Environment{
 				ServerAddress: "localhost:3030",
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "/tmp/devops-metrics-db.json",
@@ -858,7 +858,7 @@ func TestServer_initEnvParams(t *testing.T) {
 		{
 			name:    "Test address field 3. Empty env ADDRESS.",
 			envVars: map[string]string{"ADDRESS": ""},
-			wantServerEnvs: Server{
+			wantServerEnvs: Environment{
 				ServerAddress: "localhost:8080",
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "/tmp/devops-metrics-db.json",
@@ -871,7 +871,7 @@ func TestServer_initEnvParams(t *testing.T) {
 		{
 			name:    "Test store interval field #1. Env STORE_INTERVAL is not set.",
 			envVars: map[string]string{},
-			wantServerEnvs: Server{
+			wantServerEnvs: Environment{
 				ServerAddress: "localhost:8080",
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "/tmp/devops-metrics-db.json",
@@ -882,7 +882,7 @@ func TestServer_initEnvParams(t *testing.T) {
 		{
 			name:    "Test store interval field #2. Env STORE_INTERVAL is set correctly.",
 			envVars: map[string]string{"STORE_INTERVAL": "20s"},
-			wantServerEnvs: Server{
+			wantServerEnvs: Environment{
 				ServerAddress: "localhost:8080",
 				StoreInterval: 20 * time.Second,
 				StoreFile:     "/tmp/devops-metrics-db.json",
@@ -893,7 +893,7 @@ func TestServer_initEnvParams(t *testing.T) {
 		{
 			name:    "Test store interval field #3. Env STORE_INTERVAL is set, value == 0.",
 			envVars: map[string]string{"STORE_INTERVAL": "0"},
-			wantServerEnvs: Server{
+			wantServerEnvs: Environment{
 				ServerAddress: "localhost:8080",
 				StoreInterval: 0,
 				StoreFile:     "/tmp/devops-metrics-db.json",
@@ -904,7 +904,7 @@ func TestServer_initEnvParams(t *testing.T) {
 		{
 			name:    "Test store interval field #4. Env STORE_INTERVAL is set, but value incorrect.",
 			envVars: map[string]string{"STORE_INTERVAL": "200ч"},
-			wantServerEnvs: Server{
+			wantServerEnvs: Environment{
 				ServerAddress: "localhost:8080",
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "/tmp/devops-metrics-db.json",
@@ -915,7 +915,7 @@ func TestServer_initEnvParams(t *testing.T) {
 		{
 			name:    "Test store interval field #5. Env STORE_INTERVAL is set, but value is empty.",
 			envVars: map[string]string{"STORE_INTERVAL": ""},
-			wantServerEnvs: Server{
+			wantServerEnvs: Environment{
 				ServerAddress: "localhost:8080",
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "/tmp/devops-metrics-db.json",
@@ -928,7 +928,7 @@ func TestServer_initEnvParams(t *testing.T) {
 		{
 			name:    "Test store file field #1. Env STORE_FILE is not set.",
 			envVars: map[string]string{},
-			wantServerEnvs: Server{
+			wantServerEnvs: Environment{
 				ServerAddress: "localhost:8080",
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "/tmp/devops-metrics-db.json",
@@ -939,7 +939,7 @@ func TestServer_initEnvParams(t *testing.T) {
 		{
 			name:    "Test store file field #2. Env STORE_FILE is set.",
 			envVars: map[string]string{"STORE_FILE": "new_store.json"},
-			wantServerEnvs: Server{
+			wantServerEnvs: Environment{
 				ServerAddress: "localhost:8080",
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "new_store.json",
@@ -950,7 +950,7 @@ func TestServer_initEnvParams(t *testing.T) {
 		{
 			name:    "Test store file field #3. Env STORE_FILE is set, but value is empty.",
 			envVars: map[string]string{"STORE_FILE": ""},
-			wantServerEnvs: Server{
+			wantServerEnvs: Environment{
 				ServerAddress: "localhost:8080",
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "",
@@ -963,7 +963,7 @@ func TestServer_initEnvParams(t *testing.T) {
 		{
 			name:    "Test restore field #1. Env RESTORE is not set.",
 			envVars: map[string]string{},
-			wantServerEnvs: Server{
+			wantServerEnvs: Environment{
 				ServerAddress: "localhost:8080",
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "/tmp/devops-metrics-db.json",
@@ -974,7 +974,7 @@ func TestServer_initEnvParams(t *testing.T) {
 		{
 			name:    "Test restore field #2. Env RESTORE is set.",
 			envVars: map[string]string{"RESTORE": "false"},
-			wantServerEnvs: Server{
+			wantServerEnvs: Environment{
 				ServerAddress: "localhost:8080",
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "/tmp/devops-metrics-db.json",
@@ -985,7 +985,7 @@ func TestServer_initEnvParams(t *testing.T) {
 		{
 			name:    "Test restore field #3. Env RESTORE is set, but value is incorrect.",
 			envVars: map[string]string{"RESTORE": "0"},
-			wantServerEnvs: Server{
+			wantServerEnvs: Environment{
 				ServerAddress: "localhost:8080",
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "/tmp/devops-metrics-db.json",
@@ -996,7 +996,7 @@ func TestServer_initEnvParams(t *testing.T) {
 		{
 			name:    "Test restore field #4. Env RESTORE is set, but value is empty.",
 			envVars: map[string]string{"RESTORE": ""},
-			wantServerEnvs: Server{
+			wantServerEnvs: Environment{
 				ServerAddress: "localhost:8080",
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "/tmp/devops-metrics-db.json",
@@ -1013,7 +1013,7 @@ func TestServer_initEnvParams(t *testing.T) {
 				"STORE_FILE":     "new_store.json",
 				"RESTORE":        "false",
 			},
-			wantServerEnvs: Server{
+			wantServerEnvs: Environment{
 				ServerAddress: "localhost:3030",
 				StoreInterval: 20 * time.Second,
 				StoreFile:     "new_store.json",
@@ -1024,6 +1024,8 @@ func TestServer_initEnvParams(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// сбрасываю значения Env к нулевым(чтобы убрать влияние других тестов)
+			Env = Environment{}
 			// сброс влияния других тестов
 			for _, key := range [4]string{"ADDRESS", "STORE_INTERVAL", "STORE_FILE", "RESTORE"} {
 				err := os.Unsetenv(key)
@@ -1035,12 +1037,11 @@ func TestServer_initEnvParams(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			s := Server{}
 			if tt.wantPanic {
-				assert.Panics(t, s.initEnvParams)
+				assert.Panics(t, initEnvParams)
 			} else {
-				s.initEnvParams()
-				assert.Equal(t, tt.wantServerEnvs, s)
+				initEnvParams()
+				assert.Equal(t, tt.wantServerEnvs, Env)
 			}
 		})
 	}
@@ -1077,9 +1078,9 @@ func TestServer_InitFileStore(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Server{
-				StoreFile: tt.beforeInitSArgs.StoreFile,
 				FileStore: tt.beforeInitSArgs.FileStore,
 			}
+			Env.StoreFile = tt.beforeInitSArgs.StoreFile
 			s.InitFileStore()
 			assert.Equal(t, tt.wantFSArg, s.FileStore)
 		})
@@ -1171,8 +1172,8 @@ func TestServer_InitMetricStorage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			serverObj := Server{
 				FileStore: tt.serverArgs.FileStore,
-				Restore:   tt.serverArgs.Restore,
 			}
+			Env.Restore = tt.Restore
 			serverObj.InitMetricStorage()
 			assert.Equal(t, tt.wantMetricStorage, serverObj.MetricStorage)
 		})
@@ -1229,10 +1230,10 @@ func TestServer_InitRepeatableSave(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Server{
-				StoreInterval: tt.serverArgs.StoreInterval,
 				FileStore:     tt.serverArgs.FileStore,
 				MetricStorage: tt.serverArgs.MetricStorage,
 			}
+			Env.StoreInterval = tt.StoreInterval
 			s.InitRepeatableSave()
 			time.Sleep(time.Second) // ждем пока тикер в InitRepeatableSave отработает(горутиной)
 
@@ -1315,10 +1316,10 @@ func TestServer_SyncSaveMetricStorage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Server{
-				StoreInterval: tt.serverArgs.StoreInterval,
 				FileStore:     tt.serverArgs.FileStore,
 				MetricStorage: tt.serverArgs.MetricStorage,
 			}
+			Env.StoreInterval = tt.StoreInterval
 			err := s.SyncSaveMetricStorage()
 			require.NoError(t, err)
 
