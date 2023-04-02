@@ -2,6 +2,7 @@ package agent
 
 import (
 	"encoding/json"
+	"flag"
 	"github.com/caarlos0/env/v7"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/go-resty/resty/v2"
@@ -21,9 +22,9 @@ var RandomValue gauge
 var ServerURL string
 
 type Environment struct {
-	ServerAddress  string        `env:"ADDRESS" envDefault:"localhost:8080"`
-	ReportInterval time.Duration `env:"REPORT_INTERVAL" envDefault:"10s"`
-	PollInterval   time.Duration `env:"POLL_INTERVAL" envDefault:"2s"`
+	ServerAddress  string        `env:"ADDRESS"`
+	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
+	PollInterval   time.Duration `env:"POLL_INTERVAL"`
 }
 
 var Env Environment
@@ -32,13 +33,26 @@ var Env Environment
 //  одна через json, вторая - старая, через url. Можно реализовать sendMetricJson и вызывать нужный потом
 
 func init() {
-	initEnv()
+	InitCmdArgs()
 	ServerURL = (&url.URL{Scheme: "http", Host: Env.ServerAddress}).String()
 	memstats = runtime.MemStats{}
 	runtime.ReadMemStats(&memstats)
 }
 
-func initEnv() {
+// InitCmdArgs Определяет флаги командной строки и линкует их с соотв полями объекта Env
+// В рамках этой же функции происходит и заполнение дефолтными значениями
+func InitCmdArgs() {
+	flag.StringVar(&Env.ServerAddress, "a", "localhost:8080", "Server address")
+	flag.DurationVar(&Env.ReportInterval, "r", 10*time.Second, "report interval")
+	flag.DurationVar(&Env.PollInterval, "p", 2*time.Second, "poll(update) interval")
+}
+
+// ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения
+func ParseEnvArgs() {
+	// Парсинг аргументов cmd
+	flag.Parse()
+
+	// Парсинг перем окружения
 	err := env.Parse(&Env)
 	if err != nil {
 		panic(err)

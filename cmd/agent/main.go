@@ -6,6 +6,7 @@ import (
 )
 
 func main() {
+	agent.ParseEnvArgs()
 	// подготовка тикеров на обновление и отправку
 	pollTicker := time.NewTicker(agent.Env.PollInterval)
 	reportTicker := time.NewTicker(agent.Env.ReportInterval)
