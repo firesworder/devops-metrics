@@ -34,9 +34,12 @@ var Env Environment
 
 func init() {
 	InitCmdArgs()
-	ServerURL = (&url.URL{Scheme: "http", Host: Env.ServerAddress}).String()
 	memstats = runtime.MemStats{}
 	runtime.ReadMemStats(&memstats)
+}
+
+func InitServerUrlByEnv() {
+	ServerURL = (&url.URL{Scheme: "http", Host: Env.ServerAddress}).String()
 }
 
 // InitCmdArgs Определяет флаги командной строки и линкует их с соотв полями объекта Env
