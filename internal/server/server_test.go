@@ -45,8 +45,8 @@ type response struct {
 }
 
 func TestAddUpdateMetricHandler(t *testing.T) {
-	s := NewServer()
-	ts := httptest.NewServer(s.Router)
+	s := Server{}
+	ts := httptest.NewServer(s.NewRouter())
 	defer ts.Close()
 
 	tests := []struct {
@@ -203,9 +203,9 @@ func TestAddUpdateMetricHandler(t *testing.T) {
 }
 
 func TestShowAllMetricsHandler(t *testing.T) {
-	s := NewServer()
+	s := Server{}
 	s.LayoutsDir = "./html_layouts/"
-	ts := httptest.NewServer(s.Router)
+	ts := httptest.NewServer(s.NewRouter())
 	defer ts.Close()
 
 	tests := []struct {
@@ -263,8 +263,8 @@ func TestShowAllMetricsHandler(t *testing.T) {
 }
 
 func TestGetMetricHandler(t *testing.T) {
-	s := NewServer()
-	ts := httptest.NewServer(s.Router)
+	s := Server{}
+	ts := httptest.NewServer(s.NewRouter())
 	defer ts.Close()
 
 	filledState := map[string]storage.Metric{
@@ -375,8 +375,8 @@ func TestGetMetricHandler(t *testing.T) {
 }
 
 func TestAddUpdateMetricJSONHandler(t *testing.T) {
-	s := NewServer()
-	ts := httptest.NewServer(s.Router)
+	s := Server{}
+	ts := httptest.NewServer(s.NewRouter())
 	defer ts.Close()
 
 	tests := []struct {
@@ -681,8 +681,9 @@ func TestGetMetricJSONHandler(t *testing.T) {
 	}
 	emptyState := map[string]storage.Metric{}
 
-	s := NewServer()
-	ts := httptest.NewServer(s.Router)
+	// костыль, чтоб
+	s := Server{}
+	ts := httptest.NewServer(s.NewRouter())
 	defer ts.Close()
 
 	tests := []struct {
