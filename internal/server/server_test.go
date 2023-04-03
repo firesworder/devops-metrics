@@ -858,6 +858,7 @@ func TestServer_InitFileStore(t *testing.T) {
 			s := &Server{
 				FileStore: tt.beforeInitSArgs.FileStore,
 			}
+			Env = Environment{}
 			Env.StoreFile = tt.beforeInitSArgs.StoreFile
 			s.InitFileStore()
 			assert.Equal(t, tt.wantFSArg, s.FileStore)
@@ -1097,6 +1098,7 @@ func TestServer_SyncSaveMetricStorage(t *testing.T) {
 				FileStore:     tt.serverArgs.FileStore,
 				MetricStorage: tt.serverArgs.MetricStorage,
 			}
+			Env = Environment{}
 			Env.StoreInterval = tt.StoreInterval
 			err := s.SyncSaveMetricStorage()
 			require.NoError(t, err)
@@ -1220,10 +1222,12 @@ func TestParseEnvArgs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Устанавливаю env в дефолтные значения(обнулять я его не могу, т.к. flag линки потеряются)
-			Env.ServerAddress = "localhost:8080"
-			Env.Restore = true
-			Env.StoreInterval = 300 * time.Second
-			Env.StoreFile = "/tmp/devops-metrics-db.json"
+			Env = Environment{
+				ServerAddress: "localhost:8080",
+				StoreInterval: 300 * time.Second,
+				StoreFile:     "/tmp/devops-metrics-db.json",
+				Restore:       true,
+			}
 
 			// удаляю переменные окружения, если они были до этого установлены
 			for _, key := range [4]string{"ADDRESS", "STORE_FILE", "STORE_INTERVAL", "RESTORE"} {
