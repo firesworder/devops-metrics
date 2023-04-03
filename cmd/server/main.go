@@ -7,6 +7,7 @@ import (
 )
 
 func main() {
+	server.ParseEnvArgs()
 	serverParams := server.NewServer()
 	serverObj := &http.Server{
 		Addr:    server.Env.ServerAddress,
