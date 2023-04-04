@@ -1045,90 +1045,6 @@ func TestServer_InitRepeatableSave(t *testing.T) {
 	}
 }
 
-// Тестирую изолированно только саму функцию(а не ее инъекции в обновл. MS хендлеры)
-func TestServer_SyncSaveMetricStorage(t *testing.T) {
-	type serverArgs struct {
-		StoreInterval time.Duration
-		FileStore     *filestore.FileStore
-		MetricStorage storage.MetricRepository
-	}
-	tests := []struct {
-		name string
-		serverArgs
-		wantFileAs string
-	}{
-		{
-			name: "Test #1. StoreInterval == 0 and FileStore != nil. MS != nil.",
-			serverArgs: serverArgs{
-				StoreInterval: 0,
-				FileStore:     filestore.NewFileStore("file_storage_test/test_1.json"),
-				MetricStorage: storage.NewMemStorage(map[string]storage.Metric{
-					metric1.Name: *metric1,
-					metric2.Name: *metric2,
-				}),
-			},
-			wantFileAs: "file_storage_test/correct_ms_test.json",
-		},
-		// todo: тест на появление\отсутствие паники, по сути.
-		{
-			name: "Test #2. StoreInterval == 0 and FileStore == nil. MS != nil.",
-			serverArgs: serverArgs{
-				StoreInterval: 0,
-				FileStore:     nil,
-				MetricStorage: storage.NewMemStorage(map[string]storage.Metric{
-					metric1.Name: *metric1,
-					metric2.Name: *metric2,
-				}),
-			},
-			wantFileAs: "",
-		},
-		{
-			name: "Test #3. StoreInterval == 0 and FileStore != nil. MS == nil",
-			serverArgs: serverArgs{
-				StoreInterval: 0,
-				FileStore:     filestore.NewFileStore("file_storage_test/test_3.json"),
-				MetricStorage: nil,
-			},
-			wantFileAs: "",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &Server{
-				FileStore:     tt.serverArgs.FileStore,
-				MetricStorage: tt.serverArgs.MetricStorage,
-			}
-			Env = Environment{}
-			Env.StoreInterval = tt.StoreInterval
-			err := s.SyncSaveMetricStorage()
-			require.NoError(t, err)
-
-			if tt.serverArgs.FileStore == nil {
-				t.Skip("Не знаю как пока тестировать кейсы с FileStore == nil")
-			}
-
-			if tt.wantFileAs == "" {
-				assert.NoFileExists(t, tt.serverArgs.FileStore.StoreFilePath)
-			} else {
-				sf := tt.serverArgs.FileStore.StoreFilePath
-				require.FileExists(t, sf)
-				// todo: эту часть напрямую скопировал из TestFileStore_Write. Мб как то стоит убрать дубль
-				wantContent, err := os.ReadFile(tt.wantFileAs)
-				require.NoError(t, err)
-				gotContent, err := os.ReadFile(sf)
-				require.NoError(t, err)
-				assert.Equal(t, wantContent, gotContent)
-
-				// удаляю созданные сохранением файлы
-				err = os.Remove(sf)
-				require.NoError(t, err)
-				// проверяем, что врем.файлы теста были удалены
-				assert.NoFileExists(t, sf)
-			}
-		})
-	}
-}
-
 func TestParseEnvArgs(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -1248,6 +1164,90 @@ func TestParseEnvArgs(t *testing.T) {
 			} else {
 				ParseEnvArgs()
 				assert.Equal(t, tt.wantEnv, Env)
+			}
+		})
+	}
+}
+
+// Тестирую изолированно только саму функцию(а не ее инъекции в обновл. MS хендлеры)
+func TestServer_SyncSaveMetricStorage(t *testing.T) {
+	type serverArgs struct {
+		StoreInterval time.Duration
+		FileStore     *filestore.FileStore
+		MetricStorage storage.MetricRepository
+	}
+	tests := []struct {
+		name string
+		serverArgs
+		wantFileAs string
+	}{
+		{
+			name: "Test #1. StoreInterval == 0 and FileStore != nil. MS != nil.",
+			serverArgs: serverArgs{
+				StoreInterval: 0,
+				FileStore:     filestore.NewFileStore("file_storage_test/test_1.json"),
+				MetricStorage: storage.NewMemStorage(map[string]storage.Metric{
+					metric1.Name: *metric1,
+					metric2.Name: *metric2,
+				}),
+			},
+			wantFileAs: "file_storage_test/correct_ms_test.json",
+		},
+		// todo: тест на появление\отсутствие паники, по сути.
+		{
+			name: "Test #2. StoreInterval == 0 and FileStore == nil. MS != nil.",
+			serverArgs: serverArgs{
+				StoreInterval: 0,
+				FileStore:     nil,
+				MetricStorage: storage.NewMemStorage(map[string]storage.Metric{
+					metric1.Name: *metric1,
+					metric2.Name: *metric2,
+				}),
+			},
+			wantFileAs: "",
+		},
+		{
+			name: "Test #3. StoreInterval == 0 and FileStore != nil. MS == nil",
+			serverArgs: serverArgs{
+				StoreInterval: 0,
+				FileStore:     filestore.NewFileStore("file_storage_test/test_3.json"),
+				MetricStorage: nil,
+			},
+			wantFileAs: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Server{
+				FileStore:     tt.serverArgs.FileStore,
+				MetricStorage: tt.serverArgs.MetricStorage,
+			}
+			Env = Environment{}
+			Env.StoreInterval = tt.StoreInterval
+			err := s.SyncSaveMetricStorage()
+			require.NoError(t, err)
+
+			if tt.serverArgs.FileStore == nil {
+				t.Skip("Не знаю как пока тестировать кейсы с FileStore == nil")
+			}
+
+			if tt.wantFileAs == "" {
+				assert.NoFileExists(t, tt.serverArgs.FileStore.StoreFilePath)
+			} else {
+				sf := tt.serverArgs.FileStore.StoreFilePath
+				require.FileExists(t, sf)
+				// todo: эту часть напрямую скопировал из TestFileStore_Write. Мб как то стоит убрать дубль
+				wantContent, err := os.ReadFile(tt.wantFileAs)
+				require.NoError(t, err)
+				gotContent, err := os.ReadFile(sf)
+				require.NoError(t, err)
+				assert.Equal(t, wantContent, gotContent)
+
+				// удаляю созданные сохранением файлы
+				err = os.Remove(sf)
+				require.NoError(t, err)
+				// проверяем, что врем.файлы теста были удалены
+				assert.NoFileExists(t, sf)
 			}
 		})
 	}
