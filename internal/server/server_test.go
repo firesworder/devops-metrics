@@ -1,6 +1,8 @@
 package server
 
 import (
+	"bytes"
+	"compress/gzip"
 	"github.com/firesworder/devopsmetrics/internal/filestore"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"github.com/stretchr/testify/assert"
@@ -1083,6 +1085,154 @@ func TestParseEnvArgs(t *testing.T) {
 	}
 }
 
+// responseWC == response with compression(gzip), increment 8
+type responseWC struct {
+	response
+	uncompressed bool
+}
+
+type requestArgsWC struct {
+	requestArgs
+	reqEncoding string
+}
+
+func sendTestRequestWithCompression(t *testing.T, ts *httptest.Server, r requestArgsWC) responseWC {
+	var req *http.Request
+	var err error
+	if r.reqEncoding == "" {
+		req, err = http.NewRequest(r.method, ts.URL+r.url, strings.NewReader(r.body))
+	} else {
+		// Compression
+		var b bytes.Buffer
+		w := gzip.NewWriter(&b)
+		// запись данных
+		_, err = w.Write([]byte(r.body))
+		require.NoError(t, err)
+		err = w.Close()
+		require.NoError(t, err)
+		req, err = http.NewRequest(r.method, ts.URL+r.url, &b)
+		req.Header.Set("Content-Encoding", r.reqEncoding)
+	}
+
+	// создаю реквест
+	req.Header.Add("Content-Type", "application/json")
+	require.NoError(t, err)
+
+	// делаю реквест на дефолтном клиенте
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+
+	// читаю ответ сервера
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	return responseWC{
+		response: response{
+			statusCode:  resp.StatusCode,
+			contentType: resp.Header.Get("Content-Type"),
+			body:        string(respBody),
+		},
+		uncompressed: resp.Uncompressed,
+	}
+}
+
+func TestServer_gzipCompressor(t *testing.T) {
+	s := Server{}
+	ts := httptest.NewServer(s.NewRouter())
+	defer ts.Close()
+
+	tests := []struct {
+		name string
+		requestArgsWC
+		wantResponse responseWC
+		initState    map[string]storage.Metric
+		wantedState  map[string]storage.Metric
+	}{
+		{
+			name: "Test 1. Request for 'AddUpdateMetricJSONHandler'",
+			requestArgsWC: requestArgsWC{
+				requestArgs: requestArgs{
+					method:      http.MethodPost,
+					url:         "/update/",
+					contentType: "application/json",
+					body:        `{"id":"PollCount","type":"counter","delta":10}`,
+				},
+				reqEncoding: "",
+			},
+			wantResponse: responseWC{
+				response: response{
+					statusCode:  http.StatusOK,
+					contentType: "application/json",
+					body:        `{"id":"PollCount","type":"counter","delta":10}`,
+				},
+				uncompressed: true,
+			},
+			initState:   map[string]storage.Metric{},
+			wantedState: map[string]storage.Metric{metric1.Name: *metric1},
+		},
+		// todo: добавить кейс, когда агент не хочет сжатия
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s.MetricStorage = storage.NewMemStorage(tt.initState)
+			rWC := sendTestRequestWithCompression(t, ts, tt.requestArgsWC)
+			require.Equal(t, tt.wantResponse.statusCode, rWC.statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, rWC.contentType)
+			assert.Equal(t, tt.wantResponse.uncompressed, rWC.uncompressed)
+			assert.Equal(t, tt.wantResponse.body, rWC.body)
+			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll())
+		})
+	}
+}
+
+func TestServer_gzipDecompressor(t *testing.T) {
+	s := Server{}
+	ts := httptest.NewServer(s.NewRouter())
+	defer ts.Close()
+
+	tests := []struct {
+		name string
+		requestArgsWC
+		wantResponse responseWC
+		initState    map[string]storage.Metric
+		wantedState  map[string]storage.Metric
+	}{
+		{
+			name: "Test 1. Request for 'AddUpdateMetricJSONHandler'",
+			requestArgsWC: requestArgsWC{
+				requestArgs: requestArgs{
+					method:      http.MethodPost,
+					url:         "/update/",
+					contentType: "application/json",
+					body:        `{"id":"PollCount","type":"counter","delta":10}`,
+				},
+				reqEncoding: "gzip",
+			},
+			wantResponse: responseWC{
+				response: response{
+					statusCode:  http.StatusOK,
+					contentType: "application/json",
+					body:        `{"id":"PollCount","type":"counter","delta":10}`,
+				},
+			},
+			initState:   map[string]storage.Metric{},
+			wantedState: map[string]storage.Metric{metric1.Name: *metric1},
+		},
+		// todo: добавить тестов
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s.MetricStorage = storage.NewMemStorage(tt.initState)
+			rWC := sendTestRequestWithCompression(t, ts, tt.requestArgsWC)
+			require.Equal(t, tt.wantResponse.statusCode, rWC.statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, rWC.contentType)
+			assert.Equal(t, tt.wantResponse.body, rWC.body)
+			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll())
+		})
+	}
+}
+
+// todo: тесты ниже исправить. До тех пор - оставлять их в самом конце(устраивают гонку горутинами)
 // Тестирую изолированно только саму функцию(а не ее инъекции в обновл. MS хендлеры)
 func TestServer_SyncSaveMetricStorage(t *testing.T) {
 	type serverArgs struct {

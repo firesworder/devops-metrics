@@ -1,6 +1,7 @@
 package server
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -12,10 +13,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -56,6 +59,7 @@ func ParseEnvArgs() {
 type Server struct {
 	FileStore     *filestore.FileStore
 	WriteTicker   *time.Ticker
+	gzipWriter    *gzip.Writer
 	Router        chi.Router
 	LayoutsDir    string
 	MetricStorage storage.MetricRepository
@@ -128,6 +132,8 @@ func (s *Server) SyncSaveMetricStorage() error {
 func (s *Server) NewRouter() chi.Router {
 	r := chi.NewRouter()
 
+	r.Use(s.gzipDecompressor)
+	r.Use(s.gzipCompressor)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
@@ -140,11 +146,61 @@ func (s *Server) NewRouter() chi.Router {
 		r.Post("/update/", s.handlerJSONAddUpdateMetric)
 		r.Post("/value/", s.handlerJSONGetMetric)
 	})
-
 	return r
 }
 
+type gzipResponseWriter struct {
+	http.ResponseWriter // нужен, чтобы хандлеры не спотыкались об отсутствие возм.установить header например.
+	Writer              io.Writer
+}
+
+func (w gzipResponseWriter) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
+}
+
+func (s *Server) gzipDecompressor(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Header.Get(`Content-Encoding`) == `gzip` {
+			gz, err := gzip.NewReader(request.Body)
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			request.Body = gz
+			defer gz.Close()
+		}
+		next.ServeHTTP(writer, request)
+	})
+}
+
+func (s *Server) gzipCompressor(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		var err error
+		// если не допускает сжатие - ничего не делать
+		if !strings.Contains(request.Header.Get("Accept-Encoding"), "gzip") {
+			next.ServeHTTP(writer, request)
+			return
+		}
+
+		// проверяет, существует уже writer gzip, если нет создает, иначе использует существующий
+		if s.gzipWriter == nil {
+			s.gzipWriter, err = gzip.NewWriterLevel(writer, gzip.BestSpeed)
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+			}
+		} else {
+			s.gzipWriter.Reset(writer)
+		}
+		defer s.gzipWriter.Close()
+
+		// оборачиваю ответ в gzip
+		writer.Header().Set("Content-Encoding", "gzip")
+		next.ServeHTTP(gzipResponseWriter{ResponseWriter: writer, Writer: s.gzipWriter}, request)
+	})
+}
+
 func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http.Request) {
+	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if s.LayoutsDir == "" {
 		http.Error(writer, "Not initialised workingDir path", http.StatusInternalServerError)
 		return
@@ -177,6 +233,7 @@ func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "unknown metric", http.StatusNotFound)
 		return
 	}
+	writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	writer.Write([]byte(metric.GetValueString()))
 }
 
