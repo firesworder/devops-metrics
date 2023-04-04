@@ -7,7 +7,7 @@ import (
 
 func main() {
 	agent.ParseEnvArgs()
-	agent.InitServerUrlByEnv()
+	agent.InitServerURLByEnv()
 	// подготовка тикеров на обновление и отправку
 	pollTicker := time.NewTicker(agent.Env.PollInterval)
 	reportTicker := time.NewTicker(agent.Env.ReportInterval)

@@ -38,7 +38,7 @@ func init() {
 	runtime.ReadMemStats(&memstats)
 }
 
-func InitServerUrlByEnv() {
+func InitServerURLByEnv() {
 	ServerURL = (&url.URL{Scheme: "http", Host: Env.ServerAddress}).String()
 }
 
