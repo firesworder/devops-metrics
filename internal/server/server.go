@@ -59,7 +59,6 @@ func ParseEnvArgs() {
 type Server struct {
 	FileStore     *filestore.FileStore
 	WriteTicker   *time.Ticker
-	gzipWriter    *gzip.Writer
 	Router        chi.Router
 	LayoutsDir    string
 	MetricStorage storage.MetricRepository
@@ -175,27 +174,19 @@ func (s *Server) gzipDecompressor(next http.Handler) http.Handler {
 
 func (s *Server) gzipCompressor(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		var err error
 		// если не допускает сжатие - ничего не делать
 		if !strings.Contains(request.Header.Get("Accept-Encoding"), "gzip") {
 			next.ServeHTTP(writer, request)
 			return
 		}
 
-		// проверяет, существует уже writer gzip, если нет создает, иначе использует существующий
-		if s.gzipWriter == nil {
-			s.gzipWriter, err = gzip.NewWriterLevel(writer, gzip.BestSpeed)
-			if err != nil {
-				http.Error(writer, err.Error(), http.StatusInternalServerError)
-			}
-		} else {
-			s.gzipWriter.Reset(writer)
-		}
-		defer s.gzipWriter.Close()
+		// создаю gzipWriter
+		gzipWriter := gzip.NewWriter(writer)
+		defer gzipWriter.Close()
 
 		// оборачиваю ответ в gzip
 		writer.Header().Set("Content-Encoding", "gzip")
-		next.ServeHTTP(gzipResponseWriter{ResponseWriter: writer, Writer: s.gzipWriter}, request)
+		next.ServeHTTP(gzipResponseWriter{ResponseWriter: writer, Writer: gzipWriter}, request)
 	})
 }
 
