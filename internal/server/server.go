@@ -160,7 +160,7 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 
 func (s *Server) gzipDecompressor(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.Header.Get(`Content-Encoding`) == `gzip` {
+		if strings.Contains(request.Header.Get("Content-Encoding"), "gzip") {
 			gz, err := gzip.NewReader(request.Body)
 			if err != nil {
 				http.Error(writer, err.Error(), http.StatusInternalServerError)
