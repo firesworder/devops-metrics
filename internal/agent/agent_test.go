@@ -38,6 +38,51 @@ func TestUpdateMetrics(t *testing.T) {
 	assert.NotEqual(t, randomValueBefore, randomValueAfter, "RandomValue was not updated")
 }
 
+func TestSendMetricByURL(t *testing.T) {
+	type args struct {
+		paramName  string
+		paramValue interface{}
+	}
+	tests := []struct {
+		name           string
+		args           args
+		wantRequestURL string
+	}{
+		{
+			name:           "Test 1. Gauge metric.",
+			args:           args{paramName: "Alloc", paramValue: gauge(12.133)},
+			wantRequestURL: "/update/gauge/Alloc/12.133000",
+		},
+		{
+			name:           "Test 2. Counter metric.",
+			args:           args{paramName: "PollCount", paramValue: counter(10)},
+			wantRequestURL: "/update/counter/PollCount/10",
+		},
+		{
+			name:           "Test 3. Metric with unknown type.",
+			args:           args{paramName: "Alloc", paramValue: int64(10)},
+			wantRequestURL: "",
+		},
+		{
+			name:           "Test 4. Metric with nil value.",
+			args:           args{paramName: "Alloc", paramValue: nil},
+			wantRequestURL: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var actualRequestURL string
+			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				actualRequestURL = r.URL.Path
+			}))
+			defer svr.Close()
+			ServerURL = svr.URL
+			sendMetricByURL(tt.args.paramName, tt.args.paramValue)
+			assert.Equal(t, tt.wantRequestURL, actualRequestURL)
+		})
+	}
+}
+
 // todo: агента нужно тестировать только на отправление? Или вместе с ответом
 func TestSendMetricByJson(t *testing.T) {
 	int64Value, float64Value := int64(10), float64(12.133)

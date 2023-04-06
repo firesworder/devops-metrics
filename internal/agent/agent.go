@@ -3,6 +3,7 @@ package agent
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"github.com/caarlos0/env/v7"
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/message"
@@ -29,9 +30,6 @@ type Environment struct {
 }
 
 var Env Environment
-
-// todo: реализовать две версии отправки сообщений.
-//  одна через json, вторая - старая, через url. Можно реализовать sendMetricJson и вызывать нужный потом
 
 func init() {
 	InitCmdArgs()
@@ -109,6 +107,28 @@ func SendMetrics() {
 	// Кастомные метрики
 	sendMetricByJson("PollCount", counter(PollCount))
 	sendMetricByJson("RandomValue", gauge(RandomValue))
+}
+
+// sendMetricByJson Отправляет метрику Post запросом, посредством url.
+// Пока что не обрабатывает ответ сервера, ошибки выбрасывает в консоль!
+func sendMetricByURL(paramName string, paramValue interface{}) {
+	client := resty.New()
+	var requestURL string
+	switch value := paramValue.(type) {
+	case gauge:
+		requestURL = fmt.Sprintf("%s/update/%s/%s/%f", ServerURL, "gauge", paramName, value)
+	case counter:
+		requestURL = fmt.Sprintf("%s/update/%s/%s/%d", ServerURL, "counter", paramName, value)
+	default:
+		log.Printf("unhandled metric type '%T'", value)
+	}
+
+	_, err := client.R().
+		SetHeader("Content-Type", "text/plain").
+		Post(requestURL)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 // todo добавить возвр. ответа + ошибки
