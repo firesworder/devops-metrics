@@ -116,9 +116,9 @@ func sendMetricByURL(paramName string, paramValue interface{}) {
 	var requestURL string
 	switch value := paramValue.(type) {
 	case gauge:
-		requestURL = fmt.Sprintf("%s/update/%s/%s/%f", ServerURL, "gauge", paramName, value)
+		requestURL = fmt.Sprintf("%s/update/%s/%s/%f", ServerURL, internal.GaugeTypeName, paramName, value)
 	case counter:
-		requestURL = fmt.Sprintf("%s/update/%s/%s/%d", ServerURL, "counter", paramName, value)
+		requestURL = fmt.Sprintf("%s/update/%s/%s/%d", ServerURL, internal.CounterTypeName, paramName, value)
 	default:
 		log.Printf("unhandled metric type '%T'", value)
 	}
