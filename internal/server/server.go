@@ -258,7 +258,8 @@ func (s *Server) handlerAddUpdateMetric(writer http.ResponseWriter, request *htt
 		return
 	}
 	if errorObj = s.SyncSaveMetricStorage(); errorObj != nil {
-		log.Println(errorObj)
+		http.Error(writer, errorObj.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -286,7 +287,8 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 		return
 	}
 	if errorObj = s.SyncSaveMetricStorage(); errorObj != nil {
-		log.Println(errorObj)
+		http.Error(writer, errorObj.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	updatedMetric, ok := s.MetricStorage.GetMetric(m.Name)
