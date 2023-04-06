@@ -13,23 +13,6 @@ import (
 var metricCounter, _ = storage.NewMetric("PollCount", internal.CounterTypeName, int64(10))
 var metricGauge, _ = storage.NewMetric("RandomValue", internal.GaugeTypeName, 12.133)
 
-func init() {
-	//ms := storage.NewMemStorage(map[string]storage.Metric{
-	//	metricCounter.Name: *metricCounter,
-	//	metricGauge.Name:   *metricGauge,
-	//})
-	//
-	//jsonRes, err := json.Marshal(ms)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//
-	//err = os.WriteFile("files_test/read_correct_ms_test.json", jsonRes, 0644)
-	//if err != nil {
-	//	panic(err)
-	//}
-}
-
 func TestNewFileStore(t *testing.T) {
 	type args struct {
 		storeFilePath string
