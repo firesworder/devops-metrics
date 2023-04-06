@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/firesworder/devopsmetrics/internal"
 )
 
 // todo: добавить тип в metric, что бы json не костылить
@@ -80,9 +81,9 @@ func (ms *MemStorage) MarshalJSON() ([]byte, error) {
 	for _, m := range ms.Metrics {
 		switch m.Value.(type) {
 		case counter:
-			valueType = "counter"
+			valueType = internal.CounterTypeName
 		case gauge:
-			valueType = "gauge"
+			valueType = internal.GaugeTypeName
 		default:
 			return nil, ErrUnhandledValueType
 		}
@@ -114,9 +115,9 @@ func (ms *MemStorage) UnmarshalJSON(data []byte) error {
 	for _, extM := range mse.Metrics {
 		metric = Metric{Name: extM.Name}
 		switch extM.ValueType {
-		case "counter":
+		case internal.CounterTypeName:
 			metric.Value = counter(extM.Value.(float64))
-		case "gauge":
+		case internal.GaugeTypeName:
 			metric.Value = gauge(extM.Value.(float64))
 		default:
 			return ErrUnhandledValueType

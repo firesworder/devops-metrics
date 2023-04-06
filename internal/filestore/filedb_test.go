@@ -2,6 +2,7 @@ package filestore
 
 import (
 	"fmt"
+	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -9,8 +10,8 @@ import (
 	"testing"
 )
 
-var metricCounter, _ = storage.NewMetric("PollCount", "counter", int64(10))
-var metricGauge, _ = storage.NewMetric("RandomValue", "gauge", 12.133)
+var metricCounter, _ = storage.NewMetric("PollCount", internal.CounterTypeName, int64(10))
+var metricGauge, _ = storage.NewMetric("RandomValue", internal.GaugeTypeName, 12.133)
 
 func init() {
 	//ms := storage.NewMemStorage(map[string]storage.Metric{

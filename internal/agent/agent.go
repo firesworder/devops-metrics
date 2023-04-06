@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"github.com/caarlos0/env/v7"
+	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/go-resty/resty/v2"
 	"log"
@@ -118,11 +119,11 @@ func sendMetric(paramName string, paramValue interface{}) {
 	msg.ID = paramName
 	switch value := paramValue.(type) {
 	case gauge:
-		msg.MType = "gauge"
+		msg.MType = internal.GaugeTypeName
 		float64Val := float64(value)
 		msg.Value = &float64Val
 	case counter:
-		msg.MType = "counter"
+		msg.MType = internal.CounterTypeName
 		int64Val := int64(value)
 		msg.Delta = &int64Val
 	default:

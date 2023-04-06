@@ -3,6 +3,7 @@ package storage
 import (
 	"errors"
 	"fmt"
+	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"reflect"
 	"strconv"
@@ -25,7 +26,7 @@ type Metric struct {
 func NewMetric(name string, typeName string, rawValue interface{}) (*Metric, error) {
 	var metricValue interface{}
 	switch typeName {
-	case "counter":
+	case internal.CounterTypeName:
 		switch castedValue := rawValue.(type) {
 		case string:
 			valueInt, err := strconv.ParseInt(castedValue, 10, 64)
@@ -38,7 +39,7 @@ func NewMetric(name string, typeName string, rawValue interface{}) (*Metric, err
 		default:
 			return nil, fmt.Errorf("cannot convert value '%T':'%v' to 'counter' type", rawValue, rawValue)
 		}
-	case "gauge":
+	case internal.GaugeTypeName:
 		switch castedValue := rawValue.(type) {
 		case string:
 			valueFloat, err := strconv.ParseFloat(castedValue, 64)
@@ -59,12 +60,12 @@ func NewMetric(name string, typeName string, rawValue interface{}) (*Metric, err
 
 func NewMetricFromMessage(metrics *message.Metrics) (newMetric *Metric, err error) {
 	switch metrics.MType {
-	case "counter":
+	case internal.CounterTypeName:
 		if metrics.Delta == nil {
 			return nil, fmt.Errorf("param 'delta' cannot be nil for type 'counter'")
 		}
 		newMetric, err = NewMetric(metrics.ID, metrics.MType, *metrics.Delta)
-	case "gauge":
+	case internal.GaugeTypeName:
 		if metrics.Value == nil {
 			return nil, fmt.Errorf("param 'value' cannot be nil for type 'gauge'")
 		}
@@ -94,11 +95,11 @@ func (m *Metric) GetMessageMetric() (messageMetric message.Metrics) {
 	messageMetric.ID = m.Name
 	switch value := m.Value.(type) {
 	case gauge:
-		messageMetric.MType = "gauge"
+		messageMetric.MType = internal.GaugeTypeName
 		mValue := float64(value)
 		messageMetric.Value = &mValue
 	case counter:
-		messageMetric.MType = "counter"
+		messageMetric.MType = internal.CounterTypeName
 		mDelta := int64(value)
 		messageMetric.Delta = &mDelta
 	}

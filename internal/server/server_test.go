@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"compress/gzip"
+	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/filestore"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"github.com/stretchr/testify/assert"
@@ -21,13 +22,13 @@ var metric1, metric2, metric3 *storage.Metric
 var metric1upd20, metric2upd235, unknownMetric, unknownMetric2 *storage.Metric
 
 func init() {
-	metric1, _ = storage.NewMetric("PollCount", "counter", int64(10))
-	metric1upd20, _ = storage.NewMetric("PollCount", "counter", int64(30))
-	metric2, _ = storage.NewMetric("RandomValue", "gauge", 12.133)
-	metric2upd235, _ = storage.NewMetric("RandomValue", "gauge", 23.5)
-	metric3, _ = storage.NewMetric("Alloc", "gauge", 7.77)
-	unknownMetric, _ = storage.NewMetric("UnknownMetric", "counter", int64(10))
-	unknownMetric2, _ = storage.NewMetric("UnknownMetric", "gauge", 7.77)
+	metric1, _ = storage.NewMetric("PollCount", internal.CounterTypeName, int64(10))
+	metric1upd20, _ = storage.NewMetric("PollCount", internal.CounterTypeName, int64(30))
+	metric2, _ = storage.NewMetric("RandomValue", internal.GaugeTypeName, 12.133)
+	metric2upd235, _ = storage.NewMetric("RandomValue", internal.GaugeTypeName, 23.5)
+	metric3, _ = storage.NewMetric("Alloc", internal.GaugeTypeName, 7.77)
+	unknownMetric, _ = storage.NewMetric("UnknownMetric", internal.CounterTypeName, int64(10))
+	unknownMetric2, _ = storage.NewMetric("UnknownMetric", internal.GaugeTypeName, 7.77)
 }
 
 // В рамках этой функции реализован и тест parseMetricParams, т.к. последнее является неотъемлимой

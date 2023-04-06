@@ -2,6 +2,7 @@ package agent
 
 import (
 	"encoding/json"
+	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,8 +41,8 @@ func TestUpdateMetrics(t *testing.T) {
 // todo: агента нужно тестировать только на отправление? Или вместе с ответом
 func Test_sendMetric(t *testing.T) {
 	int64Value, float64Value := int64(10), float64(12.133)
-	metricCounter := message.Metrics{ID: "PollCount", MType: "counter", Value: nil, Delta: &int64Value}
-	metricGauge := message.Metrics{ID: "RandomValue", MType: "gauge", Value: &float64Value, Delta: nil}
+	metricCounter := message.Metrics{ID: "PollCount", MType: internal.CounterTypeName, Value: nil, Delta: &int64Value}
+	metricGauge := message.Metrics{ID: "RandomValue", MType: internal.GaugeTypeName, Value: &float64Value, Delta: nil}
 
 	type args struct {
 		paramName  string
