@@ -131,7 +131,8 @@ func sendMetricByURL(paramName string, paramValue interface{}) {
 	}
 }
 
-// todo добавить возвр. ответа + ошибки
+// sendMetricByJson Отправляет метрику Post запросом, в Json формате.
+// Пока что не обрабатывает ответ сервера, ошибки выбрасывает в консоль!
 func sendMetricByJson(paramName string, paramValue interface{}) {
 	client := resty.New()
 	client.SetBaseURL(ServerURL)
