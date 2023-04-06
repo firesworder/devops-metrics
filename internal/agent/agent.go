@@ -70,49 +70,49 @@ func UpdateMetrics() {
 }
 
 func SendMetrics() {
-	sendMetric("Alloc", gauge(memstats.Alloc))
-	sendMetric("BuckHashSys", gauge(memstats.BuckHashSys))
-	sendMetric("Frees", gauge(memstats.Frees))
+	sendMetricByJson("Alloc", gauge(memstats.Alloc))
+	sendMetricByJson("BuckHashSys", gauge(memstats.BuckHashSys))
+	sendMetricByJson("Frees", gauge(memstats.Frees))
 
-	sendMetric("GCCPUFraction", gauge(memstats.GCCPUFraction))
-	sendMetric("GCSys", gauge(memstats.GCSys))
-	sendMetric("HeapAlloc", gauge(memstats.HeapAlloc))
+	sendMetricByJson("GCCPUFraction", gauge(memstats.GCCPUFraction))
+	sendMetricByJson("GCSys", gauge(memstats.GCSys))
+	sendMetricByJson("HeapAlloc", gauge(memstats.HeapAlloc))
 
-	sendMetric("HeapIdle", gauge(memstats.HeapIdle))
-	sendMetric("HeapInuse", gauge(memstats.HeapInuse))
-	sendMetric("HeapObjects", gauge(memstats.HeapObjects))
+	sendMetricByJson("HeapIdle", gauge(memstats.HeapIdle))
+	sendMetricByJson("HeapInuse", gauge(memstats.HeapInuse))
+	sendMetricByJson("HeapObjects", gauge(memstats.HeapObjects))
 
-	sendMetric("HeapReleased", gauge(memstats.HeapReleased))
-	sendMetric("HeapSys", gauge(memstats.HeapSys))
-	sendMetric("LastGC", gauge(memstats.LastGC))
+	sendMetricByJson("HeapReleased", gauge(memstats.HeapReleased))
+	sendMetricByJson("HeapSys", gauge(memstats.HeapSys))
+	sendMetricByJson("LastGC", gauge(memstats.LastGC))
 
-	sendMetric("Lookups", gauge(memstats.Lookups))
-	sendMetric("MCacheInuse", gauge(memstats.MCacheInuse))
-	sendMetric("MCacheSys", gauge(memstats.MCacheSys))
+	sendMetricByJson("Lookups", gauge(memstats.Lookups))
+	sendMetricByJson("MCacheInuse", gauge(memstats.MCacheInuse))
+	sendMetricByJson("MCacheSys", gauge(memstats.MCacheSys))
 
-	sendMetric("MSpanInuse", gauge(memstats.MSpanInuse))
-	sendMetric("MSpanSys", gauge(memstats.MSpanSys))
-	sendMetric("Mallocs", gauge(memstats.Mallocs))
+	sendMetricByJson("MSpanInuse", gauge(memstats.MSpanInuse))
+	sendMetricByJson("MSpanSys", gauge(memstats.MSpanSys))
+	sendMetricByJson("Mallocs", gauge(memstats.Mallocs))
 
-	sendMetric("NextGC", gauge(memstats.NextGC))
-	sendMetric("NumForcedGC", gauge(memstats.NumForcedGC))
-	sendMetric("NumGC", gauge(memstats.NumGC))
+	sendMetricByJson("NextGC", gauge(memstats.NextGC))
+	sendMetricByJson("NumForcedGC", gauge(memstats.NumForcedGC))
+	sendMetricByJson("NumGC", gauge(memstats.NumGC))
 
-	sendMetric("OtherSys", gauge(memstats.OtherSys))
-	sendMetric("PauseTotalNs", gauge(memstats.PauseTotalNs))
-	sendMetric("StackInuse", gauge(memstats.StackInuse))
+	sendMetricByJson("OtherSys", gauge(memstats.OtherSys))
+	sendMetricByJson("PauseTotalNs", gauge(memstats.PauseTotalNs))
+	sendMetricByJson("StackInuse", gauge(memstats.StackInuse))
 
-	sendMetric("StackSys", gauge(memstats.StackSys))
-	sendMetric("Sys", gauge(memstats.Sys))
-	sendMetric("TotalAlloc", gauge(memstats.TotalAlloc))
+	sendMetricByJson("StackSys", gauge(memstats.StackSys))
+	sendMetricByJson("Sys", gauge(memstats.Sys))
+	sendMetricByJson("TotalAlloc", gauge(memstats.TotalAlloc))
 
 	// Кастомные метрики
-	sendMetric("PollCount", counter(PollCount))
-	sendMetric("RandomValue", gauge(RandomValue))
+	sendMetricByJson("PollCount", counter(PollCount))
+	sendMetricByJson("RandomValue", gauge(RandomValue))
 }
 
 // todo добавить возвр. ответа + ошибки
-func sendMetric(paramName string, paramValue interface{}) {
+func sendMetricByJson(paramName string, paramValue interface{}) {
 	client := resty.New()
 	client.SetBaseURL(ServerURL)
 	var msg message.Metrics

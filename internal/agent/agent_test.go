@@ -39,7 +39,7 @@ func TestUpdateMetrics(t *testing.T) {
 }
 
 // todo: агента нужно тестировать только на отправление? Или вместе с ответом
-func Test_sendMetric(t *testing.T) {
+func TestSendMetricByJson(t *testing.T) {
 	int64Value, float64Value := int64(10), float64(12.133)
 	metricCounter := message.Metrics{ID: "PollCount", MType: internal.CounterTypeName, Value: nil, Delta: &int64Value}
 	metricGauge := message.Metrics{ID: "RandomValue", MType: internal.GaugeTypeName, Value: &float64Value, Delta: nil}
@@ -99,7 +99,7 @@ func Test_sendMetric(t *testing.T) {
 			}))
 			defer svr.Close()
 			ServerURL = svr.URL
-			sendMetric(tt.args.paramName, tt.args.paramValue)
+			sendMetricByJson(tt.args.paramName, tt.args.paramValue)
 			require.Equal(t, tt.wantRequest, gotRequest)
 		})
 	}
