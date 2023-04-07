@@ -143,7 +143,7 @@ func TestSendMetricByJson(t *testing.T) {
 			}))
 			defer svr.Close()
 			ServerURL = svr.URL
-			sendMetricByJson(tt.args.paramName, tt.args.paramValue)
+			sendMetricByJSON(tt.args.paramName, tt.args.paramValue)
 			require.Equal(t, tt.wantRequest, gotRequest)
 		})
 	}

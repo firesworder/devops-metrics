@@ -68,48 +68,48 @@ func UpdateMetrics() {
 }
 
 func SendMetrics() {
-	sendMetricByJson("Alloc", gauge(memstats.Alloc))
-	sendMetricByJson("BuckHashSys", gauge(memstats.BuckHashSys))
-	sendMetricByJson("Frees", gauge(memstats.Frees))
+	sendMetricByJSON("Alloc", gauge(memstats.Alloc))
+	sendMetricByJSON("BuckHashSys", gauge(memstats.BuckHashSys))
+	sendMetricByJSON("Frees", gauge(memstats.Frees))
 
-	sendMetricByJson("GCCPUFraction", gauge(memstats.GCCPUFraction))
-	sendMetricByJson("GCSys", gauge(memstats.GCSys))
-	sendMetricByJson("HeapAlloc", gauge(memstats.HeapAlloc))
+	sendMetricByJSON("GCCPUFraction", gauge(memstats.GCCPUFraction))
+	sendMetricByJSON("GCSys", gauge(memstats.GCSys))
+	sendMetricByJSON("HeapAlloc", gauge(memstats.HeapAlloc))
 
-	sendMetricByJson("HeapIdle", gauge(memstats.HeapIdle))
-	sendMetricByJson("HeapInuse", gauge(memstats.HeapInuse))
-	sendMetricByJson("HeapObjects", gauge(memstats.HeapObjects))
+	sendMetricByJSON("HeapIdle", gauge(memstats.HeapIdle))
+	sendMetricByJSON("HeapInuse", gauge(memstats.HeapInuse))
+	sendMetricByJSON("HeapObjects", gauge(memstats.HeapObjects))
 
-	sendMetricByJson("HeapReleased", gauge(memstats.HeapReleased))
-	sendMetricByJson("HeapSys", gauge(memstats.HeapSys))
-	sendMetricByJson("LastGC", gauge(memstats.LastGC))
+	sendMetricByJSON("HeapReleased", gauge(memstats.HeapReleased))
+	sendMetricByJSON("HeapSys", gauge(memstats.HeapSys))
+	sendMetricByJSON("LastGC", gauge(memstats.LastGC))
 
-	sendMetricByJson("Lookups", gauge(memstats.Lookups))
-	sendMetricByJson("MCacheInuse", gauge(memstats.MCacheInuse))
-	sendMetricByJson("MCacheSys", gauge(memstats.MCacheSys))
+	sendMetricByJSON("Lookups", gauge(memstats.Lookups))
+	sendMetricByJSON("MCacheInuse", gauge(memstats.MCacheInuse))
+	sendMetricByJSON("MCacheSys", gauge(memstats.MCacheSys))
 
-	sendMetricByJson("MSpanInuse", gauge(memstats.MSpanInuse))
-	sendMetricByJson("MSpanSys", gauge(memstats.MSpanSys))
-	sendMetricByJson("Mallocs", gauge(memstats.Mallocs))
+	sendMetricByJSON("MSpanInuse", gauge(memstats.MSpanInuse))
+	sendMetricByJSON("MSpanSys", gauge(memstats.MSpanSys))
+	sendMetricByJSON("Mallocs", gauge(memstats.Mallocs))
 
-	sendMetricByJson("NextGC", gauge(memstats.NextGC))
-	sendMetricByJson("NumForcedGC", gauge(memstats.NumForcedGC))
-	sendMetricByJson("NumGC", gauge(memstats.NumGC))
+	sendMetricByJSON("NextGC", gauge(memstats.NextGC))
+	sendMetricByJSON("NumForcedGC", gauge(memstats.NumForcedGC))
+	sendMetricByJSON("NumGC", gauge(memstats.NumGC))
 
-	sendMetricByJson("OtherSys", gauge(memstats.OtherSys))
-	sendMetricByJson("PauseTotalNs", gauge(memstats.PauseTotalNs))
-	sendMetricByJson("StackInuse", gauge(memstats.StackInuse))
+	sendMetricByJSON("OtherSys", gauge(memstats.OtherSys))
+	sendMetricByJSON("PauseTotalNs", gauge(memstats.PauseTotalNs))
+	sendMetricByJSON("StackInuse", gauge(memstats.StackInuse))
 
-	sendMetricByJson("StackSys", gauge(memstats.StackSys))
-	sendMetricByJson("Sys", gauge(memstats.Sys))
-	sendMetricByJson("TotalAlloc", gauge(memstats.TotalAlloc))
+	sendMetricByJSON("StackSys", gauge(memstats.StackSys))
+	sendMetricByJSON("Sys", gauge(memstats.Sys))
+	sendMetricByJSON("TotalAlloc", gauge(memstats.TotalAlloc))
 
 	// Кастомные метрики
-	sendMetricByJson("PollCount", counter(PollCount))
-	sendMetricByJson("RandomValue", gauge(RandomValue))
+	sendMetricByJSON("PollCount", counter(PollCount))
+	sendMetricByJSON("RandomValue", gauge(RandomValue))
 }
 
-// sendMetricByJson Отправляет метрику Post запросом, посредством url.
+// sendMetricByURL Отправляет метрику Post запросом, посредством url.
 // Пока что не обрабатывает ответ сервера, ошибки выбрасывает в консоль!
 func sendMetricByURL(paramName string, paramValue interface{}) {
 	client := resty.New()
@@ -131,9 +131,9 @@ func sendMetricByURL(paramName string, paramValue interface{}) {
 	}
 }
 
-// sendMetricByJson Отправляет метрику Post запросом, в Json формате.
+// sendMetricByJSON Отправляет метрику Post запросом, в Json формате.
 // Пока что не обрабатывает ответ сервера, ошибки выбрасывает в консоль!
-func sendMetricByJson(paramName string, paramValue interface{}) {
+func sendMetricByJSON(paramName string, paramValue interface{}) {
 	client := resty.New()
 	client.SetBaseURL(ServerURL)
 	var msg message.Metrics
