@@ -167,12 +167,7 @@ func TestFileStore_Write(t *testing.T) {
 			assert.Equal(t, tt.wantError, err != nil)
 
 			if !tt.wantError {
-				require.FileExists(t, f.StoreFilePath)
-				wantContent, err := os.ReadFile(tt.wantContentAs)
-				require.NoError(t, err)
-				gotContent, err := os.ReadFile(f.StoreFilePath)
-				require.NoError(t, err)
-				assert.Equal(t, wantContent, gotContent)
+				helper.AssertEqualFileContent(t, tt.wantContentAs, f.StoreFilePath)
 			}
 		})
 	}

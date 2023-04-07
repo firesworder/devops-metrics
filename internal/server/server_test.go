@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/filestore"
+	"github.com/firesworder/devopsmetrics/internal/helper"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1300,13 +1301,7 @@ func TestServer_SyncSaveMetricStorage(t *testing.T) {
 				assert.NoFileExists(t, tt.serverArgs.FileStore.StoreFilePath)
 			} else {
 				sf := tt.serverArgs.FileStore.StoreFilePath
-				require.FileExists(t, sf)
-				// todo: эту часть напрямую скопировал из TestFileStore_Write. Мб как то стоит убрать дубль
-				wantContent, err := os.ReadFile(tt.wantFileAs)
-				require.NoError(t, err)
-				gotContent, err := os.ReadFile(sf)
-				require.NoError(t, err)
-				assert.Equal(t, wantContent, gotContent)
+				helper.AssertEqualFileContent(t, tt.wantFileAs, sf)
 
 				// удаляю созданные сохранением файлы
 				err = os.Remove(sf)
@@ -1383,13 +1378,7 @@ func TestServer_InitRepeatableSave(t *testing.T) {
 				assert.NoFileExists(t, tt.serverArgs.FileStore.StoreFilePath)
 			} else {
 				sf := tt.serverArgs.FileStore.StoreFilePath
-				require.FileExists(t, sf)
-				// todo: эту часть напрямую скопировал из TestFileStore_Write. Мб как то стоит убрать дубль
-				wantContent, err := os.ReadFile(tt.wantFileAs)
-				require.NoError(t, err)
-				gotContent, err := os.ReadFile(sf)
-				require.NoError(t, err)
-				assert.Equal(t, wantContent, gotContent)
+				helper.AssertEqualFileContent(t, tt.wantFileAs, sf)
 
 				// останавливаем горутину, чтобы она перестала писать файлы
 				s.WriteTicker.Stop()
