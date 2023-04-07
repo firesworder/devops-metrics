@@ -168,7 +168,6 @@ func TestFileStore_Write(t *testing.T) {
 
 			if !tt.wantError {
 				require.FileExists(t, f.StoreFilePath)
-				// todo: вынести получение файла в отдельную функцию
 				wantContent, err := os.ReadFile(tt.wantContentAs)
 				require.NoError(t, err)
 				gotContent, err := os.ReadFile(f.StoreFilePath)

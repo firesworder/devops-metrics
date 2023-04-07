@@ -6,14 +6,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"time"
 )
 
-// todo: сделать частью memstorage
-// todo: добавить инициализации writer/reader в рамках этого пакета?
 type FileStore struct {
 	StoreFilePath string
-	StoreInterval time.Duration // todo: удалить параметр
 }
 
 func NewFileStore(storeFilePath string) *FileStore {
@@ -25,7 +21,6 @@ func NewFileStore(storeFilePath string) *FileStore {
 }
 
 func (f *FileStore) Write(memStorage storage.MetricRepository) error {
-	//todo: реализовать отдельно инициал. файла f.StoreFilePath (в конструкторе)
 	if _, err := os.Stat(f.StoreFilePath); os.IsNotExist(err) {
 		err = os.MkdirAll(filepath.Dir(f.StoreFilePath), 0644)
 		if err != nil {
@@ -50,7 +45,6 @@ func (f *FileStore) Write(memStorage storage.MetricRepository) error {
 	return nil
 }
 
-// todo: нужно ли создавать файл при открытии?
 func (f *FileStore) Read() (*storage.MemStorage, error) {
 	file, err := os.OpenFile(f.StoreFilePath, os.O_RDONLY, 0644)
 	if err != nil {
