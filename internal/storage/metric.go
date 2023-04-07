@@ -9,8 +9,6 @@ import (
 	"strconv"
 )
 
-// todo: переписать ошибки на статические
-
 type gauge float64
 type counter int64
 

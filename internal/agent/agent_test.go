@@ -83,7 +83,6 @@ func TestSendMetricByURL(t *testing.T) {
 	}
 }
 
-// todo: агента нужно тестировать только на отправление? Или вместе с ответом
 func TestSendMetricByJson(t *testing.T) {
 	int64Value, float64Value := int64(10), float64(12.133)
 	metricCounter := message.Metrics{ID: "PollCount", MType: internal.CounterTypeName, Value: nil, Delta: &int64Value}
@@ -232,7 +231,6 @@ func TestParseEnvArgs(t *testing.T) {
 			},
 			wantPanic: false,
 		},
-		// todo: описать более детально тесткейсы(пока только самые простые)
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

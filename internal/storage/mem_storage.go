@@ -6,8 +6,6 @@ import (
 	"github.com/firesworder/devopsmetrics/internal"
 )
 
-// todo: добавить тип в metric, что бы json не костылить
-// todo: перенести filedb в memstorage? Хотя бы в storage
 type MemStorage struct {
 	Metrics map[string]Metric
 }

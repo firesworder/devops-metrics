@@ -119,7 +119,6 @@ func (s *Server) InitRepeatableSave() {
 	}
 }
 
-// todo: выглядит как неочень удобный костыль, переделать потом в рамках MemStorage
 func (s *Server) SyncSaveMetricStorage() error {
 	if Env.StoreInterval == 0 && s.FileStore != nil && s.MetricStorage != nil {
 		err := s.FileStore.Write(s.MetricStorage)

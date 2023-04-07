@@ -546,7 +546,6 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			wantedState: map[string]storage.Metric{unknownMetric2.Name: *unknownMetric2},
 		},
 
-		// todo: реализовать отдельно тесты эти
 		{
 			name: "Test incorrect #1. Incorrect http method.",
 			requestArgs: requestArgs{
@@ -657,7 +656,6 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 	}
 }
 
-// todo: перевести на resty
 func sendTestRequest(t *testing.T, ts *httptest.Server, r requestArgs) (int, string, string) {
 	// создаю реквест
 	req, err := http.NewRequest(r.method, ts.URL+r.url, strings.NewReader(r.body))
@@ -676,7 +674,6 @@ func sendTestRequest(t *testing.T, ts *httptest.Server, r requestArgs) (int, str
 	return resp.StatusCode, resp.Header.Get("Content-Type"), string(respBody)
 }
 
-// todo: в геттер(оба) добавить поиск метрики не только по имени, но и по типу
 func TestGetMetricJSONHandler(t *testing.T) {
 	filledState := map[string]storage.Metric{
 		metric1.Name: *metric1,
@@ -758,7 +755,6 @@ func TestGetMetricJSONHandler(t *testing.T) {
 			memStorageState: filledState,
 		},
 
-		// todo: добавить проверку типов? Не просто так ведь передается(придется сильно рефакторить)
 		{
 			name: "Test correct(?) others #1. Requested metric type differs with one in state",
 			requestArgs: requestArgs{
@@ -848,7 +844,6 @@ func TestServer_InitFileStore(t *testing.T) {
 			wantFSArg: &filestore.FileStore{StoreFilePath: "some_file_path/file.json"},
 		},
 		{
-			// todo: проверить, что это устанавливается значение(пустое), хз как envDefault среагирует
 			name: "Test #2. StoreFile is set empty",
 			beforeInitSArgs: ServerArgsPart{
 				StoreFile: "",
@@ -1051,7 +1046,6 @@ func TestParseEnvArgs(t *testing.T) {
 			},
 			wantPanic: false,
 		},
-		// todo: описать более детально тесткейсы(пока только самые простые)
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1172,7 +1166,6 @@ func TestServer_gzipCompressor(t *testing.T) {
 			initState:   map[string]storage.Metric{},
 			wantedState: map[string]storage.Metric{metric1.Name: *metric1},
 		},
-		// todo: добавить кейс, когда агент не хочет сжатия
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1220,7 +1213,6 @@ func TestServer_gzipDecompressor(t *testing.T) {
 			initState:   map[string]storage.Metric{},
 			wantedState: map[string]storage.Metric{metric1.Name: *metric1},
 		},
-		// todo: добавить тестов
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1234,7 +1226,7 @@ func TestServer_gzipDecompressor(t *testing.T) {
 	}
 }
 
-// todo: тесты ниже исправить. До тех пор - оставлять их в самом конце(устраивают гонку горутинами)
+// Эти тесты должны быть внизу, т.к. вызывают гонку горутинами
 // Тестирую изолированно только саму функцию(а не ее инъекции в обновл. MS хендлеры)
 func TestServer_SyncSaveMetricStorage(t *testing.T) {
 	type serverArgs struct {
@@ -1259,7 +1251,6 @@ func TestServer_SyncSaveMetricStorage(t *testing.T) {
 			},
 			wantFileAs: "file_storage_test/correct_ms_test.json",
 		},
-		// todo: тест на появление\отсутствие паники, по сути.
 		{
 			name: "Test #2. StoreInterval == 0 and FileStore == nil. MS != nil.",
 			serverArgs: serverArgs{
@@ -1336,9 +1327,8 @@ func TestServer_InitRepeatableSave(t *testing.T) {
 			},
 			wantFileAs: "file_storage_test/correct_ms_test.json",
 		},
-		// todo: тест на появление\отсутствие паники, по сути.
 		{
-			name: "Test #2. StoreInterval > 0 and FileStore == nil. MS != nil.",
+			name: "Test #2. StoreInterval > 0 and FileStore == nil. MS != nil. Panic test",
 			serverArgs: serverArgs{
 				StoreInterval: 500 * time.Millisecond,
 				FileStore:     nil,
@@ -1384,7 +1374,7 @@ func TestServer_InitRepeatableSave(t *testing.T) {
 				s.WriteTicker.Stop()
 				time.Sleep(100 * time.Millisecond)
 				// удаляю созданные сохранением файлы
-				err = os.Remove(sf)
+				err := os.Remove(sf)
 				require.NoError(t, err)
 				// проверяем, что горутина остановилась и врем.файлы теста были удалены
 				assert.NoFileExists(t, sf)
