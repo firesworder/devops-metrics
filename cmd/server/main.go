@@ -7,9 +7,10 @@ import (
 )
 
 func main() {
+	server.ParseEnvArgs()
 	serverParams := server.NewServer()
 	serverObj := &http.Server{
-		Addr:    "localhost:8080",
+		Addr:    server.Env.ServerAddress,
 		Handler: serverParams.Router,
 	}
 	log.Fatal(serverObj.ListenAndServe())

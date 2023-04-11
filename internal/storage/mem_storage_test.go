@@ -61,10 +61,10 @@ func TestMemStorage_AddMetric(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ms := &MemStorage{
-				metrics: tt.startState,
+				Metrics: tt.startState,
 			}
 			err := ms.AddMetric(tt.metricToAdd)
-			assert.Equal(t, tt.wantedState, ms.metrics)
+			assert.Equal(t, tt.wantedState, ms.Metrics)
 			assert.Equal(t, tt.wantError, err)
 		})
 	}
@@ -133,10 +133,10 @@ func TestMemStorage_DeleteMetric(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ms := &MemStorage{
-				metrics: tt.startState,
+				Metrics: tt.startState,
 			}
 			err := ms.DeleteMetric(tt.metricToDelete)
-			assert.Equal(t, tt.wantedState, ms.metrics)
+			assert.Equal(t, tt.wantedState, ms.Metrics)
 			assert.Equal(t, tt.wantError, err)
 		})
 	}
@@ -183,7 +183,7 @@ func TestMemStorage_IsMetricInStorage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ms := &MemStorage{
-				metrics: tt.startState,
+				Metrics: tt.startState,
 			}
 			assert.Equal(t, tt.wantedResult, ms.IsMetricInStorage(tt.metricToCheck))
 		})
@@ -233,11 +233,11 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ms := &MemStorage{
-				metrics: tt.startState,
+				Metrics: tt.startState,
 			}
 			tt.metricToUpdate.Value = tt.newValue
 			err := ms.UpdateMetric(tt.metricToUpdate)
-			assert.Equal(t, tt.wantedState, ms.metrics)
+			assert.Equal(t, tt.wantedState, ms.Metrics)
 			assert.Equal(t, tt.wantError, err)
 		})
 	}
@@ -278,10 +278,10 @@ func TestMemStorage_UpdateOrAddMetric(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ms := &MemStorage{
-				metrics: tt.startState,
+				Metrics: tt.startState,
 			}
 			_ = ms.UpdateOrAddMetric(tt.metricObj)
-			assert.Equal(t, tt.wantedState, ms.metrics)
+			assert.Equal(t, tt.wantedState, ms.Metrics)
 		})
 	}
 }
@@ -312,7 +312,7 @@ func TestMemStorage_GetAll(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ms := &MemStorage{
-				metrics: tt.state,
+				Metrics: tt.state,
 			}
 			gotMapMetrics := ms.GetAll()
 			assert.Equal(t, tt.want, gotMapMetrics)
@@ -346,7 +346,7 @@ func TestMemStorage_GetMetric(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ms := &MemStorage{
-				metrics: tt.state,
+				Metrics: tt.state,
 			}
 			gotMetric, gotOk := ms.GetMetric(tt.metricName)
 			require.Equal(t, tt.wantOk, gotOk)
@@ -364,12 +364,12 @@ func TestNewMemStorage(t *testing.T) {
 		{
 			name:       "Test 1. Not nil arg metrics.",
 			argMetrics: map[string]Metric{},
-			want:       MemStorage{metrics: map[string]Metric{}},
+			want:       MemStorage{Metrics: map[string]Metric{}},
 		},
 		{
 			name:       "Test 2. Nil arg metrics.",
 			argMetrics: nil,
-			want:       MemStorage{metrics: nil},
+			want:       MemStorage{Metrics: nil},
 		},
 		{
 			name: "Test 3. Arg metrics filled with metrics.",
@@ -378,7 +378,7 @@ func TestNewMemStorage(t *testing.T) {
 				metric4Gauge2d27.Name: metric4Gauge2d27,
 			},
 			want: MemStorage{
-				metrics: map[string]Metric{
+				Metrics: map[string]Metric{
 					metric1Counter10.Name: metric1Counter10,
 					metric4Gauge2d27.Name: metric4Gauge2d27,
 				},
