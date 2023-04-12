@@ -1237,6 +1237,7 @@ func TestServer_InitMetricStorage(t *testing.T) {
 }
 
 func TestParseEnvArgs(t *testing.T) {
+	envBefore := Env
 	tests := []struct {
 		name      string
 		cmdStr    string
@@ -1369,6 +1370,52 @@ func TestParseEnvArgs(t *testing.T) {
 			},
 			wantPanic: false,
 		},
+
+		{
+			name:   "Test 10. Field DatabaseDsn, cmd",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false -d=localhost:5432",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: Environment{
+				ServerAddress: "cmd.site",
+				StoreInterval: 60 * time.Second,
+				StoreFile:     "env.json",
+				Restore:       true,
+				DatabaseDsn:   "localhost:5432",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 11. Field key, env",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true", "DATABASE_DSN": "localhost:8080",
+			},
+			wantEnv: Environment{
+				ServerAddress: "cmd.site",
+				StoreInterval: 60 * time.Second,
+				StoreFile:     "env.json",
+				Restore:       true,
+				DatabaseDsn:   "localhost:8080",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 12. Field key, not set",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: Environment{
+				ServerAddress: "cmd.site",
+				StoreInterval: 60 * time.Second,
+				StoreFile:     "env.json",
+				Restore:       true,
+				DatabaseDsn:   "",
+			},
+			wantPanic: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1378,10 +1425,12 @@ func TestParseEnvArgs(t *testing.T) {
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "/tmp/devops-metrics-db.json",
 				Restore:       true,
+				Key:           "",
+				DatabaseDsn:   "",
 			}
 
 			// удаляю переменные окружения, если они были до этого установлены
-			for _, key := range [5]string{"ADDRESS", "STORE_FILE", "STORE_INTERVAL", "RESTORE", "KEY"} {
+			for _, key := range [6]string{"ADDRESS", "STORE_FILE", "STORE_INTERVAL", "RESTORE", "KEY", "DATABASE_DSN"} {
 				err := os.Unsetenv(key)
 				require.NoError(t, err)
 			}
@@ -1402,6 +1451,7 @@ func TestParseEnvArgs(t *testing.T) {
 			}
 		})
 	}
+	Env = envBefore
 }
 
 // responseWC == response with compression(gzip), increment 8
