@@ -677,7 +677,7 @@ func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/update/",
 				contentType: "application/json",
-				body:        `{"id":"PollCount","type":"counter","delta":10}`,
+				body:        `{"id":"PollCount","type":"counter","delta":10,"hash":"4ca29a927a89931245cd4ad0782383d0fe0df883d31437cc5b85dc4dad3247c4"}`,
 			},
 			env: Environment{Key: "Ayayaka"},
 			wantResponse: response{
@@ -701,7 +701,7 @@ func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/update/",
 				contentType: "application/json",
-				body:        `{"id":"PollCount","type":"counter","delta":20}`,
+				body:        `{"id":"PollCount","type":"counter","delta":20,"hash":"a54ff39f2747a23c5834768f732d53719e143482400db980fcb886fc0a126faa"}`,
 			},
 			env: Environment{Key: "Ayayaka"},
 			wantResponse: response{
@@ -725,7 +725,7 @@ func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/update/",
 				contentType: "application/json",
-				body:        `{"id":"RandomValue","type":"gauge","value":12.133}`,
+				body:        `{"id":"RandomValue","type":"gauge","value":12.133,"hash":"19742de723a08df1f3436d0b745ea7743c05520787cb32949497056fce1f7c70"}`,
 			},
 			env: Environment{Key: "Ayayaka"},
 			wantResponse: response{
@@ -749,7 +749,7 @@ func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/update/",
 				contentType: "application/json",
-				body:        `{"id":"RandomValue","type":"gauge","value":23.5}`,
+				body:        `{"id":"RandomValue","type":"gauge","value":23.5,"hash":"8dfae3f2574fadf10488b9104ad0d003d2267a8e045b22793c4e8c6b6f989d67"}`,
 			},
 			env: Environment{Key: "Ayayaka"},
 			wantResponse: response{
@@ -764,6 +764,53 @@ func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 			wantedState: map[string]storage.Metric{
 				metric1.Name:       *metric1,
 				metric2upd235.Name: *metric2upd235,
+			},
+		},
+
+		{
+			name: "Test incorrect hash #1. Add counter metric, hash for different key.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10,"hash":"aaa29a927a89931245cd4ad0782383d0fe0df883d31437cc5b85dc4dad3247c4"}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusBadRequest,
+				contentType: "text/plain; charset=utf-8",
+				body:        "hash is not correct\n",
+			},
+			initState: map[string]storage.Metric{
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
+			wantedState: map[string]storage.Metric{
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
+		},
+		{
+			name: "Test incorrect hash #2. Update gauge metric, empty hash.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge","value":23.5}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusBadRequest,
+				contentType: "text/plain; charset=utf-8",
+				body:        "hash is not correct\n",
+			},
+			initState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
 			},
 		},
 	}

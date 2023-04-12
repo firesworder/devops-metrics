@@ -263,6 +263,15 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 		return
 	}
 
+	isHashCorrect, err := metricMessage.CheckHash(Env.Key)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	} else if !isHashCorrect {
+		http.Error(writer, "hash is not correct", http.StatusBadRequest)
+		return
+	}
+
 	m, metricError := storage.NewMetricFromMessage(&metricMessage)
 	if metricError != nil {
 		if errors.Is(metricError, storage.ErrUnhandledValueType) {
