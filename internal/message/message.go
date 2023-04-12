@@ -24,8 +24,14 @@ func (m *Metrics) InitHash(key string) error {
 	h := hmac.New(sha256.New, []byte(key))
 	switch m.MType {
 	case internal.GaugeTypeName:
+		if m.Value == nil {
+			return fmt.Errorf("value cannot be nil for type gauge")
+		}
 		h.Write([]byte(fmt.Sprintf("%s:gauge:%f", m.ID, *m.Value)))
 	case internal.CounterTypeName:
+		if m.Delta == nil {
+			return fmt.Errorf("delta cannot be nil for type counter")
+		}
 		h.Write([]byte(fmt.Sprintf("%s:counter:%d", m.ID, *m.Delta)))
 	default:
 		return fmt.Errorf("unhandled type '%s'", m.MType)
