@@ -34,3 +34,18 @@ func (m *Metrics) InitHash(key string) error {
 
 	return nil
 }
+
+func (m *Metrics) CheckHash(key string) (bool, error) {
+	gotHash := m.Hash
+	defer func() {
+		m.Hash = gotHash
+	}()
+
+	err := m.InitHash(key)
+	if err != nil {
+		return false, err
+	}
+	wantHash := m.Hash
+
+	return hmac.Equal([]byte(gotHash), []byte(wantHash)), nil
+}
