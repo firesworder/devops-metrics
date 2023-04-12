@@ -291,6 +291,14 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 	}
 
 	responseMsg := updatedMetric.GetMessageMetric()
+	if Env.Key != "" {
+		err := responseMsg.InitHash(Env.Key)
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
 	msgJSON, err := json.Marshal(responseMsg)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
@@ -319,6 +327,14 @@ func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.
 	}
 
 	responseMsg := metric.GetMessageMetric()
+	if Env.Key != "" {
+		err := responseMsg.InitHash(Env.Key)
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
 	msgJSON, err := json.Marshal(responseMsg)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)

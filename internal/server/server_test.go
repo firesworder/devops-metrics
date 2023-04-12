@@ -656,6 +656,133 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 	}
 }
 
+func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
+	s := Server{}
+	ts := httptest.NewServer(s.NewRouter())
+	defer ts.Close()
+
+	defaultEnv := Env
+
+	tests := []struct {
+		name string
+		requestArgs
+		env          Environment
+		wantResponse response
+		initState    map[string]storage.Metric
+		wantedState  map[string]storage.Metric
+	}{
+		{
+			name: "Test correct counter #1. Add metric.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10,"hash":"4ca29a927a89931245cd4ad0782383d0fe0df883d31437cc5b85dc4dad3247c4"}`,
+			},
+			initState: map[string]storage.Metric{
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
+		},
+		{
+			name: "Test correct counter #2. Update metric.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":20}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":30,"hash":"84f056fb60dca6b2839556080bb2de533218121bebe8d95bf38e206479655d1a"}`,
+			},
+			initState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric3.Name: *metric3,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1upd20.Name: *metric1upd20,
+				metric3.Name:      *metric3,
+			},
+		},
+
+		{
+			name: "Test correct gauge #1. Add metric.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge","value":12.133}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge","value":12.133,"hash":"19742de723a08df1f3436d0b745ea7743c05520787cb32949497056fce1f7c70"}`,
+			},
+			initState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric3.Name: *metric3,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
+		},
+		{
+			name: "Test correct gauge #2. Update metric.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge","value":23.5}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge","value":23.5,"hash":"8dfae3f2574fadf10488b9104ad0d003d2267a8e045b22793c4e8c6b6f989d67"}`,
+			},
+			initState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1.Name:       *metric1,
+				metric2upd235.Name: *metric2upd235,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			Env = tt.env
+			s.MetricStorage = storage.NewMemStorage(tt.initState)
+			statusCode, contentType, body := sendTestRequest(t, ts, tt.requestArgs)
+
+			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, contentType)
+			assert.Equal(t, tt.wantResponse.body, body)
+			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll())
+		})
+	}
+
+	Env = defaultEnv
+}
+
 func sendTestRequest(t *testing.T, ts *httptest.Server, r requestArgs) (int, string, string) {
 	// создаю реквест
 	req, err := http.NewRequest(r.method, ts.URL+r.url, strings.NewReader(r.body))
@@ -823,6 +950,110 @@ func TestGetMetricJSONHandler(t *testing.T) {
 			assert.Equal(t, tt.wantResponse.body, body)
 		})
 	}
+}
+
+func TestGetMetricJsonHandlerWithHash(t *testing.T) {
+	filledState := map[string]storage.Metric{
+		metric1.Name: *metric1,
+		metric2.Name: *metric2,
+		metric3.Name: *metric3,
+	}
+	emptyState := map[string]storage.Metric{}
+
+	// костыль, чтоб
+	s := Server{}
+	ts := httptest.NewServer(s.NewRouter())
+	defaultEnv := Env
+	defer ts.Close()
+
+	tests := []struct {
+		name string
+		requestArgs
+		env             Environment
+		wantResponse    response
+		memStorageState map[string]storage.Metric
+	}{
+		// counter
+		{
+			name: "Test correct counter #1. Correct request, metric is not present.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/value/",
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter"}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "metric with name 'PollCount' not found\n",
+			},
+			memStorageState: emptyState,
+		},
+		{
+			name: "Test correct counter #2. Correct request, metric is present.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/value/",
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter"}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10,"hash":"4ca29a927a89931245cd4ad0782383d0fe0df883d31437cc5b85dc4dad3247c4"}`,
+			},
+			memStorageState: filledState,
+		},
+
+		// gauge
+		{
+			name: "Test correct gauge #1. Correct request, metric is not present.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/value/",
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge"}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "metric with name 'RandomValue' not found\n",
+			},
+			memStorageState: emptyState,
+		},
+		{
+			name: "Test correct gauge #2. Correct request, metric is present.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/value/",
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge"}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge","value":12.133,"hash":"19742de723a08df1f3436d0b745ea7743c05520787cb32949497056fce1f7c70"}`,
+			},
+			memStorageState: filledState,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			Env = tt.env
+			s.MetricStorage = storage.NewMemStorage(tt.memStorageState)
+			statusCode, contentType, body := sendTestRequest(t, ts, tt.requestArgs)
+
+			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, contentType)
+			assert.Equal(t, tt.wantResponse.body, body)
+		})
+	}
+	// возвращаю Env до теста
+	Env = defaultEnv
 }
 
 func TestServer_InitFileStore(t *testing.T) {
