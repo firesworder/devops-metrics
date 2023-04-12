@@ -27,6 +27,7 @@ type Environment struct {
 	ServerAddress  string        `env:"ADDRESS"`
 	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
 	PollInterval   time.Duration `env:"POLL_INTERVAL"`
+	Key            string        `env:"KEY"`
 }
 
 var Env Environment
@@ -47,6 +48,7 @@ func InitCmdArgs() {
 	flag.StringVar(&Env.ServerAddress, "a", "localhost:8080", "Server address")
 	flag.DurationVar(&Env.ReportInterval, "r", 10*time.Second, "report interval")
 	flag.DurationVar(&Env.PollInterval, "p", 2*time.Second, "poll(update) interval")
+	flag.StringVar(&Env.Key, "k", "", "key for hash func")
 }
 
 // ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения
