@@ -85,8 +85,6 @@ func TestSendMetricByURL(t *testing.T) {
 
 func TestSendMetricByJson(t *testing.T) {
 	int64Value, float64Value := int64(10), float64(12.133)
-	metricCounter := message.Metrics{ID: "PollCount", MType: internal.CounterTypeName, Value: nil, Delta: &int64Value}
-	metricGauge := message.Metrics{ID: "RandomValue", MType: internal.GaugeTypeName, Value: &float64Value, Delta: nil}
 
 	type args struct {
 		paramName  string
@@ -96,37 +94,84 @@ func TestSendMetricByJson(t *testing.T) {
 		contentType string
 		msg         *message.Metrics
 	}
-	type wantResponse struct {
-		statusCode  int
-		contentType string
-		msg         *message.Metrics
-	}
 
 	tests := []struct {
-		name         string
-		args         args
-		wantRequest  *wantRequest
-		wantResponse *wantResponse
+		name        string
+		args        args
+		envKey      string
+		wantRequest *wantRequest
 	}{
 		{
-			name:        "Test 1. Gauge metric.",
-			args:        args{paramName: "RandomValue", paramValue: gauge(12.133)},
-			wantRequest: &wantRequest{contentType: "application/json", msg: &metricGauge},
+			name:   "Test 1. Gauge metric.",
+			args:   args{paramName: "RandomValue", paramValue: gauge(12.133)},
+			envKey: "Ayayaka",
+			wantRequest: &wantRequest{
+				contentType: "application/json",
+				msg: &message.Metrics{
+					ID:    "RandomValue",
+					MType: internal.GaugeTypeName,
+					Value: &float64Value,
+					Delta: nil,
+					Hash:  "19742de723a08df1f3436d0b745ea7743c05520787cb32949497056fce1f7c70",
+				},
+			},
 		},
 		{
-			name:        "Test 2. Counter metric.",
-			args:        args{paramName: "PollCount", paramValue: counter(10)},
-			wantRequest: &wantRequest{contentType: "application/json", msg: &metricCounter},
+			name:   "Test 2. Counter metric.",
+			args:   args{paramName: "PollCount", paramValue: counter(10)},
+			envKey: "Ayayaka",
+			wantRequest: &wantRequest{
+				contentType: "application/json",
+				msg: &message.Metrics{
+					ID:    "PollCount",
+					MType: internal.CounterTypeName,
+					Value: nil,
+					Delta: &int64Value,
+					Hash:  "4ca29a927a89931245cd4ad0782383d0fe0df883d31437cc5b85dc4dad3247c4",
+				},
+			},
 		},
 		{
 			name:        "Test 3. Metric with unknown type.",
 			args:        args{paramName: "Alloc", paramValue: int32(10)},
+			envKey:      "Ayayaka",
 			wantRequest: nil,
 		},
 		{
 			name:        "Test 4. Metric with nil value.",
 			args:        args{paramName: "Alloc", paramValue: nil},
+			envKey:      "Ayayaka",
 			wantRequest: nil,
+		},
+		{
+			name:   "Test 5. Gauge metric. Key(env) is not set",
+			args:   args{paramName: "RandomValue", paramValue: gauge(12.133)},
+			envKey: "",
+			wantRequest: &wantRequest{
+				contentType: "application/json",
+				msg: &message.Metrics{
+					ID:    "RandomValue",
+					MType: internal.GaugeTypeName,
+					Value: &float64Value,
+					Delta: nil,
+					Hash:  "",
+				},
+			},
+		},
+		{
+			name:   "Test 6. Counter metric. Key(env) is not set",
+			args:   args{paramName: "PollCount", paramValue: counter(10)},
+			envKey: "",
+			wantRequest: &wantRequest{
+				contentType: "application/json",
+				msg: &message.Metrics{
+					ID:    "PollCount",
+					MType: internal.CounterTypeName,
+					Value: nil,
+					Delta: &int64Value,
+					Hash:  "",
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -142,6 +187,7 @@ func TestSendMetricByJson(t *testing.T) {
 				gotRequest.msg = &msg
 			}))
 			defer svr.Close()
+			Env.Key = tt.envKey
 			ServerURL = svr.URL
 			sendMetricByJSON(tt.args.paramName, tt.args.paramValue)
 			require.Equal(t, tt.wantRequest, gotRequest)

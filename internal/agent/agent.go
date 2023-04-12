@@ -154,6 +154,14 @@ func sendMetricByJSON(paramName string, paramValue interface{}) {
 		return
 	}
 
+	if Env.Key != "" {
+		err := msg.InitHash(Env.Key)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
+
 	jsonBody, err := json.Marshal(msg)
 	if err != nil {
 		log.Println(err)
