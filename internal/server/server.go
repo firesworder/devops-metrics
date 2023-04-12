@@ -31,6 +31,7 @@ type Environment struct {
 	StoreInterval time.Duration `env:"STORE_INTERVAL"`
 	StoreFile     string        `env:"STORE_FILE"`
 	Restore       bool          `env:"RESTORE"`
+	Key           string        `env:"KEY"`
 }
 
 var Env Environment
@@ -42,6 +43,7 @@ func InitCmdArgs() {
 	flag.BoolVar(&Env.Restore, "r", true, "restore memstorage from store file")
 	flag.DurationVar(&Env.StoreInterval, "i", 300*time.Second, "store interval")
 	flag.StringVar(&Env.StoreFile, "f", "/tmp/devops-metrics-db.json", "store file")
+	flag.StringVar(&Env.Key, "k", "", "key for hash func")
 }
 
 // ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения

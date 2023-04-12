@@ -1046,6 +1046,51 @@ func TestParseEnvArgs(t *testing.T) {
 			},
 			wantPanic: false,
 		},
+		{
+			name:   "Test 7. Field key, cmd",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false -k=ayayaka",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: Environment{
+				ServerAddress: "cmd.site",
+				StoreInterval: 60 * time.Second,
+				StoreFile:     "env.json",
+				Restore:       true,
+				Key:           "ayayaka",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 8. Field key, env",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true", "KEY": "ayayaka",
+			},
+			wantEnv: Environment{
+				ServerAddress: "cmd.site",
+				StoreInterval: 60 * time.Second,
+				StoreFile:     "env.json",
+				Restore:       true,
+				Key:           "ayayaka",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 9. Field key, not set",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: Environment{
+				ServerAddress: "cmd.site",
+				StoreInterval: 60 * time.Second,
+				StoreFile:     "env.json",
+				Restore:       true,
+				Key:           "",
+			},
+			wantPanic: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1058,7 +1103,7 @@ func TestParseEnvArgs(t *testing.T) {
 			}
 
 			// удаляю переменные окружения, если они были до этого установлены
-			for _, key := range [4]string{"ADDRESS", "STORE_FILE", "STORE_INTERVAL", "RESTORE"} {
+			for _, key := range [5]string{"ADDRESS", "STORE_FILE", "STORE_INTERVAL", "RESTORE", "KEY"} {
 				err := os.Unsetenv(key)
 				require.NoError(t, err)
 			}
