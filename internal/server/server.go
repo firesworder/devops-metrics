@@ -60,6 +60,22 @@ func ParseEnvArgs() {
 	}
 }
 
+var DBConn *sql.DB
+
+func ConnectToDB() error {
+	var err error
+	DBConn, err = sql.Open("pgx", Env.DatabaseDsn)
+	if err != nil {
+		return err
+	}
+
+	err = DBConn.Ping()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 type Server struct {
 	FileStore     *filestore.FileStore
 	WriteTicker   *time.Ticker

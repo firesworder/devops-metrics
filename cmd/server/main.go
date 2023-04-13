@@ -8,6 +8,13 @@ import (
 
 func main() {
 	server.ParseEnvArgs()
+
+	dbErr := server.ConnectToDB()
+	if dbErr != nil {
+		log.Fatal(dbErr)
+	}
+	defer server.DBConn.Close()
+
 	serverParams := server.NewServer()
 	serverObj := &http.Server{
 		Addr:    server.Env.ServerAddress,
