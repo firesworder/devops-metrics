@@ -8,11 +8,8 @@ import (
 
 func main() {
 	server.ParseEnvArgs()
-
-	dbErr := server.ConnectToDB()
-	// в случае если бд не законнектилась - продолжаю работу все равно! (чтобы пройти тесты)
-	if dbErr == nil {
-		defer server.DBConn.Close()
+	if server.Env.DatabaseDsn != "" {
+		log.Fatal(server.ConnectToDB())
 	}
 
 	serverParams := server.NewServer()

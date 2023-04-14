@@ -101,13 +101,13 @@ func NewServer() *Server {
 }
 
 func (s *Server) InitFileStore() {
-	if Env.StoreFile != "" {
+	if Env.DatabaseDsn == "" && Env.StoreFile != "" {
 		s.FileStore = filestore.NewFileStore(Env.StoreFile)
 	}
 }
 
 func (s *Server) InitMetricStorage() {
-	if Env.Restore && s.FileStore != nil {
+	if Env.DatabaseDsn == "" && Env.Restore && s.FileStore != nil {
 		var err error
 		s.MetricStorage, err = s.FileStore.Read()
 		if err != nil {
@@ -123,7 +123,7 @@ func (s *Server) InitMetricStorage() {
 }
 
 func (s *Server) InitRepeatableSave() {
-	if Env.StoreInterval > 0 && s.FileStore != nil {
+	if Env.DatabaseDsn == "" && Env.StoreInterval > 0 && s.FileStore != nil {
 		go func() {
 			var err error
 			s.WriteTicker = time.NewTicker(Env.StoreInterval)
@@ -143,7 +143,7 @@ func (s *Server) InitRepeatableSave() {
 }
 
 func (s *Server) SyncSaveMetricStorage() error {
-	if Env.StoreInterval == 0 && s.FileStore != nil && s.MetricStorage != nil {
+	if Env.DatabaseDsn == "" && Env.StoreInterval == 0 && s.FileStore != nil && s.MetricStorage != nil {
 		err := s.FileStore.Write(s.MetricStorage)
 		return err
 	}
