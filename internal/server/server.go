@@ -2,6 +2,7 @@ package server
 
 import (
 	"compress/gzip"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -13,6 +14,7 @@ import (
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"html/template"
 	"io"
 	"log"
@@ -161,6 +163,7 @@ func (s *Server) NewRouter() chi.Router {
 	r.Route("/", func(r chi.Router) {
 		r.Get("/", s.handlerShowAllMetrics)
 		r.Get("/value/{typeName}/{metricName}", s.handlerGet)
+		r.Get("/ping", s.handlerPing)
 		r.Post("/update/{typeName}/{metricName}/{metricValue}", s.handlerAddUpdateMetric)
 		r.Post("/update/", s.handlerJSONAddUpdateMetric)
 		r.Post("/value/", s.handlerJSONGetMetric)
@@ -372,4 +375,13 @@ func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.
 	}
 	writer.Header().Set("Content-Type", "application/json")
 	writer.Write(msgJSON)
+}
+
+func (s *Server) handlerPing(writer http.ResponseWriter, request *http.Request) {
+	err := DBConn.Ping()
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+	} else {
+		writer.WriteHeader(http.StatusOK)
+	}
 }

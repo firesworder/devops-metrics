@@ -3,10 +3,13 @@ package server
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/filestore"
 	"github.com/firesworder/devopsmetrics/internal/helper"
+	"github.com/firesworder/devopsmetrics/internal/mock_dbstore"
 	"github.com/firesworder/devopsmetrics/internal/storage"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -1101,6 +1104,60 @@ func TestGetMetricJsonHandlerWithHash(t *testing.T) {
 	}
 	// возвращаю Env до теста
 	Env = defaultEnv
+}
+
+func TestServer_PingHandler(t *testing.T) {
+	// определяем тестовый сервер
+	s := Server{}
+	ts := httptest.NewServer(s.NewRouter())
+	defer ts.Close()
+
+	// определяем mock контроллер
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	reqArgs := requestArgs{
+		method:      http.MethodGet,
+		url:         "/ping",
+		contentType: "text/plain",
+		body:        ``,
+	}
+
+	type mockParams struct {
+		pingReturnValue error
+	}
+
+	tests := []struct {
+		name string
+		requestArgs
+		mockParams
+		wantResponse response
+	}{
+		{
+			name:       "Test 1. DB is accessible",
+			mockParams: mockParams{pingReturnValue: nil},
+			wantResponse: response{
+				statusCode: http.StatusOK,
+			},
+		},
+		{
+			name:       "Test 2. DB is not accessible",
+			mockParams: mockParams{pingReturnValue: fmt.Errorf("some error")},
+			wantResponse: response{
+				statusCode: http.StatusInternalServerError,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dbMock := mock_dbstore.NewMockDBStorage(ctrl)
+			dbMock.EXPECT().Ping().Return(tt.mockParams.pingReturnValue).Times(1)
+			DBConn = dbMock
+			statusCode, _, _ := sendTestRequest(t, ts, reqArgs)
+
+			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
+		})
+	}
 }
 
 func TestServer_InitFileStore(t *testing.T) {
