@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/caarlos0/env/v7"
+	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/filestore"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/firesworder/devopsmetrics/internal/storage"
@@ -60,7 +61,7 @@ func ParseEnvArgs() {
 	}
 }
 
-var DBConn *sql.DB
+var DBConn internal.DBStorage
 
 func ConnectToDB() error {
 	var err error
