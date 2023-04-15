@@ -1,4 +1,4 @@
-package dbstore
+package storage
 
 import (
 	"database/sql"
@@ -7,12 +7,12 @@ import (
 	"os"
 )
 
-type DBStore struct {
+type SqlStorage struct {
 	Connection internal.DBStorage
 }
 
-func NewDBStore(DSN string) (*DBStore, error) {
-	db := DBStore{}
+func NewSqlStorage(DSN string) (*SqlStorage, error) {
+	db := SqlStorage{}
 	err := db.OpenDBConnection(DSN)
 	if err != nil {
 		return nil, err
@@ -20,7 +20,7 @@ func NewDBStore(DSN string) (*DBStore, error) {
 	return &db, nil
 }
 
-func (db *DBStore) OpenDBConnection(DSN string) error {
+func (db *SqlStorage) OpenDBConnection(DSN string) error {
 	var err error
 	db.Connection, err = sql.Open("pgx", DSN)
 	if err != nil {
@@ -29,7 +29,7 @@ func (db *DBStore) OpenDBConnection(DSN string) error {
 	return nil
 }
 
-func (db *DBStore) CreateTableIfNotExist() error {
+func (db *SqlStorage) CreateTableIfNotExist() error {
 	sqlScript, err := os.ReadFile("metrics.sql")
 	if err != nil {
 		return err

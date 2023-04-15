@@ -1,4 +1,4 @@
-package dbstore
+package storage
 
 import (
 	"github.com/firesworder/devopsmetrics/internal/mock_dbstore"
@@ -14,7 +14,7 @@ func TestCreateTableIfNotExist(t *testing.T) {
 
 	dbMock := mock_dbstore.NewMockDBStorage(ctrl)
 	dbMock.EXPECT().Exec(gomock.Any()).Return(nil, nil).Times(1)
-	db := DBStore{Connection: dbMock}
+	db := SqlStorage{Connection: dbMock}
 
 	err := db.CreateTableIfNotExist()
 	require.NoError(t, err)
