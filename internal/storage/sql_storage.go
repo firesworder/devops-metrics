@@ -4,11 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/firesworder/devopsmetrics/internal"
-	"strconv"
-
-	//"github.com/firesworder/devopsmetrics/internal"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"os"
+	"strconv"
 )
 
 var insertStmt, updateStmt, deleteStmt internal.DBStmt
@@ -21,6 +18,10 @@ type SqlStorage struct {
 func NewSqlStorage(DSN string) (*SqlStorage, error) {
 	db := SqlStorage{}
 	err := db.OpenDBConnection(DSN)
+	if err != nil {
+		return nil, err
+	}
+	err = db.CreateTableIfNotExist()
 	if err != nil {
 		return nil, err
 	}
@@ -68,14 +69,18 @@ func (db *SqlStorage) OpenDBConnection(DSN string) error {
 	return nil
 }
 
-func (db *SqlStorage) CreateTableIfNotExist() error {
-	sqlScript, err := os.ReadFile("metrics.sql")
+func (db *SqlStorage) CreateTableIfNotExist() (err error) {
+	_, err = db.Connection.Exec(`
+		CREATE TABLE IF NOT EXISTS metrics
+		(
+			id      SERIAL PRIMARY KEY,
+			m_name  VARCHAR(50) UNIQUE,
+			m_value VARCHAR(50),
+			m_type  VARCHAR(20)
+		);
+`)
 	if err != nil {
-		return err
-	}
-	_, err = db.Connection.Exec(string(sqlScript))
-	if err != nil {
-		return err
+		return
 	}
 	return nil
 }
