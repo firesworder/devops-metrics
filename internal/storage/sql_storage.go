@@ -8,11 +8,11 @@ import (
 	"strconv"
 )
 
-var insertStmt, updateStmt, deleteStmt internal.DBStmt
-var selectMetricStmt, selectAllStmt internal.DBStmt
+var insertStmt, updateStmt, deleteStmt *sql.Stmt
+var selectMetricStmt, selectAllStmt *sql.Stmt
 
 type SqlStorage struct {
-	Connection internal.DBStorage
+	Connection *sql.DB
 }
 
 func NewSqlStorage(DSN string) (*SqlStorage, error) {
@@ -222,4 +222,32 @@ func (db *SqlStorage) GetMetric(name string) (metric Metric, isOk bool) {
 	}
 	metric, isOk = *m, true
 	return
+}
+
+func (db *SqlStorage) BatchUpdate(metrics map[string]Metric) (err error) {
+	existedMetrics := db.GetAll()
+	tx, err := db.Connection.Begin()
+	if err != nil {
+		return
+	}
+	defer tx.Rollback()
+	txUpdateStmt := tx.Stmt(updateStmt)
+	txInsertStmt := tx.Stmt(insertStmt)
+
+	for mName, metric := range metrics {
+		if existedMetric, ok := existedMetrics[mName]; ok {
+			if err = existedMetric.Update(metric.Value); err != nil {
+				return err
+			}
+			if _, err = txUpdateStmt.Exec(existedMetric.GetMetricParamsString()); err != nil {
+				return err
+			}
+		} else {
+			if _, err = txInsertStmt.Exec(metric.GetMetricParamsString()); err != nil {
+				return err
+			}
+		}
+	}
+
+	return tx.Commit()
 }
