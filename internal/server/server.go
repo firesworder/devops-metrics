@@ -74,8 +74,6 @@ type Server struct {
 func NewServer() *Server {
 	server := Server{}
 	server.InitFileStore()
-	// todo: убрать после тестирования
-	Env.DatabaseDsn = "postgresql://postgres:admin@localhost:5432/devops"
 	if Env.DatabaseDsn == "" {
 		server.InitMetricStorage()
 		server.InitRepeatableSave()
