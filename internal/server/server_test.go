@@ -1152,7 +1152,7 @@ func TestServer_PingHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dbMock := mock_dbstore.NewMockDBStorage(ctrl)
 			dbMock.EXPECT().Ping().Return(tt.mockParams.pingReturnValue).Times(1)
-			DBConn = dbMock
+			s.DBConn = dbMock
 			statusCode, _, _ := sendTestRequest(t, ts, reqArgs)
 
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)

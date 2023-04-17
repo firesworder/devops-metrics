@@ -8,9 +8,6 @@ import (
 
 func main() {
 	server.ParseEnvArgs()
-	if server.Env.DatabaseDsn != "" {
-		log.Fatal(server.ConnectToDB())
-	}
 
 	serverParams := server.NewServer()
 	serverObj := &http.Server{

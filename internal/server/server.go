@@ -2,7 +2,6 @@ package server
 
 import (
 	"compress/gzip"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -63,35 +62,31 @@ func ParseEnvArgs() {
 	}
 }
 
-var DBConn internal.DBStorage
-
-func ConnectToDB() error {
-	var err error
-	DBConn, err = sql.Open("pgx", Env.DatabaseDsn)
-	if err != nil {
-		return err
-	}
-
-	err = DBConn.Ping()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 type Server struct {
 	FileStore     *filestore.FileStore
 	WriteTicker   *time.Ticker
 	Router        chi.Router
 	LayoutsDir    string
 	MetricStorage storage.MetricRepository
+	DBConn        internal.DBStorage
 }
 
 func NewServer() *Server {
 	server := Server{}
 	server.InitFileStore()
-	server.InitMetricStorage()
-	server.InitRepeatableSave()
+	// todo: убрать после тестирования
+	Env.DatabaseDsn = "postgresql://postgres:admin@localhost:5432/devops"
+	if Env.DatabaseDsn == "" {
+		server.InitMetricStorage()
+		server.InitRepeatableSave()
+	} else {
+		sqlStorage, err := storage.NewSqlStorage(Env.DatabaseDsn)
+		if err != nil {
+			panic(err)
+		}
+		server.MetricStorage = sqlStorage
+		server.DBConn = sqlStorage.Connection
+	}
 	server.Router = server.NewRouter()
 
 	workingDir, _ := os.Getwd()
@@ -378,7 +373,7 @@ func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.
 }
 
 func (s *Server) handlerPing(writer http.ResponseWriter, request *http.Request) {
-	err := DBConn.Ping()
+	err := s.DBConn.Ping()
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
 	} else {
