@@ -114,3 +114,17 @@ func (m *Metric) GetValueString() string {
 	}
 	return ""
 }
+
+// GetMetricParamsString Возвращает параметры метрики в string формате: Name, Value, Type
+func (m *Metric) GetMetricParamsString() (mN string, mV string, mT string) {
+	mN = m.Name
+	switch value := m.Value.(type) {
+	case gauge:
+		mT = internal.GaugeTypeName
+		mV = fmt.Sprintf("%f", value)
+	case counter:
+		mT = internal.CounterTypeName
+		mV = fmt.Sprintf("%d", value)
+	}
+	return
+}
