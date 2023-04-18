@@ -7,6 +7,7 @@ import (
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 type gauge float64
@@ -108,7 +109,7 @@ func (m *Metric) GetMessageMetric() (messageMetric message.Metrics) {
 func (m *Metric) GetValueString() string {
 	switch value := m.Value.(type) {
 	case gauge:
-		return fmt.Sprintf("%f", value)
+		return strings.TrimRight(fmt.Sprintf("%f", value), "0")
 	case counter:
 		return fmt.Sprintf("%d", value)
 	}
