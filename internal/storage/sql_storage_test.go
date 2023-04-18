@@ -20,15 +20,15 @@ func TestSqlStorage_BatchUpdate(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		metricsBatch map[string]Metric
+		metricsBatch []Metric
 		initDBState  map[string]Metric
 		wantDBState  map[string]Metric
 	}{
 		{
 			name: "Test 1. First batch(empty table metrics)",
-			metricsBatch: map[string]Metric{
-				metric1Counter10.Name: metric1Counter10,
-				metric4Gauge2d27.Name: metric4Gauge2d27,
+			metricsBatch: []Metric{
+				metric1Counter10,
+				metric4Gauge2d27,
 			},
 			initDBState: map[string]Metric{},
 			wantDBState: map[string]Metric{
@@ -38,9 +38,9 @@ func TestSqlStorage_BatchUpdate(t *testing.T) {
 		},
 		{
 			name: "Test 2. Partially update, partially add(table has some of metrics from batch)",
-			metricsBatch: map[string]Metric{
-				metric1Counter10.Name: metric1Counter10,
-				metric4Gauge2d27.Name: metric4Gauge2d27,
+			metricsBatch: []Metric{
+				metric1Counter10,
+				metric4Gauge2d27,
 			},
 			initDBState: map[string]Metric{
 				metric1Counter10.Name: metric1Counter10,
@@ -52,9 +52,9 @@ func TestSqlStorage_BatchUpdate(t *testing.T) {
 		},
 		{
 			name: "Test 3. Only update(table metrics contains all batch metrics)",
-			metricsBatch: map[string]Metric{
-				metric1Counter10.Name: metric1Counter10,
-				metric4Gauge2d27.Name: metric4Gauge2d27,
+			metricsBatch: []Metric{
+				metric1Counter10,
+				metric4Gauge2d27,
 			},
 			initDBState: map[string]Metric{
 				metric1Counter10.Name: metric1Counter10,

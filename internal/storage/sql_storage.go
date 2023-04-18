@@ -229,7 +229,7 @@ func (db *SQLStorage) GetMetric(name string) (metric Metric, isOk bool) {
 	return *m, true
 }
 
-func (db *SQLStorage) BatchUpdate(metrics map[string]Metric) (err error) {
+func (db *SQLStorage) BatchUpdate(metrics []Metric) (err error) {
 	existedMetrics := db.GetAll()
 	tx, err := db.Connection.Begin()
 	if err != nil {
@@ -239,11 +239,12 @@ func (db *SQLStorage) BatchUpdate(metrics map[string]Metric) (err error) {
 	txUpdateStmt := tx.Stmt(updateStmt)
 	txInsertStmt := tx.Stmt(insertStmt)
 
-	for mName, metric := range metrics {
-		if existedMetric, ok := existedMetrics[mName]; ok {
+	for _, metric := range metrics {
+		if existedMetric, ok := existedMetrics[metric.Name]; ok {
 			if err = existedMetric.Update(metric.Value); err != nil {
 				return err
 			}
+			existedMetrics[metric.Name] = existedMetric
 			if _, err = txUpdateStmt.Exec(existedMetric.GetMetricParamsString()); err != nil {
 				return err
 			}

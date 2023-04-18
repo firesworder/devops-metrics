@@ -388,7 +388,7 @@ func (s *Server) handlerPing(writer http.ResponseWriter, request *http.Request) 
 
 func (s *Server) handlerBatchUpdate(writer http.ResponseWriter, request *http.Request) {
 	var metricMessagesBatch []message.Metrics
-	metrics := map[string]storage.Metric{}
+	var metrics []storage.Metric
 
 	if err := json.NewDecoder(request.Body).Decode(&metricMessagesBatch); err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
@@ -416,7 +416,7 @@ func (s *Server) handlerBatchUpdate(writer http.ResponseWriter, request *http.Re
 			}
 			return
 		}
-		metrics[m.Name] = *m
+		metrics = append(metrics, *m)
 	}
 
 	if err := s.MetricStorage.BatchUpdate(metrics); err != nil {

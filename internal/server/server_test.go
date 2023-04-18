@@ -1638,7 +1638,10 @@ func TestServer_gzipDecompressor(t *testing.T) {
 
 func TestServer_handlerBatchUpdate(t *testing.T) {
 	metricCounterFilled, _ := storage.NewMetric("CounterMetric", internal.CounterTypeName, int64(473771967))
+	// 473771967(пред) + 247876521 = 721648488
 	metricCounterUpdated, _ := storage.NewMetric("CounterMetric", internal.CounterTypeName, int64(721648488))
+	// 721648488(пред) + 247876521 = 969525009
+	metricCounterUpdatedMpl, _ := storage.NewMetric("CounterMetric", internal.CounterTypeName, int64(969525009))
 	devTest := true
 	Env.DatabaseDsn = "postgresql://postgres:admin@localhost:5432/devops"
 	s, err := NewServer()
@@ -1666,7 +1669,8 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 				body:        `[{"id":"PollCount","type":"counter","delta":10,"hash":"566384d8026a5429fcc20ccac3248f014da91cb8fbfe8cd47883088c1741b0eb"},{"id":"RandomValue","type":"gauge","value":12.133,"hash":"ceb416f4ef87553a09a82f2909bbbaffd2eff26d1b7c4a29bb61ea38433876d2"}]`,
 			},
 			wantResponse: response{
-				statusCode: http.StatusOK,
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
 			},
 			memStorageState: map[string]storage.Metric{},
 			wantStorageState: map[string]storage.Metric{
@@ -1683,7 +1687,8 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 				body:        `[{"id":"CounterMetric","type":"counter","delta":247876521,"hash":"6e28fa1c129a272c5f6ccf1eb77bf0d3c387be662a369e8e0c01baa0a9659ceb"},{"id":"RandomValue","type":"gauge","value":23.5,"hash":"522d0b516a2834031c10d96f7bea65935ebbe5e331986525b8833b895af23199"}]`,
 			},
 			wantResponse: response{
-				statusCode: http.StatusOK,
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
 			},
 			memStorageState: map[string]storage.Metric{
 				metric1.Name:             *metric1,
@@ -1694,6 +1699,29 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 				metric1.Name:              *metric1,
 				metricCounterUpdated.Name: *metricCounterUpdated,
 				metric2upd235.Name:        *metric2upd235,
+			},
+		},
+		{
+			name: "Test 3. FilledState. Multiple metric in batch with the same name.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/updates/",
+				contentType: "application/json",
+				body:        `[{"id":"CounterMetric","type":"counter","delta":247876521,"hash":"6e28fa1c129a272c5f6ccf1eb77bf0d3c387be662a369e8e0c01baa0a9659ceb"},{"id":"RandomValue","type":"gauge","value":23.5,"hash":"522d0b516a2834031c10d96f7bea65935ebbe5e331986525b8833b895af23199"},{"id":"CounterMetric","type":"counter","delta":247876521,"hash":"6e28fa1c129a272c5f6ccf1eb77bf0d3c387be662a369e8e0c01baa0a9659ceb"}]`,
+			},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+			},
+			memStorageState: map[string]storage.Metric{
+				metric1.Name:             *metric1,
+				metricCounterFilled.Name: *metricCounterFilled,
+				metric2.Name:             *metric2,
+			},
+			wantStorageState: map[string]storage.Metric{
+				metric1.Name:                 *metric1,
+				metricCounterUpdatedMpl.Name: *metricCounterUpdatedMpl,
+				metric2upd235.Name:           *metric2upd235,
 			},
 		},
 	}
@@ -1710,8 +1738,9 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 				s.MetricStorage = storage.NewMemStorage(tt.memStorageState)
 			}
 
-			statusCode, _, _ := sendTestRequest(t, ts, tt.requestArgs)
+			statusCode, contentType, _ := sendTestRequest(t, ts, tt.requestArgs)
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, contentType)
 
 			gotStorageState := s.MetricStorage.GetAll()
 			assert.Equal(t, tt.wantStorageState, gotStorageState)

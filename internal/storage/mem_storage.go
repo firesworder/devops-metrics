@@ -126,7 +126,7 @@ func (ms *MemStorage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (ms *MemStorage) BatchUpdate(metrics map[string]Metric) (err error) {
+func (ms *MemStorage) BatchUpdate(metrics []Metric) (err error) {
 	for _, metric := range metrics {
 		err = ms.UpdateOrAddMetric(metric)
 		if err != nil {
