@@ -122,7 +122,7 @@ func (m *Metric) GetMetricParamsString() (mN string, mV string, mT string) {
 	switch value := m.Value.(type) {
 	case gauge:
 		mT = internal.GaugeTypeName
-		mV = fmt.Sprintf("%f", value)
+		mV = fmt.Sprintf("%v", value)
 	case counter:
 		mT = internal.CounterTypeName
 		mV = fmt.Sprintf("%d", value)
