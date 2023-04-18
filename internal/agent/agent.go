@@ -222,7 +222,7 @@ func sendMetricsBatchByJSON(metrics map[string]interface{}) {
 	_, err = client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(jsonBody).
-		Post(`/update/`)
+		Post(`/updates/`)
 	if err != nil {
 		log.Println(err)
 		return
