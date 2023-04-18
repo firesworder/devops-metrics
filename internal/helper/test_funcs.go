@@ -17,5 +17,5 @@ func AssertEqualFileContent(t *testing.T, expectedFile string, gotFile string) {
 	require.FileExists(t, expectedFile)
 	gotContent, err := os.ReadFile(gotFile)
 	require.NoError(t, err)
-	assert.Equal(t, wantContent, gotContent)
+	assert.Equal(t, string(wantContent), string(gotContent))
 }

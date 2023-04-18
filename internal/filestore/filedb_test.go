@@ -133,23 +133,12 @@ func TestFileStore_Write(t *testing.T) {
 			wantError:     false,
 		},
 		{
-			// создаст файл, в моем случае, на C:/tmp/...
-			name: "Test #4. Incorrect filepath(for Windows os).",
-			ms: *storage.NewMemStorage(map[string]storage.Metric{
-				metricCounter.Name: *metricCounter,
-				metricGauge.Name:   *metricGauge,
-			}),
-			storeFilePath: "/tmp/devops-metrics-db.json",
-			wantContentAs: "files_test/read_correct_ms_test.json",
-			wantError:     false,
-		},
-		{
 			name: "Test #5. Not existed filepath.",
 			ms: *storage.NewMemStorage(map[string]storage.Metric{
 				metricCounter.Name: *metricCounter,
 				metricGauge.Name:   *metricGauge,
 			}),
-			storeFilePath: "/tmp/devops-metrics-db.json",
+			storeFilePath: "/tmp/some_path.json",
 			wantContentAs: "files_test/read_correct_ms_test.json",
 			wantError:     false,
 		},
