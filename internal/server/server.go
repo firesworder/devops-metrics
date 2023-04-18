@@ -71,7 +71,7 @@ type Server struct {
 	DBConn        internal.DBStorage
 }
 
-func NewServer() *Server {
+func NewServer() (*Server, error) {
 	server := Server{}
 	server.InitFileStore()
 	if Env.DatabaseDsn == "" {
@@ -80,7 +80,7 @@ func NewServer() *Server {
 	} else {
 		sqlStorage, err := storage.NewSqlStorage(Env.DatabaseDsn)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		server.MetricStorage = sqlStorage
 		server.DBConn = sqlStorage.Connection
@@ -90,7 +90,7 @@ func NewServer() *Server {
 	workingDir, _ := os.Getwd()
 	server.LayoutsDir = filepath.Join(workingDir, "/internal/server/html_layouts")
 
-	return &server
+	return &server, nil
 }
 
 func (s *Server) InitFileStore() {
