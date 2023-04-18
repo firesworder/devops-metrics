@@ -428,6 +428,6 @@ func (s *Server) handlerBatchUpdate(writer http.ResponseWriter, request *http.Re
 		return
 	}
 
-	writer.WriteHeader(http.StatusOK)
 	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusOK)
 }
