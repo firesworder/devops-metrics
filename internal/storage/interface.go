@@ -10,4 +10,5 @@ type MetricRepository interface {
 
 	GetAll() map[string]Metric
 	GetMetric(string) (Metric, bool)
+	BatchUpdate(map[string]Metric) error
 }
