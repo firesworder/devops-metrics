@@ -12,7 +12,7 @@ var devDSN = "postgresql://postgres:admin@localhost:5432/devops"
 
 func TestSqlStorage_BatchUpdate(t *testing.T) {
 	var err error
-	sqlStorage, err := NewSqlStorage(devDSN)
+	sqlStorage, err := NewSQLStorage(devDSN)
 	if err != nil {
 		t.Skipf("cannot connect to db. db mocks are not ready yet")
 	}

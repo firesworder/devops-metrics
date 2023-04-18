@@ -78,7 +78,7 @@ func NewServer() (*Server, error) {
 		server.InitMetricStorage()
 		server.InitRepeatableSave()
 	} else {
-		sqlStorage, err := storage.NewSqlStorage(Env.DatabaseDsn)
+		sqlStorage, err := storage.NewSQLStorage(Env.DatabaseDsn)
 		if err != nil {
 			return nil, err
 		}

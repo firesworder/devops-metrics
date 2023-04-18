@@ -11,12 +11,12 @@ import (
 var insertStmt, updateStmt, deleteStmt *sql.Stmt
 var selectMetricStmt, selectAllStmt *sql.Stmt
 
-type SqlStorage struct {
+type SQLStorage struct {
 	Connection *sql.DB
 }
 
-func NewSqlStorage(DSN string) (*SqlStorage, error) {
-	db := SqlStorage{}
+func NewSQLStorage(DSN string) (*SQLStorage, error) {
+	db := SQLStorage{}
 	err := db.OpenDBConnection(DSN)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func NewSqlStorage(DSN string) (*SqlStorage, error) {
 	return &db, nil
 }
 
-func (db *SqlStorage) initStmts() (err error) {
+func (db *SQLStorage) initStmts() (err error) {
 	insertStmt, err = db.Connection.Prepare("INSERT INTO metrics(m_name, m_value, m_type) VALUES($1, $2, $3)")
 	if err != nil {
 		return
@@ -60,7 +60,7 @@ func (db *SqlStorage) initStmts() (err error) {
 	return
 }
 
-func (db *SqlStorage) OpenDBConnection(DSN string) error {
+func (db *SQLStorage) OpenDBConnection(DSN string) error {
 	var err error
 	db.Connection, err = sql.Open("pgx", DSN)
 	if err != nil {
@@ -69,7 +69,7 @@ func (db *SqlStorage) OpenDBConnection(DSN string) error {
 	return nil
 }
 
-func (db *SqlStorage) CreateTableIfNotExist() (err error) {
+func (db *SQLStorage) CreateTableIfNotExist() (err error) {
 	_, err = db.Connection.Exec(`
 		CREATE TABLE IF NOT EXISTS metrics
 		(
@@ -87,7 +87,7 @@ func (db *SqlStorage) CreateTableIfNotExist() (err error) {
 
 // MetricRepository реализация
 
-func (db *SqlStorage) AddMetric(metric Metric) (err error) {
+func (db *SQLStorage) AddMetric(metric Metric) (err error) {
 	_, err = insertStmt.Exec(metric.GetMetricParamsString())
 	if err != nil {
 		return
@@ -95,7 +95,7 @@ func (db *SqlStorage) AddMetric(metric Metric) (err error) {
 	return
 }
 
-func (db *SqlStorage) UpdateMetric(metric Metric) (err error) {
+func (db *SQLStorage) UpdateMetric(metric Metric) (err error) {
 	dbMetric, isOk := db.GetMetric(metric.Name)
 	if !isOk {
 		return fmt.Errorf("metric to update was not found")
@@ -116,7 +116,7 @@ func (db *SqlStorage) UpdateMetric(metric Metric) (err error) {
 	return
 }
 
-func (db *SqlStorage) DeleteMetric(metric Metric) (err error) {
+func (db *SQLStorage) DeleteMetric(metric Metric) (err error) {
 	result, err := deleteStmt.Exec(metric.Name)
 	if err != nil {
 		return err
@@ -128,19 +128,16 @@ func (db *SqlStorage) DeleteMetric(metric Metric) (err error) {
 	return
 }
 
-func (db *SqlStorage) IsMetricInStorage(metric Metric) bool {
+func (db *SQLStorage) IsMetricInStorage(metric Metric) bool {
 	result, err := selectMetricStmt.Exec(metric.Name)
 	if err != nil {
 		return false
 	}
 	rAff, err := result.RowsAffected()
-	if rAff == 0 {
-		return false
-	}
-	return true
+	return rAff != 0 || err != nil
 }
 
-func (db *SqlStorage) UpdateOrAddMetric(metric Metric) (err error) {
+func (db *SQLStorage) UpdateOrAddMetric(metric Metric) (err error) {
 	if db.IsMetricInStorage(metric) {
 		err = db.UpdateMetric(metric)
 	} else {
@@ -149,11 +146,9 @@ func (db *SqlStorage) UpdateOrAddMetric(metric Metric) (err error) {
 	return
 }
 
-func (db *SqlStorage) GetAll() (result map[string]Metric) {
-	var err error
+func (db *SQLStorage) GetAll() (result map[string]Metric) {
 	result = map[string]Metric{}
-	var rows internal.DBRows
-	rows, err = selectAllStmt.Query()
+	rows, err := selectAllStmt.Query()
 	if err != nil {
 		return
 	}
@@ -188,10 +183,16 @@ func (db *SqlStorage) GetAll() (result map[string]Metric) {
 		}
 		result[mN] = *metric
 	}
+
+	// проверяем на ошибки
+	err = rows.Err()
+	if err != nil {
+		return
+	}
 	return
 }
 
-func (db *SqlStorage) GetMetric(name string) (metric Metric, isOk bool) {
+func (db *SQLStorage) GetMetric(name string) (metric Metric, isOk bool) {
 	result, err := selectMetricStmt.Query(name)
 	if err != nil {
 		return
@@ -224,7 +225,7 @@ func (db *SqlStorage) GetMetric(name string) (metric Metric, isOk bool) {
 	return
 }
 
-func (db *SqlStorage) BatchUpdate(metrics map[string]Metric) (err error) {
+func (db *SQLStorage) BatchUpdate(metrics map[string]Metric) (err error) {
 	existedMetrics := db.GetAll()
 	tx, err := db.Connection.Begin()
 	if err != nil {
