@@ -1636,6 +1636,85 @@ func TestServer_gzipDecompressor(t *testing.T) {
 	}
 }
 
+func TestServer_handlerBatchUpdate(t *testing.T) {
+	devTest := true
+	Env.DatabaseDsn = "postgresql://postgres:admin@localhost:5432/devops"
+	s, err := NewServer()
+	if err != nil {
+		devTest = false
+		Env.DatabaseDsn = ""
+		s, _ = NewServer()
+	}
+	ts := httptest.NewServer(s.NewRouter())
+	defer ts.Close()
+
+	tests := []struct {
+		name string
+		requestArgs
+		wantResponse     response
+		memStorageState  map[string]storage.Metric
+		wantStorageState map[string]storage.Metric
+	}{
+		{
+			name: "Test 1. Empty metrics table.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/updates/",
+				contentType: "application/json",
+				body:        `[{"id":"PollCount","type":"counter","delta":10,"hash":"566384d8026a5429fcc20ccac3248f014da91cb8fbfe8cd47883088c1741b0eb"},{"id":"RandomValue","type":"gauge","value":12.133,"hash":"ceb416f4ef87553a09a82f2909bbbaffd2eff26d1b7c4a29bb61ea38433876d2"}]`,
+			},
+			wantResponse: response{
+				statusCode: http.StatusOK,
+			},
+			memStorageState: map[string]storage.Metric{},
+			wantStorageState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+			},
+		},
+		{
+			name: "Test 2. FilledState.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/updates/",
+				contentType: "application/json",
+				body:        `[{"id":"PollCount","type":"counter","delta":20,"hash":"6e28fa1c129a272c5f6ccf1eb77bf0d3c387be662a369e8e0c01baa0a9659ceb"},{"id":"RandomValue","type":"gauge","value":23.5,"hash":"522d0b516a2834031c10d96f7bea65935ebbe5e331986525b8833b895af23199"}]`,
+			},
+			wantResponse: response{
+				statusCode: http.StatusOK,
+			},
+			memStorageState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+			},
+			wantStorageState: map[string]storage.Metric{
+				metric1upd20.Name:  *metric1upd20,
+				metric2upd235.Name: *metric2upd235,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if devTest {
+				_, err = s.DBConn.Exec("DELETE FROM metrics")
+				require.NoError(t, err)
+				for _, metric := range tt.memStorageState {
+					err = s.MetricStorage.AddMetric(metric)
+					require.NoError(t, err)
+				}
+			} else {
+				s.MetricStorage = storage.NewMemStorage(tt.memStorageState)
+			}
+
+			statusCode, _, _ := sendTestRequest(t, ts, tt.requestArgs)
+			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
+
+			gotStorageState := s.MetricStorage.GetAll()
+			assert.Equal(t, tt.wantStorageState, gotStorageState)
+		})
+	}
+}
+
 // Эти тесты должны быть внизу, т.к. вызывают гонку горутинами
 // Тестирую изолированно только саму функцию(а не ее инъекции в обновл. MS хендлеры)
 func TestServer_SyncSaveMetricStorage(t *testing.T) {

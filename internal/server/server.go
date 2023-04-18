@@ -157,6 +157,7 @@ func (s *Server) NewRouter() chi.Router {
 		r.Get("/", s.handlerShowAllMetrics)
 		r.Get("/value/{typeName}/{metricName}", s.handlerGet)
 		r.Get("/ping", s.handlerPing)
+		r.Post("/updates/", s.handlerBatchUpdate)
 		r.Post("/update/{typeName}/{metricName}/{metricValue}", s.handlerAddUpdateMetric)
 		r.Post("/update/", s.handlerJSONAddUpdateMetric)
 		r.Post("/value/", s.handlerJSONGetMetric)
@@ -383,4 +384,49 @@ func (s *Server) handlerPing(writer http.ResponseWriter, request *http.Request) 
 		writer.WriteHeader(http.StatusOK)
 		return
 	}
+}
+
+func (s *Server) handlerBatchUpdate(writer http.ResponseWriter, request *http.Request) {
+	var metricMessagesBatch []message.Metrics
+	metrics := map[string]storage.Metric{}
+
+	if err := json.NewDecoder(request.Body).Decode(&metricMessagesBatch); err != nil {
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for _, metricMessage := range metricMessagesBatch {
+		if Env.Key != "" {
+			isHashCorrect, err := metricMessage.CheckHash(Env.Key)
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+				return
+			} else if !isHashCorrect {
+				http.Error(writer, "hash is not correct", http.StatusBadRequest)
+				return
+			}
+		}
+
+		m, metricError := storage.NewMetricFromMessage(&metricMessage)
+		if metricError != nil {
+			if errors.Is(metricError, storage.ErrUnhandledValueType) {
+				http.Error(writer, metricError.Error(), http.StatusNotImplemented)
+			} else {
+				http.Error(writer, metricError.Error(), http.StatusBadRequest)
+			}
+			return
+		}
+		metrics[m.Name] = *m
+	}
+
+	if err := s.MetricStorage.BatchUpdate(metrics); err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+	}
+
+	if errorObj := s.SyncSaveMetricStorage(); errorObj != nil {
+		http.Error(writer, errorObj.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writer.WriteHeader(http.StatusOK)
 }
