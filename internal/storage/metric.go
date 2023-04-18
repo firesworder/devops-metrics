@@ -109,7 +109,7 @@ func (m *Metric) GetMessageMetric() (messageMetric message.Metrics) {
 func (m *Metric) GetValueString() string {
 	switch value := m.Value.(type) {
 	case gauge:
-		return strings.TrimRight(fmt.Sprintf("%f", value), "0")
+		return strings.TrimRight(fmt.Sprintf("%.3f", value), "0")
 	case counter:
 		return fmt.Sprintf("%d", value)
 	}

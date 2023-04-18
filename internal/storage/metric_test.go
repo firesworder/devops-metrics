@@ -311,7 +311,7 @@ func TestMetric_GetValueString(t *testing.T) {
 		{
 			name:   "Test correct gauge.",
 			metric: Metric{Name: "Alloc", Value: gauge(22.2)},
-			want:   "22.200",
+			want:   "22.2",
 		},
 
 		{
