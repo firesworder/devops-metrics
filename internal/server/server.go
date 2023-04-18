@@ -371,10 +371,16 @@ func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.
 }
 
 func (s *Server) handlerPing(writer http.ResponseWriter, request *http.Request) {
+	if s.DBConn == nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	err := s.DBConn.Ping()
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
+		return
 	} else {
 		writer.WriteHeader(http.StatusOK)
+		return
 	}
 }
