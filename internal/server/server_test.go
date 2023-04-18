@@ -1666,7 +1666,7 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/updates/",
 				contentType: "application/json",
-				body:        `[{"id":"PollCount","type":"counter","delta":10,"hash":"566384d8026a5429fcc20ccac3248f014da91cb8fbfe8cd47883088c1741b0eb"},{"id":"RandomValue","type":"gauge","value":12.133,"hash":"ceb416f4ef87553a09a82f2909bbbaffd2eff26d1b7c4a29bb61ea38433876d2"}]`,
+				body:        `[{"id":"PollCount","type":"counter","delta":10},{"id":"RandomValue","type":"gauge","value":12.133}]`,
 			},
 			wantResponse: response{
 				statusCode:  http.StatusOK,
@@ -1684,7 +1684,7 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/updates/",
 				contentType: "application/json",
-				body:        `[{"id":"CounterMetric","type":"counter","delta":247876521,"hash":"6e28fa1c129a272c5f6ccf1eb77bf0d3c387be662a369e8e0c01baa0a9659ceb"},{"id":"RandomValue","type":"gauge","value":23.5,"hash":"522d0b516a2834031c10d96f7bea65935ebbe5e331986525b8833b895af23199"}]`,
+				body:        `[{"id":"CounterMetric","type":"counter","delta":247876521},{"id":"RandomValue","type":"gauge","value":23.5}]`,
 			},
 			wantResponse: response{
 				statusCode:  http.StatusOK,
@@ -1707,7 +1707,7 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/updates/",
 				contentType: "application/json",
-				body:        `[{"id":"CounterMetric","type":"counter","delta":247876521,"hash":"6e28fa1c129a272c5f6ccf1eb77bf0d3c387be662a369e8e0c01baa0a9659ceb"},{"id":"RandomValue","type":"gauge","value":23.5,"hash":"522d0b516a2834031c10d96f7bea65935ebbe5e331986525b8833b895af23199"},{"id":"CounterMetric","type":"counter","delta":247876521,"hash":"6e28fa1c129a272c5f6ccf1eb77bf0d3c387be662a369e8e0c01baa0a9659ceb"}]`,
+				body:        `[{"id":"CounterMetric","type":"counter","delta":247876521},{"id":"RandomValue","type":"gauge","value":23.5},{"id":"CounterMetric","type":"counter","delta":247876521}]`,
 			},
 			wantResponse: response{
 				statusCode:  http.StatusOK,
@@ -1720,6 +1720,24 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 			},
 			wantStorageState: map[string]storage.Metric{
 				metric1.Name:                 *metric1,
+				metricCounterUpdatedMpl.Name: *metricCounterUpdatedMpl,
+				metric2upd235.Name:           *metric2upd235,
+			},
+		},
+		{
+			name: "Test 4. Empty state. Multiple metric in batch with the same name.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/updates/",
+				contentType: "application/json",
+				body:        `[{"id":"CounterMetric","type":"counter","delta":721648488},{"id":"RandomValue","type":"gauge","value":23.5},{"id":"CounterMetric","type":"counter","delta":247876521}]`,
+			},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+			},
+			memStorageState: map[string]storage.Metric{},
+			wantStorageState: map[string]storage.Metric{
 				metricCounterUpdatedMpl.Name: *metricCounterUpdatedMpl,
 				metric2upd235.Name:           *metric2upd235,
 			},

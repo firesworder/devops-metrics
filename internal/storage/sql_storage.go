@@ -239,12 +239,24 @@ func (db *SQLStorage) BatchUpdate(metrics []Metric) (err error) {
 	txUpdateStmt := tx.Stmt(updateStmt)
 	txInsertStmt := tx.Stmt(insertStmt)
 
+	metricsUpdate := map[string]Metric{}
 	for _, metric := range metrics {
-		if existedMetric, ok := existedMetrics[metric.Name]; ok {
+		if metricUpdate, ok := metricsUpdate[metric.Name]; ok {
+			err = metricUpdate.Update(metric.Value)
+			if err != nil {
+				return err
+			}
+			metricsUpdate[metric.Name] = metricUpdate
+		} else {
+			metricsUpdate[metric.Name] = metric
+		}
+	}
+
+	for mName, metric := range metricsUpdate {
+		if existedMetric, ok := existedMetrics[mName]; ok {
 			if err = existedMetric.Update(metric.Value); err != nil {
 				return err
 			}
-			existedMetrics[metric.Name] = existedMetric
 			if _, err = txUpdateStmt.Exec(existedMetric.GetMetricParamsString()); err != nil {
 				return err
 			}
