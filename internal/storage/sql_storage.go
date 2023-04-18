@@ -193,15 +193,15 @@ func (db *SQLStorage) GetAll() (result map[string]Metric) {
 }
 
 func (db *SQLStorage) GetMetric(name string) (metric Metric, isOk bool) {
-	result, err := selectMetricStmt.Query(name)
+	rows, err := selectMetricStmt.Query(name)
 	if err != nil {
 		return
 	}
 
 	var mN, mV, mT string
 	var mValue interface{}
-	result.Next()
-	err = result.Scan(&mN, &mV, &mT)
+	rows.Next()
+	err = rows.Scan(&mN, &mV, &mT)
 	if err != nil {
 		return
 	}
@@ -221,8 +221,12 @@ func (db *SQLStorage) GetMetric(name string) (metric Metric, isOk bool) {
 	if err != nil {
 		return
 	}
-	metric, isOk = *m, true
-	return
+
+	err = rows.Err()
+	if err != nil {
+		return
+	}
+	return *m, true
 }
 
 func (db *SQLStorage) BatchUpdate(metrics map[string]Metric) (err error) {
