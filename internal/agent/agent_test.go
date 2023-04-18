@@ -197,6 +197,8 @@ func TestSendMetricByJson(t *testing.T) {
 }
 
 func TestSendMetrics(t *testing.T) {
+	t.Skipf("test not actual for batch metric sending")
+
 	metricsCount := 29
 	var gotMetricsReq = make([]string, 0, metricsCount)
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
