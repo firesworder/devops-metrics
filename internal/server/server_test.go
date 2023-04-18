@@ -1637,6 +1637,8 @@ func TestServer_gzipDecompressor(t *testing.T) {
 }
 
 func TestServer_handlerBatchUpdate(t *testing.T) {
+	metricCounterFilled, _ := storage.NewMetric("CounterMetric", internal.CounterTypeName, int64(473771967))
+	metricCounterUpdated, _ := storage.NewMetric("CounterMetric", internal.CounterTypeName, int64(721648488))
 	devTest := true
 	Env.DatabaseDsn = "postgresql://postgres:admin@localhost:5432/devops"
 	s, err := NewServer()
@@ -1678,18 +1680,20 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/updates/",
 				contentType: "application/json",
-				body:        `[{"id":"PollCount","type":"counter","delta":20,"hash":"6e28fa1c129a272c5f6ccf1eb77bf0d3c387be662a369e8e0c01baa0a9659ceb"},{"id":"RandomValue","type":"gauge","value":23.5,"hash":"522d0b516a2834031c10d96f7bea65935ebbe5e331986525b8833b895af23199"}]`,
+				body:        `[{"id":"CounterMetric","type":"counter","delta":247876521,"hash":"6e28fa1c129a272c5f6ccf1eb77bf0d3c387be662a369e8e0c01baa0a9659ceb"},{"id":"RandomValue","type":"gauge","value":23.5,"hash":"522d0b516a2834031c10d96f7bea65935ebbe5e331986525b8833b895af23199"}]`,
 			},
 			wantResponse: response{
 				statusCode: http.StatusOK,
 			},
 			memStorageState: map[string]storage.Metric{
-				metric1.Name: *metric1,
-				metric2.Name: *metric2,
+				metric1.Name:             *metric1,
+				metricCounterFilled.Name: *metricCounterFilled,
+				metric2.Name:             *metric2,
 			},
 			wantStorageState: map[string]storage.Metric{
-				metric1upd20.Name:  *metric1upd20,
-				metric2upd235.Name: *metric2upd235,
+				metric1.Name:              *metric1,
+				metricCounterUpdated.Name: *metricCounterUpdated,
+				metric2upd235.Name:        *metric2upd235,
 			},
 		},
 	}
