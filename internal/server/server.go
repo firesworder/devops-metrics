@@ -2,12 +2,12 @@ package server
 
 import (
 	"compress/gzip"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"github.com/caarlos0/env/v7"
-	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/filestore"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/firesworder/devopsmetrics/internal/storage"
@@ -68,7 +68,7 @@ type Server struct {
 	Router        chi.Router
 	LayoutsDir    string
 	MetricStorage storage.MetricRepository
-	DBConn        internal.DBStorage
+	DBConn        *sql.DB
 }
 
 func NewServer() (*Server, error) {
