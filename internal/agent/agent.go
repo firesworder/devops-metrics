@@ -177,3 +177,54 @@ func sendMetricByJSON(paramName string, paramValue interface{}) {
 		return
 	}
 }
+
+func sendMetricsBatchByJSON(metrics map[string]interface{}) {
+	client := resty.New()
+	client.SetBaseURL(ServerURL)
+
+	var metricsToSend []message.Metrics
+	var msg *message.Metrics
+	for mN, mV := range metrics {
+		msg = &message.Metrics{}
+
+		msg.ID = mN
+		switch value := mV.(type) {
+		case gauge:
+			msg.MType = internal.GaugeTypeName
+			float64Val := float64(value)
+			msg.Value = &float64Val
+		case counter:
+			msg.MType = internal.CounterTypeName
+			int64Val := int64(value)
+			msg.Delta = &int64Val
+		default:
+			log.Printf("unhandled metric type '%T'", value)
+			return
+		}
+
+		if Env.Key != "" {
+			err := msg.InitHash(Env.Key)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+		}
+
+		metricsToSend = append(metricsToSend, *msg)
+	}
+
+	jsonBody, err := json.Marshal(metricsToSend)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	_, err = client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(jsonBody).
+		Post(`/update/`)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+}
