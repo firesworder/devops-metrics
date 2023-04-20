@@ -9,9 +9,6 @@ import (
 	"strconv"
 )
 
-var insertStmt, updateStmt, deleteStmt *sql.Stmt
-var selectMetricStmt, selectAllStmt *sql.Stmt
-
 type SQLStorage struct {
 	Connection *sql.DB
 }
@@ -29,47 +26,7 @@ func NewSQLStorage(DSN string) (*SQLStorage, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = db.initStmts(ctx); err != nil {
-		return nil, err
-	}
 	return &db, nil
-}
-
-func (db *SQLStorage) initStmts(ctx context.Context) (err error) {
-	insertStmt, err = db.Connection.PrepareContext(
-		ctx,
-		"INSERT INTO metrics(m_name, m_value, m_type) VALUES($1, $2, $3)",
-	)
-	if err != nil {
-		return
-	}
-
-	updateStmt, err = db.Connection.PrepareContext(
-		ctx,
-		"UPDATE metrics SET m_value = $2, m_type = $3 WHERE m_name = $1",
-	)
-	if err != nil {
-		return err
-	}
-
-	deleteStmt, err = db.Connection.PrepareContext(ctx, "DELETE FROM metrics WHERE m_name = $1")
-	if err != nil {
-		return err
-	}
-
-	selectMetricStmt, err = db.Connection.PrepareContext(
-		ctx,
-		"SELECT m_name, m_value, m_type FROM metrics WHERE m_name = $1 LIMIT 1",
-	)
-	if err != nil {
-		return err
-	}
-
-	selectAllStmt, err = db.Connection.PrepareContext(ctx, "SELECT m_name, m_value, m_type FROM metrics")
-	if err != nil {
-		return err
-	}
-	return
 }
 
 func (db *SQLStorage) OpenDBConnection(DSN string) error {
@@ -102,7 +59,8 @@ func (db *SQLStorage) CreateTableIfNotExist(ctx context.Context) (err error) {
 
 func (db *SQLStorage) AddMetric(ctx context.Context, metric Metric) (err error) {
 	mN, mV, mT := metric.GetMetricParamsString()
-	_, err = insertStmt.ExecContext(ctx, mN, mV, mT)
+	_, err = db.Connection.ExecContext(ctx,
+		"INSERT INTO metrics(m_name, m_value, m_type) VALUES($1, $2, $3)", mN, mV, mT)
 	if err != nil {
 		return
 	}
@@ -120,7 +78,8 @@ func (db *SQLStorage) UpdateMetric(ctx context.Context, metric Metric) (err erro
 	}
 
 	mN, mV, mT := metric.GetMetricParamsString()
-	result, err := updateStmt.ExecContext(ctx, mN, mV, mT)
+	result, err := db.Connection.ExecContext(ctx,
+		"UPDATE metrics SET m_value = $2, m_type = $3 WHERE m_name = $1", mN, mV, mT)
 	if err != nil {
 		return
 	}
@@ -132,7 +91,8 @@ func (db *SQLStorage) UpdateMetric(ctx context.Context, metric Metric) (err erro
 }
 
 func (db *SQLStorage) DeleteMetric(ctx context.Context, metric Metric) (err error) {
-	result, err := deleteStmt.ExecContext(ctx, metric.Name)
+	result, err := db.Connection.ExecContext(ctx,
+		"DELETE FROM metrics WHERE m_name = $1", metric.Name)
 	if err != nil {
 		return err
 	}
@@ -144,7 +104,8 @@ func (db *SQLStorage) DeleteMetric(ctx context.Context, metric Metric) (err erro
 }
 
 func (db *SQLStorage) IsMetricInStorage(ctx context.Context, metric Metric) (isExist bool, err error) {
-	result, err := selectMetricStmt.ExecContext(ctx, metric.Name)
+	result, err := db.Connection.ExecContext(ctx,
+		"SELECT m_name, m_value, m_type FROM metrics WHERE m_name = $1 LIMIT 1", metric.Name)
 	if err != nil {
 		return
 	}
@@ -171,7 +132,7 @@ func (db *SQLStorage) UpdateOrAddMetric(ctx context.Context, metric Metric) (err
 
 func (db *SQLStorage) GetAll(ctx context.Context) (result map[string]Metric, err error) {
 	result = map[string]Metric{}
-	rows, err := selectAllStmt.QueryContext(ctx)
+	rows, err := db.Connection.QueryContext(ctx, "SELECT m_name, m_value, m_type FROM metrics")
 	if err != nil {
 		return
 	}
@@ -216,7 +177,8 @@ func (db *SQLStorage) GetAll(ctx context.Context) (result map[string]Metric, err
 }
 
 func (db *SQLStorage) GetMetric(ctx context.Context, name string) (metric Metric, err error) {
-	rows, err := selectMetricStmt.QueryContext(ctx, name)
+	rows, err := db.Connection.QueryContext(ctx,
+		"SELECT m_name, m_value, m_type FROM metrics WHERE m_name = $1 LIMIT 1", name)
 	if err != nil {
 		return
 	}
@@ -263,8 +225,6 @@ func (db *SQLStorage) BatchUpdate(ctx context.Context, metrics []Metric) (err er
 		return
 	}
 	defer tx.Rollback()
-	txUpdateStmt := tx.StmtContext(ctx, updateStmt)
-	txInsertStmt := tx.StmtContext(ctx, insertStmt)
 
 	metricsUpdate := map[string]Metric{}
 	for _, metric := range metrics {
@@ -286,12 +246,14 @@ func (db *SQLStorage) BatchUpdate(ctx context.Context, metrics []Metric) (err er
 				return
 			}
 			mN, mV, mT = existedMetric.GetMetricParamsString()
-			if _, err = txUpdateStmt.ExecContext(ctx, mN, mV, mT); err != nil {
+			if _, err = tx.ExecContext(ctx,
+				"UPDATE metrics SET m_value = $2, m_type = $3 WHERE m_name = $1", mN, mV, mT); err != nil {
 				return
 			}
 		} else {
 			mN, mV, mT = metric.GetMetricParamsString()
-			if _, err = txInsertStmt.ExecContext(ctx, mN, mV, mT); err != nil {
+			if _, err = tx.ExecContext(ctx,
+				"INSERT INTO metrics(m_name, m_value, m_type) VALUES($1, $2, $3)", mN, mV, mT); err != nil {
 				return
 			}
 		}
