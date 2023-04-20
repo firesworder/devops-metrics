@@ -110,19 +110,19 @@ func (db *SQLStorage) AddMetric(ctx context.Context, metric Metric) (err error) 
 }
 
 func (db *SQLStorage) UpdateMetric(ctx context.Context, metric Metric) (err error) {
-	dbMetric, isOk := db.GetMetric(ctx, metric.Name)
-	if !isOk {
-		return fmt.Errorf("metric to update was not found")
+	dbMetric, err := db.GetMetric(ctx, metric.Name)
+	if err != nil {
+		return
 	}
 	err = dbMetric.Update(metric.Value)
 	if err != nil {
-		return err
+		return
 	}
 
 	mN, mV, mT := metric.GetMetricParamsString()
 	result, err := updateStmt.ExecContext(ctx, mN, mV, mT)
 	if err != nil {
-		return err
+		return
 	}
 	rAff, err := result.RowsAffected()
 	if rAff == 0 {
@@ -143,17 +143,25 @@ func (db *SQLStorage) DeleteMetric(ctx context.Context, metric Metric) (err erro
 	return
 }
 
-func (db *SQLStorage) IsMetricInStorage(ctx context.Context, metric Metric) bool {
+func (db *SQLStorage) IsMetricInStorage(ctx context.Context, metric Metric) (isExist bool, err error) {
 	result, err := selectMetricStmt.ExecContext(ctx, metric.Name)
 	if err != nil {
-		return false
+		return
 	}
 	rAff, err := result.RowsAffected()
-	return rAff != 0 || err != nil
+	if err != nil {
+		return
+	}
+	return rAff != 0, nil
 }
 
 func (db *SQLStorage) UpdateOrAddMetric(ctx context.Context, metric Metric) (err error) {
-	if db.IsMetricInStorage(ctx, metric) {
+	mInStorage, err := db.IsMetricInStorage(ctx, metric)
+	if err != nil {
+		return
+	}
+
+	if mInStorage {
 		err = db.UpdateMetric(ctx, metric)
 	} else {
 		err = db.AddMetric(ctx, metric)
@@ -161,7 +169,7 @@ func (db *SQLStorage) UpdateOrAddMetric(ctx context.Context, metric Metric) (err
 	return
 }
 
-func (db *SQLStorage) GetAll(ctx context.Context) (result map[string]Metric) {
+func (db *SQLStorage) GetAll(ctx context.Context) (result map[string]Metric, err error) {
 	result = map[string]Metric{}
 	rows, err := selectAllStmt.QueryContext(ctx)
 	if err != nil {
@@ -207,7 +215,7 @@ func (db *SQLStorage) GetAll(ctx context.Context) (result map[string]Metric) {
 	return
 }
 
-func (db *SQLStorage) GetMetric(ctx context.Context, name string) (metric Metric, isOk bool) {
+func (db *SQLStorage) GetMetric(ctx context.Context, name string) (metric Metric, err error) {
 	rows, err := selectMetricStmt.QueryContext(ctx, name)
 	if err != nil {
 		return
@@ -241,11 +249,15 @@ func (db *SQLStorage) GetMetric(ctx context.Context, name string) (metric Metric
 	if err != nil {
 		return
 	}
-	return *m, true
+	return *m, nil
 }
 
 func (db *SQLStorage) BatchUpdate(ctx context.Context, metrics []Metric) (err error) {
-	existedMetrics := db.GetAll(ctx)
+	existedMetrics, err := db.GetAll(ctx)
+	if err != nil {
+		return
+	}
+
 	tx, err := db.Connection.BeginTx(ctx, nil)
 	if err != nil {
 		return
@@ -259,7 +271,7 @@ func (db *SQLStorage) BatchUpdate(ctx context.Context, metrics []Metric) (err er
 		if metricUpdate, ok := metricsUpdate[metric.Name]; ok {
 			err = metricUpdate.Update(metric.Value)
 			if err != nil {
-				return err
+				return
 			}
 			metricsUpdate[metric.Name] = metricUpdate
 		} else {
@@ -271,16 +283,16 @@ func (db *SQLStorage) BatchUpdate(ctx context.Context, metrics []Metric) (err er
 	for mName, metric := range metricsUpdate {
 		if existedMetric, ok := existedMetrics[mName]; ok {
 			if err = existedMetric.Update(metric.Value); err != nil {
-				return err
+				return
 			}
 			mN, mV, mT = existedMetric.GetMetricParamsString()
 			if _, err = txUpdateStmt.ExecContext(ctx, mN, mV, mT); err != nil {
-				return err
+				return
 			}
 		} else {
 			mN, mV, mT = metric.GetMetricParamsString()
 			if _, err = txInsertStmt.ExecContext(ctx, mN, mV, mT); err != nil {
-				return err
+				return
 			}
 		}
 	}

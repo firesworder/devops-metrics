@@ -82,7 +82,8 @@ func TestSqlStorage_BatchUpdate(t *testing.T) {
 			err = sqlStorage.BatchUpdate(ctx, tt.metricsBatch)
 			require.NoError(t, err)
 
-			gotDBState := sqlStorage.GetAll(ctx)
+			gotDBState, err := sqlStorage.GetAll(ctx)
+			require.NoError(t, err)
 			assert.Equal(t, tt.wantDBState, gotDBState)
 		})
 	}

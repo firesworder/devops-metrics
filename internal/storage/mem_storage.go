@@ -12,7 +12,7 @@ type MemStorage struct {
 }
 
 func (ms *MemStorage) AddMetric(_ context.Context, metric Metric) (err error) {
-	if ms.IsMetricInStorage(nil, metric) {
+	if mInStorage, _ := ms.IsMetricInStorage(nil, metric); mInStorage {
 		return fmt.Errorf("metric with name '%s' already present in Storage", metric.Name)
 	}
 	ms.Metrics[metric.Name] = metric
@@ -33,21 +33,21 @@ func (ms *MemStorage) UpdateMetric(_ context.Context, metric Metric) (err error)
 }
 
 func (ms *MemStorage) DeleteMetric(_ context.Context, metric Metric) (err error) {
-	if !ms.IsMetricInStorage(nil, metric) {
+	if mInStorage, _ := ms.IsMetricInStorage(nil, metric); !mInStorage {
 		return fmt.Errorf("there is no metric with name '%s'", metric.Name)
 	}
 	delete(ms.Metrics, metric.Name)
 	return
 }
 
-func (ms *MemStorage) IsMetricInStorage(_ context.Context, metric Metric) bool {
+func (ms *MemStorage) IsMetricInStorage(_ context.Context, metric Metric) (bool, error) {
 	_, isMetricExist := ms.Metrics[metric.Name]
-	return isMetricExist
+	return isMetricExist, nil
 }
 
 // UpdateOrAddMetric Обновляет метрику, если она есть в коллекции, иначе добавляет ее.
 func (ms *MemStorage) UpdateOrAddMetric(_ context.Context, metric Metric) (err error) {
-	if ms.IsMetricInStorage(nil, metric) {
+	if mInStorage, _ := ms.IsMetricInStorage(nil, metric); mInStorage {
 		err = ms.UpdateMetric(nil, metric)
 	} else {
 		err = ms.AddMetric(nil, metric)
@@ -55,12 +55,15 @@ func (ms *MemStorage) UpdateOrAddMetric(_ context.Context, metric Metric) (err e
 	return
 }
 
-func (ms *MemStorage) GetAll(_ context.Context) map[string]Metric {
-	return ms.Metrics
+func (ms *MemStorage) GetAll(_ context.Context) (map[string]Metric, error) {
+	return ms.Metrics, nil
 }
 
-func (ms *MemStorage) GetMetric(_ context.Context, name string) (metric Metric, ok bool) {
-	metric, ok = ms.Metrics[name]
+func (ms *MemStorage) GetMetric(_ context.Context, name string) (metric Metric, err error) {
+	metric, ok := ms.Metrics[name]
+	if !ok {
+		return metric, fmt.Errorf("there is no metric with name '%s'", metric.Name)
+	}
 	return
 }
 

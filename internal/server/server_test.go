@@ -49,6 +49,14 @@ type response struct {
 	body        string
 }
 
+func compareMetricsState(t *testing.T, wantMS map[string]storage.Metric, mR storage.MetricRepository,
+	ctx context.Context,
+) {
+	gotMS, err := mR.GetAll(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, wantMS, gotMS)
+}
+
 func TestAddUpdateMetricHandler(t *testing.T) {
 	s := Server{}
 	ts := httptest.NewServer(s.NewRouter())
@@ -202,7 +210,8 @@ func TestAddUpdateMetricHandler(t *testing.T) {
 			require.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
 			assert.Equal(t, tt.wantResponse.body, body)
-			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll(context.Background()))
+
+			compareMetricsState(t, tt.wantedState, s.MetricStorage, context.Background())
 		})
 	}
 }
@@ -652,7 +661,8 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
 			assert.Equal(t, tt.wantResponse.body, body)
-			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll(context.Background()))
+
+			compareMetricsState(t, tt.wantedState, s.MetricStorage, context.Background())
 		})
 	}
 }
@@ -824,7 +834,8 @@ func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
 			assert.Equal(t, tt.wantResponse.body, body)
-			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll(context.Background()))
+
+			compareMetricsState(t, tt.wantedState, s.MetricStorage, context.Background())
 		})
 	}
 
@@ -1586,7 +1597,8 @@ func TestServer_gzipCompressor(t *testing.T) {
 			assert.Equal(t, tt.wantResponse.contentType, rWC.contentType)
 			assert.Equal(t, tt.wantResponse.uncompressed, rWC.uncompressed)
 			assert.Equal(t, tt.wantResponse.body, rWC.body)
-			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll(context.Background()))
+
+			compareMetricsState(t, tt.wantedState, s.MetricStorage, context.Background())
 		})
 	}
 }
@@ -1632,7 +1644,8 @@ func TestServer_gzipDecompressor(t *testing.T) {
 			require.Equal(t, tt.wantResponse.statusCode, rWC.statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, rWC.contentType)
 			assert.Equal(t, tt.wantResponse.body, rWC.body)
-			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll(context.Background()))
+
+			compareMetricsState(t, tt.wantedState, s.MetricStorage, context.Background())
 		})
 	}
 }
@@ -1762,8 +1775,7 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
 
-			gotStorageState := s.MetricStorage.GetAll(ctx)
-			assert.Equal(t, tt.wantStorageState, gotStorageState)
+			compareMetricsState(t, tt.wantStorageState, s.MetricStorage, context.Background())
 		})
 	}
 }

@@ -7,10 +7,10 @@ type MetricRepository interface {
 	UpdateMetric(context.Context, Metric) error
 	DeleteMetric(context.Context, Metric) error
 
-	IsMetricInStorage(context.Context, Metric) bool
+	IsMetricInStorage(context.Context, Metric) (bool, error)
 	UpdateOrAddMetric(context.Context, Metric) error
 
-	GetAll(context.Context) map[string]Metric
-	GetMetric(context.Context, string) (Metric, bool)
+	GetAll(context.Context) (map[string]Metric, error)
+	GetMetric(context.Context, string) (Metric, error)
 	BatchUpdate(context.Context, []Metric) error
 }

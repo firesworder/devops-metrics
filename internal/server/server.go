@@ -213,12 +213,19 @@ func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http
 		http.Error(writer, "Not initialised workingDir path", http.StatusInternalServerError)
 		return
 	}
+
+	allMetrics, err := s.MetricStorage.GetAll(request.Context())
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	pageData := struct {
 		PageTitle string
 		Metrics   map[string]storage.Metric
 	}{
 		PageTitle: "Metrics",
-		Metrics:   s.MetricStorage.GetAll(request.Context()),
+		Metrics:   allMetrics,
 	}
 
 	tmpl, err := template.ParseFiles(filepath.Join(s.LayoutsDir, "main_page.gohtml"))
@@ -236,8 +243,9 @@ func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http
 
 func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
 	metricName := chi.URLParam(request, "metricName")
-	metric, ok := s.MetricStorage.GetMetric(request.Context(), metricName)
-	if !ok {
+	// todo: добавить разделение ошибок "ненайдено" от "что то поломалось"
+	metric, err := s.MetricStorage.GetMetric(request.Context(), metricName)
+	if err != nil {
 		http.Error(writer, "unknown metric", http.StatusNotFound)
 		return
 	}
@@ -310,8 +318,9 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 		return
 	}
 
-	updatedMetric, ok := s.MetricStorage.GetMetric(request.Context(), m.Name)
-	if !ok {
+	// todo: добавить разделение ошибок "ненайдено" от "что то поломалось"
+	updatedMetric, err := s.MetricStorage.GetMetric(request.Context(), m.Name)
+	if err != nil {
 		// ошибка не должна произойти, но мало ли
 		http.Error(writer, "metric was not updated", http.StatusInternalServerError)
 		return
@@ -343,8 +352,9 @@ func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.
 		return
 	}
 
-	metric, ok := s.MetricStorage.GetMetric(request.Context(), metricMessage.ID)
-	if !ok {
+	// todo: добавить разделение ошибок "ненайдено" от "что то поломалось"
+	metric, err := s.MetricStorage.GetMetric(request.Context(), metricMessage.ID)
+	if err != nil {
 		http.Error(
 			writer,
 			fmt.Sprintf("metric with name '%s' not found", metricMessage.ID),

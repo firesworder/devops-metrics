@@ -185,7 +185,8 @@ func TestMemStorage_IsMetricInStorage(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.startState,
 			}
-			assert.Equal(t, tt.wantedResult, ms.IsMetricInStorage(nil, tt.metricToCheck))
+			mInStorage, _ := ms.IsMetricInStorage(nil, tt.metricToCheck)
+			assert.Equal(t, tt.wantedResult, mInStorage)
 		})
 	}
 }
@@ -314,7 +315,7 @@ func TestMemStorage_GetAll(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.state,
 			}
-			gotMapMetrics := ms.GetAll(nil)
+			gotMapMetrics, _ := ms.GetAll(nil)
 			assert.Equal(t, tt.want, gotMapMetrics)
 		})
 	}
@@ -326,21 +327,21 @@ func TestMemStorage_GetMetric(t *testing.T) {
 		state      map[string]Metric
 		metricName string
 		wantMetric Metric
-		wantOk     bool
+		wantError  bool
 	}{
 		{
 			name:       "Test 1. State contains requested metric.",
 			state:      map[string]Metric{metric1Counter10.Name: metric1Counter10},
 			metricName: metric1Counter10.Name,
 			wantMetric: metric1Counter10,
-			wantOk:     true,
+			wantError:  false,
 		},
 		{
 			name:       "Test 2. State doesn't contain requested metric.",
 			state:      map[string]Metric{metric4Gauge2d27.Name: metric4Gauge2d27},
 			metricName: metric1Counter10.Name,
 			wantMetric: Metric{},
-			wantOk:     false,
+			wantError:  true,
 		},
 	}
 	for _, tt := range tests {
@@ -348,8 +349,8 @@ func TestMemStorage_GetMetric(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.state,
 			}
-			gotMetric, gotOk := ms.GetMetric(nil, tt.metricName)
-			require.Equal(t, tt.wantOk, gotOk)
+			gotMetric, gotErr := ms.GetMetric(nil, tt.metricName)
+			require.Equal(t, tt.wantError, gotErr != nil)
 			assert.Equal(t, tt.wantMetric, gotMetric)
 		})
 	}
