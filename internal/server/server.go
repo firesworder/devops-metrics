@@ -379,10 +379,8 @@ func (s *Server) handlerPing(writer http.ResponseWriter, request *http.Request) 
 	err := s.DBConn.Ping()
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
-		return
 	} else {
 		writer.WriteHeader(http.StatusOK)
-		return
 	}
 }
 
