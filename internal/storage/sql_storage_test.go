@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -12,6 +13,7 @@ var devDSN = "postgresql://postgres:admin@localhost:5432/devops"
 
 func TestSqlStorage_BatchUpdate(t *testing.T) {
 	var err error
+	ctx := context.Background()
 	sqlStorage, err := NewSQLStorage(devDSN)
 	if err != nil {
 		t.Skipf("cannot connect to db. db mocks are not ready yet")
@@ -72,15 +74,15 @@ func TestSqlStorage_BatchUpdate(t *testing.T) {
 			_, err = sqlStorage.Connection.Exec("DELETE FROM metrics")
 			require.NoError(t, err)
 			for _, metric := range tt.initDBState {
-				err = sqlStorage.AddMetric(metric)
+				err = sqlStorage.AddMetric(ctx, metric)
 				require.NoError(t, err)
 			}
 
 			// сам тест
-			err = sqlStorage.BatchUpdate(tt.metricsBatch)
+			err = sqlStorage.BatchUpdate(ctx, tt.metricsBatch)
 			require.NoError(t, err)
 
-			gotDBState := sqlStorage.GetAll()
+			gotDBState := sqlStorage.GetAll(ctx)
 			assert.Equal(t, tt.wantDBState, gotDBState)
 		})
 	}

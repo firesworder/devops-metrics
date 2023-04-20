@@ -218,7 +218,7 @@ func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http
 		Metrics   map[string]storage.Metric
 	}{
 		PageTitle: "Metrics",
-		Metrics:   s.MetricStorage.GetAll(),
+		Metrics:   s.MetricStorage.GetAll(request.Context()),
 	}
 
 	tmpl, err := template.ParseFiles(filepath.Join(s.LayoutsDir, "main_page.gohtml"))
@@ -236,7 +236,7 @@ func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http
 
 func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
 	metricName := chi.URLParam(request, "metricName")
-	metric, ok := s.MetricStorage.GetMetric(metricName)
+	metric, ok := s.MetricStorage.GetMetric(request.Context(), metricName)
 	if !ok {
 		http.Error(writer, "unknown metric", http.StatusNotFound)
 		return
@@ -260,7 +260,7 @@ func (s *Server) handlerAddUpdateMetric(writer http.ResponseWriter, request *htt
 		return
 	}
 
-	errorObj := s.MetricStorage.UpdateOrAddMetric(*m)
+	errorObj := s.MetricStorage.UpdateOrAddMetric(request.Context(), *m)
 	if errorObj != nil {
 		http.Error(writer, errorObj.Error(), http.StatusBadRequest)
 		return
@@ -300,7 +300,7 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 		return
 	}
 
-	errorObj := s.MetricStorage.UpdateOrAddMetric(*m)
+	errorObj := s.MetricStorage.UpdateOrAddMetric(request.Context(), *m)
 	if errorObj != nil {
 		http.Error(writer, errorObj.Error(), http.StatusBadRequest)
 		return
@@ -310,7 +310,7 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 		return
 	}
 
-	updatedMetric, ok := s.MetricStorage.GetMetric(m.Name)
+	updatedMetric, ok := s.MetricStorage.GetMetric(request.Context(), m.Name)
 	if !ok {
 		// ошибка не должна произойти, но мало ли
 		http.Error(writer, "metric was not updated", http.StatusInternalServerError)
@@ -343,7 +343,7 @@ func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.
 		return
 	}
 
-	metric, ok := s.MetricStorage.GetMetric(metricMessage.ID)
+	metric, ok := s.MetricStorage.GetMetric(request.Context(), metricMessage.ID)
 	if !ok {
 		http.Error(
 			writer,
@@ -419,7 +419,7 @@ func (s *Server) handlerBatchUpdate(writer http.ResponseWriter, request *http.Re
 		metrics = append(metrics, *m)
 	}
 
-	if err := s.MetricStorage.BatchUpdate(metrics); err != nil {
+	if err := s.MetricStorage.BatchUpdate(request.Context(), metrics); err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 	}
 

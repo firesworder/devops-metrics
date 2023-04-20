@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/filestore"
 	"github.com/firesworder/devopsmetrics/internal/helper"
@@ -201,7 +202,7 @@ func TestAddUpdateMetricHandler(t *testing.T) {
 			require.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
 			assert.Equal(t, tt.wantResponse.body, body)
-			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll())
+			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll(context.Background()))
 		})
 	}
 }
@@ -651,7 +652,7 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
 			assert.Equal(t, tt.wantResponse.body, body)
-			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll())
+			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll(context.Background()))
 		})
 	}
 }
@@ -823,7 +824,7 @@ func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
 			assert.Equal(t, tt.wantResponse.body, body)
-			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll())
+			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll(context.Background()))
 		})
 	}
 
@@ -1585,7 +1586,7 @@ func TestServer_gzipCompressor(t *testing.T) {
 			assert.Equal(t, tt.wantResponse.contentType, rWC.contentType)
 			assert.Equal(t, tt.wantResponse.uncompressed, rWC.uncompressed)
 			assert.Equal(t, tt.wantResponse.body, rWC.body)
-			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll())
+			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll(context.Background()))
 		})
 	}
 }
@@ -1631,12 +1632,13 @@ func TestServer_gzipDecompressor(t *testing.T) {
 			require.Equal(t, tt.wantResponse.statusCode, rWC.statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, rWC.contentType)
 			assert.Equal(t, tt.wantResponse.body, rWC.body)
-			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll())
+			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll(context.Background()))
 		})
 	}
 }
 
 func TestServer_handlerBatchUpdate(t *testing.T) {
+	ctx := context.Background()
 	metricCounterFilled, _ := storage.NewMetric("CounterMetric", internal.CounterTypeName, int64(473771967))
 	// 473771967(пред) + 247876521 = 721648488
 	metricCounterUpdated, _ := storage.NewMetric("CounterMetric", internal.CounterTypeName, int64(721648488))
@@ -1749,7 +1751,7 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 				_, err = s.DBConn.Exec("DELETE FROM metrics")
 				require.NoError(t, err)
 				for _, metric := range tt.memStorageState {
-					err = s.MetricStorage.AddMetric(metric)
+					err = s.MetricStorage.AddMetric(ctx, metric)
 					require.NoError(t, err)
 				}
 			} else {
@@ -1760,7 +1762,7 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
 
-			gotStorageState := s.MetricStorage.GetAll()
+			gotStorageState := s.MetricStorage.GetAll(ctx)
 			assert.Equal(t, tt.wantStorageState, gotStorageState)
 		})
 	}

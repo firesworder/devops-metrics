@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/firesworder/devopsmetrics/internal"
@@ -10,15 +11,15 @@ type MemStorage struct {
 	Metrics map[string]Metric
 }
 
-func (ms *MemStorage) AddMetric(metric Metric) (err error) {
-	if ms.IsMetricInStorage(metric) {
+func (ms *MemStorage) AddMetric(_ context.Context, metric Metric) (err error) {
+	if ms.IsMetricInStorage(nil, metric) {
 		return fmt.Errorf("metric with name '%s' already present in Storage", metric.Name)
 	}
 	ms.Metrics[metric.Name] = metric
 	return
 }
 
-func (ms *MemStorage) UpdateMetric(metric Metric) (err error) {
+func (ms *MemStorage) UpdateMetric(_ context.Context, metric Metric) (err error) {
 	metricToUpdate, ok := ms.Metrics[metric.Name]
 	if !ok {
 		return fmt.Errorf("there is no metric with name '%s'", metric.Name)
@@ -31,34 +32,34 @@ func (ms *MemStorage) UpdateMetric(metric Metric) (err error) {
 	return
 }
 
-func (ms *MemStorage) DeleteMetric(metric Metric) (err error) {
-	if !ms.IsMetricInStorage(metric) {
+func (ms *MemStorage) DeleteMetric(_ context.Context, metric Metric) (err error) {
+	if !ms.IsMetricInStorage(nil, metric) {
 		return fmt.Errorf("there is no metric with name '%s'", metric.Name)
 	}
 	delete(ms.Metrics, metric.Name)
 	return
 }
 
-func (ms *MemStorage) IsMetricInStorage(metric Metric) bool {
+func (ms *MemStorage) IsMetricInStorage(_ context.Context, metric Metric) bool {
 	_, isMetricExist := ms.Metrics[metric.Name]
 	return isMetricExist
 }
 
 // UpdateOrAddMetric Обновляет метрику, если она есть в коллекции, иначе добавляет ее.
-func (ms *MemStorage) UpdateOrAddMetric(metric Metric) (err error) {
-	if ms.IsMetricInStorage(metric) {
-		err = ms.UpdateMetric(metric)
+func (ms *MemStorage) UpdateOrAddMetric(_ context.Context, metric Metric) (err error) {
+	if ms.IsMetricInStorage(nil, metric) {
+		err = ms.UpdateMetric(nil, metric)
 	} else {
-		err = ms.AddMetric(metric)
+		err = ms.AddMetric(nil, metric)
 	}
 	return
 }
 
-func (ms *MemStorage) GetAll() map[string]Metric {
+func (ms *MemStorage) GetAll(_ context.Context) map[string]Metric {
 	return ms.Metrics
 }
 
-func (ms *MemStorage) GetMetric(name string) (metric Metric, ok bool) {
+func (ms *MemStorage) GetMetric(_ context.Context, name string) (metric Metric, ok bool) {
 	metric, ok = ms.Metrics[name]
 	return
 }
@@ -126,9 +127,9 @@ func (ms *MemStorage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (ms *MemStorage) BatchUpdate(metrics []Metric) (err error) {
+func (ms *MemStorage) BatchUpdate(_ context.Context, metrics []Metric) (err error) {
 	for _, metric := range metrics {
-		err = ms.UpdateOrAddMetric(metric)
+		err = ms.UpdateOrAddMetric(nil, metric)
 		if err != nil {
 			return
 		}

@@ -63,7 +63,7 @@ func TestMemStorage_AddMetric(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.startState,
 			}
-			err := ms.AddMetric(tt.metricToAdd)
+			err := ms.AddMetric(nil, tt.metricToAdd)
 			assert.Equal(t, tt.wantedState, ms.Metrics)
 			assert.Equal(t, tt.wantError, err)
 		})
@@ -135,7 +135,7 @@ func TestMemStorage_DeleteMetric(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.startState,
 			}
-			err := ms.DeleteMetric(tt.metricToDelete)
+			err := ms.DeleteMetric(nil, tt.metricToDelete)
 			assert.Equal(t, tt.wantedState, ms.Metrics)
 			assert.Equal(t, tt.wantError, err)
 		})
@@ -185,7 +185,7 @@ func TestMemStorage_IsMetricInStorage(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.startState,
 			}
-			assert.Equal(t, tt.wantedResult, ms.IsMetricInStorage(tt.metricToCheck))
+			assert.Equal(t, tt.wantedResult, ms.IsMetricInStorage(nil, tt.metricToCheck))
 		})
 	}
 }
@@ -236,7 +236,7 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 				Metrics: tt.startState,
 			}
 			tt.metricToUpdate.Value = tt.newValue
-			err := ms.UpdateMetric(tt.metricToUpdate)
+			err := ms.UpdateMetric(nil, tt.metricToUpdate)
 			assert.Equal(t, tt.wantedState, ms.Metrics)
 			assert.Equal(t, tt.wantError, err)
 		})
@@ -280,7 +280,7 @@ func TestMemStorage_UpdateOrAddMetric(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.startState,
 			}
-			_ = ms.UpdateOrAddMetric(tt.metricObj)
+			_ = ms.UpdateOrAddMetric(nil, tt.metricObj)
 			assert.Equal(t, tt.wantedState, ms.Metrics)
 		})
 	}
@@ -314,7 +314,7 @@ func TestMemStorage_GetAll(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.state,
 			}
-			gotMapMetrics := ms.GetAll()
+			gotMapMetrics := ms.GetAll(nil)
 			assert.Equal(t, tt.want, gotMapMetrics)
 		})
 	}
@@ -348,7 +348,7 @@ func TestMemStorage_GetMetric(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.state,
 			}
-			gotMetric, gotOk := ms.GetMetric(tt.metricName)
+			gotMetric, gotOk := ms.GetMetric(nil, tt.metricName)
 			require.Equal(t, tt.wantOk, gotOk)
 			assert.Equal(t, tt.wantMetric, gotMetric)
 		})

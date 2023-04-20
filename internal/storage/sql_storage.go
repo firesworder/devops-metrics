@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"github.com/firesworder/devopsmetrics/internal"
@@ -16,44 +17,55 @@ type SQLStorage struct {
 }
 
 func NewSQLStorage(DSN string) (*SQLStorage, error) {
+	// Этот метод вызывается при инициализации сервера, поэтому использую общий контекст
+	ctx := context.Background()
+
 	db := SQLStorage{}
 	err := db.OpenDBConnection(DSN)
 	if err != nil {
 		return nil, err
 	}
-	err = db.CreateTableIfNotExist()
+	err = db.CreateTableIfNotExist(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if err = db.initStmts(); err != nil {
+	if err = db.initStmts(ctx); err != nil {
 		return nil, err
 	}
 	return &db, nil
 }
 
-func (db *SQLStorage) initStmts() (err error) {
-	insertStmt, err = db.Connection.Prepare("INSERT INTO metrics(m_name, m_value, m_type) VALUES($1, $2, $3)")
+func (db *SQLStorage) initStmts(ctx context.Context) (err error) {
+	insertStmt, err = db.Connection.PrepareContext(
+		ctx,
+		"INSERT INTO metrics(m_name, m_value, m_type) VALUES($1, $2, $3)",
+	)
 	if err != nil {
 		return
 	}
 
-	updateStmt, err = db.Connection.Prepare("UPDATE metrics SET m_value = $2, m_type = $3 WHERE m_name = $1")
+	updateStmt, err = db.Connection.PrepareContext(
+		ctx,
+		"UPDATE metrics SET m_value = $2, m_type = $3 WHERE m_name = $1",
+	)
 	if err != nil {
 		return err
 	}
 
-	deleteStmt, err = db.Connection.Prepare("DELETE FROM metrics WHERE m_name = $1")
+	deleteStmt, err = db.Connection.PrepareContext(ctx, "DELETE FROM metrics WHERE m_name = $1")
 	if err != nil {
 		return err
 	}
 
-	selectMetricStmt, err = db.Connection.Prepare(
-		"SELECT m_name, m_value, m_type FROM metrics WHERE m_name = $1 LIMIT 1")
+	selectMetricStmt, err = db.Connection.PrepareContext(
+		ctx,
+		"SELECT m_name, m_value, m_type FROM metrics WHERE m_name = $1 LIMIT 1",
+	)
 	if err != nil {
 		return err
 	}
 
-	selectAllStmt, err = db.Connection.Prepare("SELECT m_name, m_value, m_type FROM metrics")
+	selectAllStmt, err = db.Connection.PrepareContext(ctx, "SELECT m_name, m_value, m_type FROM metrics")
 	if err != nil {
 		return err
 	}
@@ -69,16 +81,17 @@ func (db *SQLStorage) OpenDBConnection(DSN string) error {
 	return nil
 }
 
-func (db *SQLStorage) CreateTableIfNotExist() (err error) {
-	_, err = db.Connection.Exec(`
-		CREATE TABLE IF NOT EXISTS metrics
+func (db *SQLStorage) CreateTableIfNotExist(ctx context.Context) (err error) {
+	_, err = db.Connection.ExecContext(
+		ctx,
+		`CREATE TABLE IF NOT EXISTS metrics
 		(
 			id      SERIAL PRIMARY KEY,
 			m_name  VARCHAR(50) UNIQUE,
 			m_value VARCHAR(50),
 			m_type  VARCHAR(20)
-		);
-`)
+		);`,
+	)
 	if err != nil {
 		return
 	}
@@ -87,16 +100,17 @@ func (db *SQLStorage) CreateTableIfNotExist() (err error) {
 
 // MetricRepository реализация
 
-func (db *SQLStorage) AddMetric(metric Metric) (err error) {
-	_, err = insertStmt.Exec(metric.GetMetricParamsString())
+func (db *SQLStorage) AddMetric(ctx context.Context, metric Metric) (err error) {
+	mN, mV, mT := metric.GetMetricParamsString()
+	_, err = insertStmt.ExecContext(ctx, mN, mV, mT)
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (db *SQLStorage) UpdateMetric(metric Metric) (err error) {
-	dbMetric, isOk := db.GetMetric(metric.Name)
+func (db *SQLStorage) UpdateMetric(ctx context.Context, metric Metric) (err error) {
+	dbMetric, isOk := db.GetMetric(ctx, metric.Name)
 	if !isOk {
 		return fmt.Errorf("metric to update was not found")
 	}
@@ -105,7 +119,8 @@ func (db *SQLStorage) UpdateMetric(metric Metric) (err error) {
 		return err
 	}
 
-	result, err := updateStmt.Exec(dbMetric.GetMetricParamsString())
+	mN, mV, mT := metric.GetMetricParamsString()
+	result, err := updateStmt.ExecContext(ctx, mN, mV, mT)
 	if err != nil {
 		return err
 	}
@@ -116,8 +131,8 @@ func (db *SQLStorage) UpdateMetric(metric Metric) (err error) {
 	return
 }
 
-func (db *SQLStorage) DeleteMetric(metric Metric) (err error) {
-	result, err := deleteStmt.Exec(metric.Name)
+func (db *SQLStorage) DeleteMetric(ctx context.Context, metric Metric) (err error) {
+	result, err := deleteStmt.ExecContext(ctx, metric.Name)
 	if err != nil {
 		return err
 	}
@@ -128,8 +143,8 @@ func (db *SQLStorage) DeleteMetric(metric Metric) (err error) {
 	return
 }
 
-func (db *SQLStorage) IsMetricInStorage(metric Metric) bool {
-	result, err := selectMetricStmt.Exec(metric.Name)
+func (db *SQLStorage) IsMetricInStorage(ctx context.Context, metric Metric) bool {
+	result, err := selectMetricStmt.ExecContext(ctx, metric.Name)
 	if err != nil {
 		return false
 	}
@@ -137,18 +152,18 @@ func (db *SQLStorage) IsMetricInStorage(metric Metric) bool {
 	return rAff != 0 || err != nil
 }
 
-func (db *SQLStorage) UpdateOrAddMetric(metric Metric) (err error) {
-	if db.IsMetricInStorage(metric) {
-		err = db.UpdateMetric(metric)
+func (db *SQLStorage) UpdateOrAddMetric(ctx context.Context, metric Metric) (err error) {
+	if db.IsMetricInStorage(ctx, metric) {
+		err = db.UpdateMetric(ctx, metric)
 	} else {
-		err = db.AddMetric(metric)
+		err = db.AddMetric(ctx, metric)
 	}
 	return
 }
 
-func (db *SQLStorage) GetAll() (result map[string]Metric) {
+func (db *SQLStorage) GetAll(ctx context.Context) (result map[string]Metric) {
 	result = map[string]Metric{}
-	rows, err := selectAllStmt.Query()
+	rows, err := selectAllStmt.QueryContext(ctx)
 	if err != nil {
 		return
 	}
@@ -192,8 +207,8 @@ func (db *SQLStorage) GetAll() (result map[string]Metric) {
 	return
 }
 
-func (db *SQLStorage) GetMetric(name string) (metric Metric, isOk bool) {
-	rows, err := selectMetricStmt.Query(name)
+func (db *SQLStorage) GetMetric(ctx context.Context, name string) (metric Metric, isOk bool) {
+	rows, err := selectMetricStmt.QueryContext(ctx, name)
 	if err != nil {
 		return
 	}
@@ -229,15 +244,15 @@ func (db *SQLStorage) GetMetric(name string) (metric Metric, isOk bool) {
 	return *m, true
 }
 
-func (db *SQLStorage) BatchUpdate(metrics []Metric) (err error) {
-	existedMetrics := db.GetAll()
-	tx, err := db.Connection.Begin()
+func (db *SQLStorage) BatchUpdate(ctx context.Context, metrics []Metric) (err error) {
+	existedMetrics := db.GetAll(ctx)
+	tx, err := db.Connection.BeginTx(ctx, nil)
 	if err != nil {
 		return
 	}
 	defer tx.Rollback()
-	txUpdateStmt := tx.Stmt(updateStmt)
-	txInsertStmt := tx.Stmt(insertStmt)
+	txUpdateStmt := tx.StmtContext(ctx, updateStmt)
+	txInsertStmt := tx.StmtContext(ctx, insertStmt)
 
 	metricsUpdate := map[string]Metric{}
 	for _, metric := range metrics {
@@ -252,16 +267,19 @@ func (db *SQLStorage) BatchUpdate(metrics []Metric) (err error) {
 		}
 	}
 
+	var mN, mV, mT string
 	for mName, metric := range metricsUpdate {
 		if existedMetric, ok := existedMetrics[mName]; ok {
 			if err = existedMetric.Update(metric.Value); err != nil {
 				return err
 			}
-			if _, err = txUpdateStmt.Exec(existedMetric.GetMetricParamsString()); err != nil {
+			mN, mV, mT = existedMetric.GetMetricParamsString()
+			if _, err = txUpdateStmt.ExecContext(ctx, mN, mV, mT); err != nil {
 				return err
 			}
 		} else {
-			if _, err = txInsertStmt.Exec(metric.GetMetricParamsString()); err != nil {
+			mN, mV, mT = metric.GetMetricParamsString()
+			if _, err = txInsertStmt.ExecContext(ctx, mN, mV, mT); err != nil {
 				return err
 			}
 		}
