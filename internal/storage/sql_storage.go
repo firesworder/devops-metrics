@@ -98,7 +98,7 @@ func (db *SQLStorage) DeleteMetric(ctx context.Context, metric Metric) (err erro
 	}
 	rAff, err := result.RowsAffected()
 	if rAff == 0 {
-		return fmt.Errorf("metric to delete was not found")
+		return ErrMetricNotFound
 	}
 	return
 }
@@ -185,7 +185,9 @@ func (db *SQLStorage) GetMetric(ctx context.Context, name string) (metric Metric
 
 	var mN, mV, mT string
 	var mValue interface{}
-	rows.Next()
+	if !rows.Next() {
+		return metric, ErrMetricNotFound
+	}
 	err = rows.Scan(&mN, &mV, &mT)
 	if err != nil {
 		return
@@ -203,11 +205,6 @@ func (db *SQLStorage) GetMetric(ctx context.Context, name string) (metric Metric
 		}
 	}
 	m, err := NewMetric(mN, mT, mValue)
-	if err != nil {
-		return
-	}
-
-	err = rows.Err()
 	if err != nil {
 		return
 	}

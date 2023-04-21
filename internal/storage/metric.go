@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"errors"
 	"fmt"
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/message"
@@ -12,10 +11,6 @@ import (
 
 type gauge float64
 type counter int64
-
-var (
-	ErrUnhandledValueType = errors.New("unhandled value type")
-)
 
 type Metric struct {
 	Name  string

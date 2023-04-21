@@ -243,10 +243,13 @@ func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http
 
 func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
 	metricName := chi.URLParam(request, "metricName")
-	// todo: добавить разделение ошибок "ненайдено" от "что то поломалось"
 	metric, err := s.MetricStorage.GetMetric(request.Context(), metricName)
 	if err != nil {
-		http.Error(writer, "unknown metric", http.StatusNotFound)
+		if errors.Is(err, storage.ErrMetricNotFound) {
+			http.Error(writer, "unknown metric", http.StatusNotFound)
+		} else {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 	writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -318,11 +321,10 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 		return
 	}
 
-	// todo: добавить разделение ошибок "ненайдено" от "что то поломалось"
 	updatedMetric, err := s.MetricStorage.GetMetric(request.Context(), m.Name)
 	if err != nil {
 		// ошибка не должна произойти, но мало ли
-		http.Error(writer, "metric was not updated", http.StatusInternalServerError)
+		http.Error(writer, "metric was not updated:"+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -352,14 +354,17 @@ func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.
 		return
 	}
 
-	// todo: добавить разделение ошибок "ненайдено" от "что то поломалось"
 	metric, err := s.MetricStorage.GetMetric(request.Context(), metricMessage.ID)
 	if err != nil {
-		http.Error(
-			writer,
-			fmt.Sprintf("metric with name '%s' not found", metricMessage.ID),
-			http.StatusNotFound,
-		)
+		if errors.Is(err, storage.ErrMetricNotFound) {
+			http.Error(
+				writer,
+				fmt.Sprintf("metric with name '%s' not found", metricMessage.ID),
+				http.StatusNotFound,
+			)
+		} else {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 

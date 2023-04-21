@@ -3,7 +3,6 @@ package storage
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -327,21 +326,21 @@ func TestMemStorage_GetMetric(t *testing.T) {
 		state      map[string]Metric
 		metricName string
 		wantMetric Metric
-		wantError  bool
+		wantError  error
 	}{
 		{
 			name:       "Test 1. State contains requested metric.",
 			state:      map[string]Metric{metric1Counter10.Name: metric1Counter10},
 			metricName: metric1Counter10.Name,
 			wantMetric: metric1Counter10,
-			wantError:  false,
+			wantError:  nil,
 		},
 		{
 			name:       "Test 2. State doesn't contain requested metric.",
 			state:      map[string]Metric{metric4Gauge2d27.Name: metric4Gauge2d27},
 			metricName: metric1Counter10.Name,
 			wantMetric: Metric{},
-			wantError:  true,
+			wantError:  ErrMetricNotFound,
 		},
 	}
 	for _, tt := range tests {
@@ -350,7 +349,7 @@ func TestMemStorage_GetMetric(t *testing.T) {
 				Metrics: tt.state,
 			}
 			gotMetric, gotErr := ms.GetMetric(nil, tt.metricName)
-			require.Equal(t, tt.wantError, gotErr != nil)
+			assert.ErrorIs(t, gotErr, tt.wantError)
 			assert.Equal(t, tt.wantMetric, gotMetric)
 		})
 	}

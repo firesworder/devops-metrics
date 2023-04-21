@@ -456,21 +456,21 @@ func TestSQLStorage_GetMetric(t *testing.T) {
 		metricName  string
 		initDBState map[string]Metric
 		wantMetric  Metric
-		wantError   bool
+		wantError   error
 	}{
 		{
 			name:        "Test 1. Metric not present in db. Counter type",
 			metricName:  metric1Counter10.Name,
 			initDBState: map[string]Metric{},
 			wantMetric:  Metric{},
-			wantError:   true,
+			wantError:   ErrMetricNotFound,
 		},
 		{
 			name:        "Test 2. Metric not present in db. Gauge type",
 			metricName:  metric4Gauge2d27.Name,
 			initDBState: map[string]Metric{},
 			wantMetric:  Metric{},
-			wantError:   true,
+			wantError:   ErrMetricNotFound,
 		},
 		{
 			name:       "Test 3. Metric present in db. Counter type",
@@ -480,7 +480,7 @@ func TestSQLStorage_GetMetric(t *testing.T) {
 				metric4Gauge2d27.Name: metric4Gauge2d27,
 			},
 			wantMetric: metric1Counter10,
-			wantError:  false,
+			wantError:  nil,
 		},
 		{
 			name:       "Test 4. Metric already present in db. Counter type",
@@ -490,7 +490,7 @@ func TestSQLStorage_GetMetric(t *testing.T) {
 				metric4Gauge2d27.Name: metric4Gauge2d27,
 			},
 			wantMetric: metric4Gauge2d27,
-			wantError:  false,
+			wantError:  nil,
 		},
 	}
 	for _, tt := range tests {
@@ -498,10 +498,8 @@ func TestSQLStorage_GetMetric(t *testing.T) {
 			prepareDBState(t, sqlStorage, ctx, tt.initDBState)
 
 			metric, err := sqlStorage.GetMetric(ctx, tt.metricName)
-			assert.Equal(t, tt.wantError, err != nil)
-			if !tt.wantError {
-				assert.Equal(t, tt.wantMetric, metric)
-			}
+			assert.ErrorIs(t, err, tt.wantError)
+			assert.Equal(t, tt.wantMetric, metric)
 		})
 	}
 }

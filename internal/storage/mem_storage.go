@@ -62,7 +62,7 @@ func (ms *MemStorage) GetAll(_ context.Context) (map[string]Metric, error) {
 func (ms *MemStorage) GetMetric(_ context.Context, name string) (metric Metric, err error) {
 	metric, ok := ms.Metrics[name]
 	if !ok {
-		return metric, fmt.Errorf("there is no metric with name '%s'", metric.Name)
+		return metric, ErrMetricNotFound
 	}
 	return
 }
