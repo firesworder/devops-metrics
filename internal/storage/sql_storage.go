@@ -77,7 +77,7 @@ func (db *SQLStorage) UpdateMetric(ctx context.Context, metric Metric) (err erro
 		return
 	}
 
-	mN, mV, mT := metric.GetMetricParamsString()
+	mN, mV, mT := dbMetric.GetMetricParamsString()
 	result, err := db.Connection.ExecContext(ctx,
 		"UPDATE metrics SET m_value = $2, m_type = $3 WHERE m_name = $1", mN, mV, mT)
 	if err != nil {
