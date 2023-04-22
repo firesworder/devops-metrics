@@ -208,6 +208,11 @@ func (db *SQLStorage) GetMetric(ctx context.Context, name string) (metric Metric
 	if err != nil {
 		return
 	}
+
+	err = rows.Err()
+	if err != nil {
+		return
+	}
 	return *m, nil
 }
 

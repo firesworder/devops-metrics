@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -62,7 +63,7 @@ func TestMemStorage_AddMetric(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.startState,
 			}
-			err := ms.AddMetric(nil, tt.metricToAdd)
+			err := ms.AddMetric(context.Background(), tt.metricToAdd)
 			assert.Equal(t, tt.wantedState, ms.Metrics)
 			assert.Equal(t, tt.wantError, err)
 		})
@@ -134,7 +135,7 @@ func TestMemStorage_DeleteMetric(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.startState,
 			}
-			err := ms.DeleteMetric(nil, tt.metricToDelete)
+			err := ms.DeleteMetric(context.Background(), tt.metricToDelete)
 			assert.Equal(t, tt.wantedState, ms.Metrics)
 			assert.Equal(t, tt.wantError, err)
 		})
@@ -184,7 +185,7 @@ func TestMemStorage_IsMetricInStorage(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.startState,
 			}
-			mInStorage, _ := ms.IsMetricInStorage(nil, tt.metricToCheck)
+			mInStorage, _ := ms.IsMetricInStorage(context.Background(), tt.metricToCheck)
 			assert.Equal(t, tt.wantedResult, mInStorage)
 		})
 	}
@@ -236,7 +237,7 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 				Metrics: tt.startState,
 			}
 			tt.metricToUpdate.Value = tt.newValue
-			err := ms.UpdateMetric(nil, tt.metricToUpdate)
+			err := ms.UpdateMetric(context.Background(), tt.metricToUpdate)
 			assert.Equal(t, tt.wantedState, ms.Metrics)
 			assert.Equal(t, tt.wantError, err)
 		})
@@ -280,7 +281,7 @@ func TestMemStorage_UpdateOrAddMetric(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.startState,
 			}
-			_ = ms.UpdateOrAddMetric(nil, tt.metricObj)
+			_ = ms.UpdateOrAddMetric(context.Background(), tt.metricObj)
 			assert.Equal(t, tt.wantedState, ms.Metrics)
 		})
 	}
@@ -314,7 +315,7 @@ func TestMemStorage_GetAll(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.state,
 			}
-			gotMapMetrics, _ := ms.GetAll(nil)
+			gotMapMetrics, _ := ms.GetAll(context.Background())
 			assert.Equal(t, tt.want, gotMapMetrics)
 		})
 	}
@@ -348,7 +349,7 @@ func TestMemStorage_GetMetric(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.state,
 			}
-			gotMetric, gotErr := ms.GetMetric(nil, tt.metricName)
+			gotMetric, gotErr := ms.GetMetric(context.Background(), tt.metricName)
 			assert.ErrorIs(t, gotErr, tt.wantError)
 			assert.Equal(t, tt.wantMetric, gotMetric)
 		})

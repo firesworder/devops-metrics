@@ -11,15 +11,15 @@ type MemStorage struct {
 	Metrics map[string]Metric
 }
 
-func (ms *MemStorage) AddMetric(_ context.Context, metric Metric) (err error) {
-	if mInStorage, _ := ms.IsMetricInStorage(nil, metric); mInStorage {
+func (ms *MemStorage) AddMetric(ctx context.Context, metric Metric) (err error) {
+	if mInStorage, _ := ms.IsMetricInStorage(ctx, metric); mInStorage {
 		return fmt.Errorf("metric with name '%s' already present in Storage", metric.Name)
 	}
 	ms.Metrics[metric.Name] = metric
 	return
 }
 
-func (ms *MemStorage) UpdateMetric(_ context.Context, metric Metric) (err error) {
+func (ms *MemStorage) UpdateMetric(ctx context.Context, metric Metric) (err error) {
 	metricToUpdate, ok := ms.Metrics[metric.Name]
 	if !ok {
 		return fmt.Errorf("there is no metric with name '%s'", metric.Name)
@@ -32,34 +32,34 @@ func (ms *MemStorage) UpdateMetric(_ context.Context, metric Metric) (err error)
 	return
 }
 
-func (ms *MemStorage) DeleteMetric(_ context.Context, metric Metric) (err error) {
-	if mInStorage, _ := ms.IsMetricInStorage(nil, metric); !mInStorage {
+func (ms *MemStorage) DeleteMetric(ctx context.Context, metric Metric) (err error) {
+	if mInStorage, _ := ms.IsMetricInStorage(ctx, metric); !mInStorage {
 		return fmt.Errorf("there is no metric with name '%s'", metric.Name)
 	}
 	delete(ms.Metrics, metric.Name)
 	return
 }
 
-func (ms *MemStorage) IsMetricInStorage(_ context.Context, metric Metric) (bool, error) {
+func (ms *MemStorage) IsMetricInStorage(ctx context.Context, metric Metric) (bool, error) {
 	_, isMetricExist := ms.Metrics[metric.Name]
 	return isMetricExist, nil
 }
 
 // UpdateOrAddMetric Обновляет метрику, если она есть в коллекции, иначе добавляет ее.
-func (ms *MemStorage) UpdateOrAddMetric(_ context.Context, metric Metric) (err error) {
-	if mInStorage, _ := ms.IsMetricInStorage(nil, metric); mInStorage {
-		err = ms.UpdateMetric(nil, metric)
+func (ms *MemStorage) UpdateOrAddMetric(ctx context.Context, metric Metric) (err error) {
+	if mInStorage, _ := ms.IsMetricInStorage(ctx, metric); mInStorage {
+		err = ms.UpdateMetric(ctx, metric)
 	} else {
-		err = ms.AddMetric(nil, metric)
+		err = ms.AddMetric(ctx, metric)
 	}
 	return
 }
 
-func (ms *MemStorage) GetAll(_ context.Context) (map[string]Metric, error) {
+func (ms *MemStorage) GetAll(ctx context.Context) (map[string]Metric, error) {
 	return ms.Metrics, nil
 }
 
-func (ms *MemStorage) GetMetric(_ context.Context, name string) (metric Metric, err error) {
+func (ms *MemStorage) GetMetric(ctx context.Context, name string) (metric Metric, err error) {
 	metric, ok := ms.Metrics[name]
 	if !ok {
 		return metric, ErrMetricNotFound
@@ -130,9 +130,9 @@ func (ms *MemStorage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (ms *MemStorage) BatchUpdate(_ context.Context, metrics []Metric) (err error) {
+func (ms *MemStorage) BatchUpdate(ctx context.Context, metrics []Metric) (err error) {
 	for _, metric := range metrics {
-		err = ms.UpdateOrAddMetric(nil, metric)
+		err = ms.UpdateOrAddMetric(ctx, metric)
 		if err != nil {
 			return
 		}
