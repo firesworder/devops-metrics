@@ -28,6 +28,7 @@ type Environment struct {
 	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
 	PollInterval   time.Duration `env:"POLL_INTERVAL"`
 	Key            string        `env:"KEY"`
+	RateLimit      int           `env:"RATE_LIMIT"`
 }
 
 var Env Environment
@@ -49,6 +50,7 @@ func InitCmdArgs() {
 	flag.DurationVar(&Env.ReportInterval, "r", 10*time.Second, "report interval")
 	flag.DurationVar(&Env.PollInterval, "p", 2*time.Second, "poll(update) interval")
 	flag.StringVar(&Env.Key, "k", "", "key for hash func")
+	flag.IntVar(&Env.RateLimit, "l", 0, "rate limit(send routines at one time)")
 }
 
 // ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения

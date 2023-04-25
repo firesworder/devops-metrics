@@ -322,6 +322,51 @@ func TestParseEnvArgs(t *testing.T) {
 			},
 			wantPanic: false,
 		},
+		{
+			name:   "Test 10. Field 'RateLimit', cmd",
+			cmdStr: "file.exe --a=cmd.site -l=2",
+			envVars: map[string]string{
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
+			},
+			wantEnv: Environment{
+				ServerAddress:  "cmd.site",
+				PollInterval:   5 * time.Second,
+				ReportInterval: 20 * time.Second,
+				Key:            "",
+				RateLimit:      2,
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 11. Field 'RateLimit', env",
+			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s -l=1",
+			envVars: map[string]string{
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s", "RATE_LIMIT": "3",
+			},
+			wantEnv: Environment{
+				ServerAddress:  "cmd.site",
+				PollInterval:   5 * time.Second,
+				ReportInterval: 20 * time.Second,
+				Key:            "",
+				RateLimit:      3,
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 12. Field 'RateLimit', not set",
+			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s",
+			envVars: map[string]string{
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
+			},
+			wantEnv: Environment{
+				ServerAddress:  "cmd.site",
+				PollInterval:   5 * time.Second,
+				ReportInterval: 20 * time.Second,
+				Key:            "",
+				RateLimit:      0,
+			},
+			wantPanic: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -330,9 +375,10 @@ func TestParseEnvArgs(t *testing.T) {
 			Env.ReportInterval = 10 * time.Second
 			Env.PollInterval = 2 * time.Second
 			Env.Key = ""
+			Env.RateLimit = 0
 
 			// удаляю переменные окружения, если они были до этого установлены
-			for _, key := range [4]string{"ADDRESS", "REPORT_INTERVAL", "POLL_INTERVAL", "KEY"} {
+			for _, key := range [5]string{"ADDRESS", "REPORT_INTERVAL", "POLL_INTERVAL", "KEY", "RATE_LIMIT"} {
 				err := os.Unsetenv(key)
 				require.NoError(t, err)
 			}
