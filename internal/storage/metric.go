@@ -1,20 +1,16 @@
 package storage
 
 import (
-	"errors"
 	"fmt"
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 type gauge float64
 type counter int64
-
-var (
-	ErrUnhandledValueType = errors.New("unhandled value type")
-)
 
 type Metric struct {
 	Name  string
@@ -108,9 +104,23 @@ func (m *Metric) GetMessageMetric() (messageMetric message.Metrics) {
 func (m *Metric) GetValueString() string {
 	switch value := m.Value.(type) {
 	case gauge:
-		return fmt.Sprintf("%.3f", value)
+		return strings.TrimRight(fmt.Sprintf("%.3f", value), "0")
 	case counter:
 		return fmt.Sprintf("%d", value)
 	}
 	return ""
+}
+
+// GetMetricParamsString Возвращает параметры метрики в string формате: Name, Value, Type
+func (m *Metric) GetMetricParamsString() (mN string, mV string, mT string) {
+	mN = m.Name
+	switch value := m.Value.(type) {
+	case gauge:
+		mT = internal.GaugeTypeName
+		mV = fmt.Sprintf("%v", value)
+	case counter:
+		mT = internal.CounterTypeName
+		mV = fmt.Sprintf("%d", value)
+	}
+	return
 }

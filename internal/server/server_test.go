@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/filestore"
 	"github.com/firesworder/devopsmetrics/internal/helper"
@@ -46,6 +47,14 @@ type response struct {
 	statusCode  int
 	contentType string
 	body        string
+}
+
+func compareMetricsState(t *testing.T, wantMS map[string]storage.Metric, mR storage.MetricRepository,
+	ctx context.Context,
+) {
+	gotMS, err := mR.GetAll(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, wantMS, gotMS)
 }
 
 func TestAddUpdateMetricHandler(t *testing.T) {
@@ -201,7 +210,8 @@ func TestAddUpdateMetricHandler(t *testing.T) {
 			require.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
 			assert.Equal(t, tt.wantResponse.body, body)
-			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll())
+
+			compareMetricsState(t, tt.wantedState, s.MetricStorage, context.Background())
 		})
 	}
 }
@@ -306,7 +316,7 @@ func TestGetMetricHandler(t *testing.T) {
 			name:    "Test 3. Correct url, metric in filled state. Gauge type",
 			request: requestArgs{method: http.MethodGet, url: "/value/gauge/Alloc"},
 			wantResponse: response{
-				statusCode: http.StatusOK, contentType: "text/plain; charset=utf-8", body: "7.770",
+				statusCode: http.StatusOK, contentType: "text/plain; charset=utf-8", body: "7.77",
 			},
 			memStorageState: filledState,
 		},
@@ -651,9 +661,185 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
 			assert.Equal(t, tt.wantResponse.body, body)
-			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll())
+
+			compareMetricsState(t, tt.wantedState, s.MetricStorage, context.Background())
 		})
 	}
+}
+
+func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
+	s := Server{}
+	ts := httptest.NewServer(s.NewRouter())
+	defer ts.Close()
+
+	defaultEnv := Env
+
+	tests := []struct {
+		name string
+		requestArgs
+		env          Environment
+		wantResponse response
+		initState    map[string]storage.Metric
+		wantedState  map[string]storage.Metric
+	}{
+		{
+			name: "Test correct counter #1. Add metric.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10,"hash":"4ca29a927a89931245cd4ad0782383d0fe0df883d31437cc5b85dc4dad3247c4"}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10,"hash":"4ca29a927a89931245cd4ad0782383d0fe0df883d31437cc5b85dc4dad3247c4"}`,
+			},
+			initState: map[string]storage.Metric{
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
+		},
+		{
+			name: "Test correct counter #2. Update metric.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":20,"hash":"a54ff39f2747a23c5834768f732d53719e143482400db980fcb886fc0a126faa"}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":30,"hash":"84f056fb60dca6b2839556080bb2de533218121bebe8d95bf38e206479655d1a"}`,
+			},
+			initState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric3.Name: *metric3,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1upd20.Name: *metric1upd20,
+				metric3.Name:      *metric3,
+			},
+		},
+
+		{
+			name: "Test correct gauge #1. Add metric.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge","value":12.133,"hash":"19742de723a08df1f3436d0b745ea7743c05520787cb32949497056fce1f7c70"}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge","value":12.133,"hash":"19742de723a08df1f3436d0b745ea7743c05520787cb32949497056fce1f7c70"}`,
+			},
+			initState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric3.Name: *metric3,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
+		},
+		{
+			name: "Test correct gauge #2. Update metric.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge","value":23.5,"hash":"8dfae3f2574fadf10488b9104ad0d003d2267a8e045b22793c4e8c6b6f989d67"}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge","value":23.5,"hash":"8dfae3f2574fadf10488b9104ad0d003d2267a8e045b22793c4e8c6b6f989d67"}`,
+			},
+			initState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1.Name:       *metric1,
+				metric2upd235.Name: *metric2upd235,
+			},
+		},
+
+		{
+			name: "Test incorrect hash #1. Add counter metric, hash for different key.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10,"hash":"aaa29a927a89931245cd4ad0782383d0fe0df883d31437cc5b85dc4dad3247c4"}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusBadRequest,
+				contentType: "text/plain; charset=utf-8",
+				body:        "hash is not correct\n",
+			},
+			initState: map[string]storage.Metric{
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
+			wantedState: map[string]storage.Metric{
+				metric2.Name: *metric2,
+				metric3.Name: *metric3,
+			},
+		},
+		{
+			name: "Test incorrect hash #2. Update gauge metric, empty hash.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge","value":23.5}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusBadRequest,
+				contentType: "text/plain; charset=utf-8",
+				body:        "hash is not correct\n",
+			},
+			initState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+			},
+			wantedState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			Env = tt.env
+			s.MetricStorage = storage.NewMemStorage(tt.initState)
+			statusCode, contentType, body := sendTestRequest(t, ts, tt.requestArgs)
+
+			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, contentType)
+			assert.Equal(t, tt.wantResponse.body, body)
+
+			compareMetricsState(t, tt.wantedState, s.MetricStorage, context.Background())
+		})
+	}
+
+	Env = defaultEnv
 }
 
 func sendTestRequest(t *testing.T, ts *httptest.Server, r requestArgs) (int, string, string) {
@@ -825,6 +1011,147 @@ func TestGetMetricJSONHandler(t *testing.T) {
 	}
 }
 
+func TestGetMetricJsonHandlerWithHash(t *testing.T) {
+	filledState := map[string]storage.Metric{
+		metric1.Name: *metric1,
+		metric2.Name: *metric2,
+		metric3.Name: *metric3,
+	}
+	emptyState := map[string]storage.Metric{}
+
+	// костыль, чтоб
+	s := Server{}
+	ts := httptest.NewServer(s.NewRouter())
+	defaultEnv := Env
+	defer ts.Close()
+
+	tests := []struct {
+		name string
+		requestArgs
+		env             Environment
+		wantResponse    response
+		memStorageState map[string]storage.Metric
+	}{
+		// counter
+		{
+			name: "Test correct counter #1. Correct request, metric is not present.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/value/",
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter"}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "metric with name 'PollCount' not found\n",
+			},
+			memStorageState: emptyState,
+		},
+		{
+			name: "Test correct counter #2. Correct request, metric is present.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/value/",
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter"}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10,"hash":"4ca29a927a89931245cd4ad0782383d0fe0df883d31437cc5b85dc4dad3247c4"}`,
+			},
+			memStorageState: filledState,
+		},
+
+		// gauge
+		{
+			name: "Test correct gauge #1. Correct request, metric is not present.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/value/",
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge"}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusNotFound,
+				contentType: "text/plain; charset=utf-8",
+				body:        "metric with name 'RandomValue' not found\n",
+			},
+			memStorageState: emptyState,
+		},
+		{
+			name: "Test correct gauge #2. Correct request, metric is present.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/value/",
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge"}`,
+			},
+			env: Environment{Key: "Ayayaka"},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge","value":12.133,"hash":"19742de723a08df1f3436d0b745ea7743c05520787cb32949497056fce1f7c70"}`,
+			},
+			memStorageState: filledState,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			Env = tt.env
+			s.MetricStorage = storage.NewMemStorage(tt.memStorageState)
+			statusCode, contentType, body := sendTestRequest(t, ts, tt.requestArgs)
+
+			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, contentType)
+			assert.Equal(t, tt.wantResponse.body, body)
+		})
+	}
+	// возвращаю Env до теста
+	Env = defaultEnv
+}
+
+func TestServer_PingHandler(t *testing.T) {
+	Env.DatabaseDsn = "postgresql://postgres:admin@localhost:5432/devops"
+	s, err := NewServer()
+	if err != nil {
+		t.Skipf("cannot connect to db. db mocks are not ready yet")
+	}
+	ts := httptest.NewServer(s.NewRouter())
+	defer ts.Close()
+
+	reqArgs := requestArgs{
+		method:      http.MethodGet,
+		url:         "/ping",
+		contentType: "text/plain",
+		body:        ``,
+	}
+
+	tests := []struct {
+		name string
+		requestArgs
+		wantResponse response
+	}{
+		{
+			name: "Test 1. DB is accessible",
+			wantResponse: response{
+				statusCode: http.StatusOK,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			statusCode, _, _ := sendTestRequest(t, ts, reqArgs)
+
+			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
+		})
+	}
+}
+
 func TestServer_InitFileStore(t *testing.T) {
 	type ServerArgsPart struct {
 		StoreFile string
@@ -959,6 +1286,7 @@ func TestServer_InitMetricStorage(t *testing.T) {
 }
 
 func TestParseEnvArgs(t *testing.T) {
+	envBefore := Env
 	tests := []struct {
 		name      string
 		cmdStr    string
@@ -1046,6 +1374,97 @@ func TestParseEnvArgs(t *testing.T) {
 			},
 			wantPanic: false,
 		},
+		{
+			name:   "Test 7. Field key, cmd",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false -k=ayayaka",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: Environment{
+				ServerAddress: "cmd.site",
+				StoreInterval: 60 * time.Second,
+				StoreFile:     "env.json",
+				Restore:       true,
+				Key:           "ayayaka",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 8. Field key, env",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true", "KEY": "ayayaka",
+			},
+			wantEnv: Environment{
+				ServerAddress: "cmd.site",
+				StoreInterval: 60 * time.Second,
+				StoreFile:     "env.json",
+				Restore:       true,
+				Key:           "ayayaka",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 9. Field key, not set",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: Environment{
+				ServerAddress: "cmd.site",
+				StoreInterval: 60 * time.Second,
+				StoreFile:     "env.json",
+				Restore:       true,
+				Key:           "",
+			},
+			wantPanic: false,
+		},
+
+		{
+			name:   "Test 10. Field DatabaseDsn, cmd",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false -d=localhost:5432",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: Environment{
+				ServerAddress: "cmd.site",
+				StoreInterval: 60 * time.Second,
+				StoreFile:     "env.json",
+				Restore:       true,
+				DatabaseDsn:   "localhost:5432",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 11. Field key, env",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true", "DATABASE_DSN": "localhost:8080",
+			},
+			wantEnv: Environment{
+				ServerAddress: "cmd.site",
+				StoreInterval: 60 * time.Second,
+				StoreFile:     "env.json",
+				Restore:       true,
+				DatabaseDsn:   "localhost:8080",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 12. Field key, not set",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: Environment{
+				ServerAddress: "cmd.site",
+				StoreInterval: 60 * time.Second,
+				StoreFile:     "env.json",
+				Restore:       true,
+				DatabaseDsn:   "",
+			},
+			wantPanic: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1055,10 +1474,12 @@ func TestParseEnvArgs(t *testing.T) {
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "/tmp/devops-metrics-db.json",
 				Restore:       true,
+				Key:           "",
+				DatabaseDsn:   "",
 			}
 
 			// удаляю переменные окружения, если они были до этого установлены
-			for _, key := range [4]string{"ADDRESS", "STORE_FILE", "STORE_INTERVAL", "RESTORE"} {
+			for _, key := range [6]string{"ADDRESS", "STORE_FILE", "STORE_INTERVAL", "RESTORE", "KEY", "DATABASE_DSN"} {
 				err := os.Unsetenv(key)
 				require.NoError(t, err)
 			}
@@ -1079,6 +1500,7 @@ func TestParseEnvArgs(t *testing.T) {
 			}
 		})
 	}
+	Env = envBefore
 }
 
 // responseWC == response with compression(gzip), increment 8
@@ -1175,7 +1597,8 @@ func TestServer_gzipCompressor(t *testing.T) {
 			assert.Equal(t, tt.wantResponse.contentType, rWC.contentType)
 			assert.Equal(t, tt.wantResponse.uncompressed, rWC.uncompressed)
 			assert.Equal(t, tt.wantResponse.body, rWC.body)
-			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll())
+
+			compareMetricsState(t, tt.wantedState, s.MetricStorage, context.Background())
 		})
 	}
 }
@@ -1221,7 +1644,138 @@ func TestServer_gzipDecompressor(t *testing.T) {
 			require.Equal(t, tt.wantResponse.statusCode, rWC.statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, rWC.contentType)
 			assert.Equal(t, tt.wantResponse.body, rWC.body)
-			assert.Equal(t, tt.wantedState, s.MetricStorage.GetAll())
+
+			compareMetricsState(t, tt.wantedState, s.MetricStorage, context.Background())
+		})
+	}
+}
+
+func TestServer_handlerBatchUpdate(t *testing.T) {
+	ctx := context.Background()
+	metricCounterFilled, _ := storage.NewMetric("CounterMetric", internal.CounterTypeName, int64(473771967))
+	// 473771967(пред) + 247876521 = 721648488
+	metricCounterUpdated, _ := storage.NewMetric("CounterMetric", internal.CounterTypeName, int64(721648488))
+	// 721648488(пред) + 247876521 = 969525009
+	metricCounterUpdatedMpl, _ := storage.NewMetric("CounterMetric", internal.CounterTypeName, int64(969525009))
+	devTest := true
+	Env.DatabaseDsn = "postgresql://postgres:admin@localhost:5432/devops"
+	s, err := NewServer()
+	if err != nil {
+		devTest = false
+		Env.DatabaseDsn = ""
+		s, _ = NewServer()
+	}
+	ts := httptest.NewServer(s.NewRouter())
+	defer ts.Close()
+
+	tests := []struct {
+		name string
+		requestArgs
+		wantResponse     response
+		memStorageState  map[string]storage.Metric
+		wantStorageState map[string]storage.Metric
+	}{
+		{
+			name: "Test 1. Empty metrics table.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/updates/",
+				contentType: "application/json",
+				body:        `[{"id":"PollCount","type":"counter","delta":10},{"id":"RandomValue","type":"gauge","value":12.133}]`,
+			},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+			},
+			memStorageState: map[string]storage.Metric{},
+			wantStorageState: map[string]storage.Metric{
+				metric1.Name: *metric1,
+				metric2.Name: *metric2,
+			},
+		},
+		{
+			name: "Test 2. FilledState.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/updates/",
+				contentType: "application/json",
+				body:        `[{"id":"CounterMetric","type":"counter","delta":247876521},{"id":"RandomValue","type":"gauge","value":23.5}]`,
+			},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+			},
+			memStorageState: map[string]storage.Metric{
+				metric1.Name:             *metric1,
+				metricCounterFilled.Name: *metricCounterFilled,
+				metric2.Name:             *metric2,
+			},
+			wantStorageState: map[string]storage.Metric{
+				metric1.Name:              *metric1,
+				metricCounterUpdated.Name: *metricCounterUpdated,
+				metric2upd235.Name:        *metric2upd235,
+			},
+		},
+		{
+			name: "Test 3. FilledState. Multiple metric in batch with the same name.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/updates/",
+				contentType: "application/json",
+				body:        `[{"id":"CounterMetric","type":"counter","delta":247876521},{"id":"RandomValue","type":"gauge","value":23.5},{"id":"CounterMetric","type":"counter","delta":247876521}]`,
+			},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+			},
+			memStorageState: map[string]storage.Metric{
+				metric1.Name:             *metric1,
+				metricCounterFilled.Name: *metricCounterFilled,
+				metric2.Name:             *metric2,
+			},
+			wantStorageState: map[string]storage.Metric{
+				metric1.Name:                 *metric1,
+				metricCounterUpdatedMpl.Name: *metricCounterUpdatedMpl,
+				metric2upd235.Name:           *metric2upd235,
+			},
+		},
+		{
+			name: "Test 4. Empty state. Multiple metric in batch with the same name.",
+			requestArgs: requestArgs{
+				method:      http.MethodPost,
+				url:         "/updates/",
+				contentType: "application/json",
+				body:        `[{"id":"CounterMetric","type":"counter","delta":721648488},{"id":"RandomValue","type":"gauge","value":23.5},{"id":"CounterMetric","type":"counter","delta":247876521}]`,
+			},
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+			},
+			memStorageState: map[string]storage.Metric{},
+			wantStorageState: map[string]storage.Metric{
+				metricCounterUpdatedMpl.Name: *metricCounterUpdatedMpl,
+				metric2upd235.Name:           *metric2upd235,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if devTest {
+				_, err = s.DBConn.Exec("DELETE FROM metrics")
+				require.NoError(t, err)
+				for _, metric := range tt.memStorageState {
+					err = s.MetricStorage.AddMetric(ctx, metric)
+					require.NoError(t, err)
+				}
+			} else {
+				s.MetricStorage = storage.NewMemStorage(tt.memStorageState)
+			}
+
+			statusCode, contentType, _ := sendTestRequest(t, ts, tt.requestArgs)
+			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, contentType)
+
+			compareMetricsState(t, tt.wantStorageState, s.MetricStorage, context.Background())
 		})
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -85,8 +86,6 @@ func TestSendMetricByURL(t *testing.T) {
 
 func TestSendMetricByJson(t *testing.T) {
 	int64Value, float64Value := int64(10), float64(12.133)
-	metricCounter := message.Metrics{ID: "PollCount", MType: internal.CounterTypeName, Value: nil, Delta: &int64Value}
-	metricGauge := message.Metrics{ID: "RandomValue", MType: internal.GaugeTypeName, Value: &float64Value, Delta: nil}
 
 	type args struct {
 		paramName  string
@@ -96,37 +95,84 @@ func TestSendMetricByJson(t *testing.T) {
 		contentType string
 		msg         *message.Metrics
 	}
-	type wantResponse struct {
-		statusCode  int
-		contentType string
-		msg         *message.Metrics
-	}
 
 	tests := []struct {
-		name         string
-		args         args
-		wantRequest  *wantRequest
-		wantResponse *wantResponse
+		name        string
+		args        args
+		envKey      string
+		wantRequest *wantRequest
 	}{
 		{
-			name:        "Test 1. Gauge metric.",
-			args:        args{paramName: "RandomValue", paramValue: gauge(12.133)},
-			wantRequest: &wantRequest{contentType: "application/json", msg: &metricGauge},
+			name:   "Test 1. Gauge metric.",
+			args:   args{paramName: "RandomValue", paramValue: gauge(12.133)},
+			envKey: "Ayayaka",
+			wantRequest: &wantRequest{
+				contentType: "application/json",
+				msg: &message.Metrics{
+					ID:    "RandomValue",
+					MType: internal.GaugeTypeName,
+					Value: &float64Value,
+					Delta: nil,
+					Hash:  "19742de723a08df1f3436d0b745ea7743c05520787cb32949497056fce1f7c70",
+				},
+			},
 		},
 		{
-			name:        "Test 2. Counter metric.",
-			args:        args{paramName: "PollCount", paramValue: counter(10)},
-			wantRequest: &wantRequest{contentType: "application/json", msg: &metricCounter},
+			name:   "Test 2. Counter metric.",
+			args:   args{paramName: "PollCount", paramValue: counter(10)},
+			envKey: "Ayayaka",
+			wantRequest: &wantRequest{
+				contentType: "application/json",
+				msg: &message.Metrics{
+					ID:    "PollCount",
+					MType: internal.CounterTypeName,
+					Value: nil,
+					Delta: &int64Value,
+					Hash:  "4ca29a927a89931245cd4ad0782383d0fe0df883d31437cc5b85dc4dad3247c4",
+				},
+			},
 		},
 		{
 			name:        "Test 3. Metric with unknown type.",
 			args:        args{paramName: "Alloc", paramValue: int32(10)},
+			envKey:      "Ayayaka",
 			wantRequest: nil,
 		},
 		{
 			name:        "Test 4. Metric with nil value.",
 			args:        args{paramName: "Alloc", paramValue: nil},
+			envKey:      "Ayayaka",
 			wantRequest: nil,
+		},
+		{
+			name:   "Test 5. Gauge metric. Key(env) is not set",
+			args:   args{paramName: "RandomValue", paramValue: gauge(12.133)},
+			envKey: "",
+			wantRequest: &wantRequest{
+				contentType: "application/json",
+				msg: &message.Metrics{
+					ID:    "RandomValue",
+					MType: internal.GaugeTypeName,
+					Value: &float64Value,
+					Delta: nil,
+					Hash:  "",
+				},
+			},
+		},
+		{
+			name:   "Test 6. Counter metric. Key(env) is not set",
+			args:   args{paramName: "PollCount", paramValue: counter(10)},
+			envKey: "",
+			wantRequest: &wantRequest{
+				contentType: "application/json",
+				msg: &message.Metrics{
+					ID:    "PollCount",
+					MType: internal.CounterTypeName,
+					Value: nil,
+					Delta: &int64Value,
+					Hash:  "",
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -142,6 +188,7 @@ func TestSendMetricByJson(t *testing.T) {
 				gotRequest.msg = &msg
 			}))
 			defer svr.Close()
+			Env.Key = tt.envKey
 			ServerURL = svr.URL
 			sendMetricByJSON(tt.args.paramName, tt.args.paramValue)
 			require.Equal(t, tt.wantRequest, gotRequest)
@@ -150,6 +197,8 @@ func TestSendMetricByJson(t *testing.T) {
 }
 
 func TestSendMetrics(t *testing.T) {
+	t.Skipf("test not actual for batch metric sending")
+
 	metricsCount := 29
 	var gotMetricsReq = make([]string, 0, metricsCount)
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -231,6 +280,48 @@ func TestParseEnvArgs(t *testing.T) {
 			},
 			wantPanic: false,
 		},
+		{
+			name:   "Test 7. Field key, cmd",
+			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s -k=ad123a",
+			envVars: map[string]string{
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
+			},
+			wantEnv: Environment{
+				ServerAddress:  "cmd.site",
+				PollInterval:   5 * time.Second,
+				ReportInterval: 20 * time.Second,
+				Key:            "ad123a",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 8. Field key, env",
+			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s",
+			envVars: map[string]string{
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s", "KEY": "ad123b",
+			},
+			wantEnv: Environment{
+				ServerAddress:  "cmd.site",
+				PollInterval:   5 * time.Second,
+				ReportInterval: 20 * time.Second,
+				Key:            "ad123b",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 9. Field key, not set",
+			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s",
+			envVars: map[string]string{
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
+			},
+			wantEnv: Environment{
+				ServerAddress:  "cmd.site",
+				PollInterval:   5 * time.Second,
+				ReportInterval: 20 * time.Second,
+				Key:            "",
+			},
+			wantPanic: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -238,9 +329,10 @@ func TestParseEnvArgs(t *testing.T) {
 			Env.ServerAddress = "localhost:8080"
 			Env.ReportInterval = 10 * time.Second
 			Env.PollInterval = 2 * time.Second
+			Env.Key = ""
 
 			// удаляю переменные окружения, если они были до этого установлены
-			for _, key := range [3]string{"ADDRESS", "REPORT_INTERVAL", "POLL_INTERVAL"} {
+			for _, key := range [4]string{"ADDRESS", "REPORT_INTERVAL", "POLL_INTERVAL", "KEY"} {
 				err := os.Unsetenv(key)
 				require.NoError(t, err)
 			}
@@ -261,4 +353,54 @@ func TestParseEnvArgs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_sendMetricsBatchByJSON(t *testing.T) {
+	int64Value, float64Value := int64(10), float64(2.27)
+	envKey := "Ayaka"
+	type request struct {
+		contentType string
+		msgBatch    []message.Metrics
+	}
+
+	wantRequest := request{
+		contentType: "application/json",
+		msgBatch: []message.Metrics{
+			{
+				ID:    "PollCount",
+				MType: internal.CounterTypeName,
+				Value: nil,
+				Delta: &int64Value,
+				Hash:  "566384d8026a5429fcc20ccac3248f014da91cb8fbfe8cd47883088c1741b0eb",
+			},
+			{
+				ID:    "RandomValue",
+				MType: internal.GaugeTypeName,
+				Value: &float64Value,
+				Delta: nil,
+				Hash:  "ceb416f4ef87553a09a82f2909bbbaffd2eff26d1b7c4a29bb61ea38433876d2",
+			},
+		},
+	}
+	args := map[string]interface{}{
+		"PollCount":   counter(10),
+		"RandomValue": gauge(2.27),
+	}
+
+	var gotRequest request
+	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotRequest = request{}
+		gotRequest.contentType = r.Header.Get("Content-Type")
+
+		err := json.NewDecoder(r.Body).Decode(&gotRequest.msgBatch)
+		require.NoError(t, err, "cannot decode request body")
+	}))
+	defer svr.Close()
+	Env.Key = envKey
+	ServerURL = svr.URL
+	sendMetricsBatchByJSON(args)
+	sort.Slice(gotRequest.msgBatch, func(i, j int) bool {
+		return gotRequest.msgBatch[i].ID < gotRequest.msgBatch[j].ID
+	})
+	assert.Equal(t, wantRequest, gotRequest)
 }

@@ -1,9 +1,9 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -63,7 +63,7 @@ func TestMemStorage_AddMetric(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.startState,
 			}
-			err := ms.AddMetric(tt.metricToAdd)
+			err := ms.AddMetric(context.Background(), tt.metricToAdd)
 			assert.Equal(t, tt.wantedState, ms.Metrics)
 			assert.Equal(t, tt.wantError, err)
 		})
@@ -135,7 +135,7 @@ func TestMemStorage_DeleteMetric(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.startState,
 			}
-			err := ms.DeleteMetric(tt.metricToDelete)
+			err := ms.DeleteMetric(context.Background(), tt.metricToDelete)
 			assert.Equal(t, tt.wantedState, ms.Metrics)
 			assert.Equal(t, tt.wantError, err)
 		})
@@ -185,7 +185,8 @@ func TestMemStorage_IsMetricInStorage(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.startState,
 			}
-			assert.Equal(t, tt.wantedResult, ms.IsMetricInStorage(tt.metricToCheck))
+			mInStorage, _ := ms.IsMetricInStorage(context.Background(), tt.metricToCheck)
+			assert.Equal(t, tt.wantedResult, mInStorage)
 		})
 	}
 }
@@ -236,7 +237,7 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 				Metrics: tt.startState,
 			}
 			tt.metricToUpdate.Value = tt.newValue
-			err := ms.UpdateMetric(tt.metricToUpdate)
+			err := ms.UpdateMetric(context.Background(), tt.metricToUpdate)
 			assert.Equal(t, tt.wantedState, ms.Metrics)
 			assert.Equal(t, tt.wantError, err)
 		})
@@ -280,7 +281,7 @@ func TestMemStorage_UpdateOrAddMetric(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.startState,
 			}
-			_ = ms.UpdateOrAddMetric(tt.metricObj)
+			_ = ms.UpdateOrAddMetric(context.Background(), tt.metricObj)
 			assert.Equal(t, tt.wantedState, ms.Metrics)
 		})
 	}
@@ -314,7 +315,7 @@ func TestMemStorage_GetAll(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.state,
 			}
-			gotMapMetrics := ms.GetAll()
+			gotMapMetrics, _ := ms.GetAll(context.Background())
 			assert.Equal(t, tt.want, gotMapMetrics)
 		})
 	}
@@ -326,21 +327,21 @@ func TestMemStorage_GetMetric(t *testing.T) {
 		state      map[string]Metric
 		metricName string
 		wantMetric Metric
-		wantOk     bool
+		wantError  error
 	}{
 		{
 			name:       "Test 1. State contains requested metric.",
 			state:      map[string]Metric{metric1Counter10.Name: metric1Counter10},
 			metricName: metric1Counter10.Name,
 			wantMetric: metric1Counter10,
-			wantOk:     true,
+			wantError:  nil,
 		},
 		{
 			name:       "Test 2. State doesn't contain requested metric.",
 			state:      map[string]Metric{metric4Gauge2d27.Name: metric4Gauge2d27},
 			metricName: metric1Counter10.Name,
 			wantMetric: Metric{},
-			wantOk:     false,
+			wantError:  ErrMetricNotFound,
 		},
 	}
 	for _, tt := range tests {
@@ -348,8 +349,8 @@ func TestMemStorage_GetMetric(t *testing.T) {
 			ms := &MemStorage{
 				Metrics: tt.state,
 			}
-			gotMetric, gotOk := ms.GetMetric(tt.metricName)
-			require.Equal(t, tt.wantOk, gotOk)
+			gotMetric, gotErr := ms.GetMetric(context.Background(), tt.metricName)
+			assert.ErrorIs(t, gotErr, tt.wantError)
 			assert.Equal(t, tt.wantMetric, gotMetric)
 		})
 	}

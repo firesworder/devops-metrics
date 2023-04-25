@@ -8,7 +8,11 @@ import (
 
 func main() {
 	server.ParseEnvArgs()
-	serverParams := server.NewServer()
+
+	serverParams, err := server.NewServer()
+	if err != nil {
+		log.Fatal(err)
+	}
 	serverObj := &http.Server{
 		Addr:    server.Env.ServerAddress,
 		Handler: serverParams.Router,

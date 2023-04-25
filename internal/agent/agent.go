@@ -27,6 +27,7 @@ type Environment struct {
 	ServerAddress  string        `env:"ADDRESS"`
 	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
 	PollInterval   time.Duration `env:"POLL_INTERVAL"`
+	Key            string        `env:"KEY"`
 }
 
 var Env Environment
@@ -47,6 +48,7 @@ func InitCmdArgs() {
 	flag.StringVar(&Env.ServerAddress, "a", "localhost:8080", "Server address")
 	flag.DurationVar(&Env.ReportInterval, "r", 10*time.Second, "report interval")
 	flag.DurationVar(&Env.PollInterval, "p", 2*time.Second, "poll(update) interval")
+	flag.StringVar(&Env.Key, "k", "", "key for hash func")
 }
 
 // ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения
@@ -68,45 +70,49 @@ func UpdateMetrics() {
 }
 
 func SendMetrics() {
-	sendMetricByJSON("Alloc", gauge(memstats.Alloc))
-	sendMetricByJSON("BuckHashSys", gauge(memstats.BuckHashSys))
-	sendMetricByJSON("Frees", gauge(memstats.Frees))
+	metrics := map[string]interface{}{
+		"Alloc":       gauge(memstats.Alloc),
+		"BuckHashSys": gauge(memstats.BuckHashSys),
+		"Frees":       gauge(memstats.Frees),
 
-	sendMetricByJSON("GCCPUFraction", gauge(memstats.GCCPUFraction))
-	sendMetricByJSON("GCSys", gauge(memstats.GCSys))
-	sendMetricByJSON("HeapAlloc", gauge(memstats.HeapAlloc))
+		"GCCPUFraction": gauge(memstats.GCCPUFraction),
+		"GCSys":         gauge(memstats.GCSys),
+		"HeapAlloc":     gauge(memstats.HeapAlloc),
 
-	sendMetricByJSON("HeapIdle", gauge(memstats.HeapIdle))
-	sendMetricByJSON("HeapInuse", gauge(memstats.HeapInuse))
-	sendMetricByJSON("HeapObjects", gauge(memstats.HeapObjects))
+		"HeapIdle":    gauge(memstats.HeapIdle),
+		"HeapInuse":   gauge(memstats.HeapInuse),
+		"HeapObjects": gauge(memstats.HeapObjects),
 
-	sendMetricByJSON("HeapReleased", gauge(memstats.HeapReleased))
-	sendMetricByJSON("HeapSys", gauge(memstats.HeapSys))
-	sendMetricByJSON("LastGC", gauge(memstats.LastGC))
+		"HeapReleased": gauge(memstats.HeapReleased),
+		"HeapSys":      gauge(memstats.HeapSys),
+		"LastGC":       gauge(memstats.LastGC),
 
-	sendMetricByJSON("Lookups", gauge(memstats.Lookups))
-	sendMetricByJSON("MCacheInuse", gauge(memstats.MCacheInuse))
-	sendMetricByJSON("MCacheSys", gauge(memstats.MCacheSys))
+		"Lookups":     gauge(memstats.Lookups),
+		"MCacheInuse": gauge(memstats.MCacheInuse),
+		"MCacheSys":   gauge(memstats.MCacheSys),
 
-	sendMetricByJSON("MSpanInuse", gauge(memstats.MSpanInuse))
-	sendMetricByJSON("MSpanSys", gauge(memstats.MSpanSys))
-	sendMetricByJSON("Mallocs", gauge(memstats.Mallocs))
+		"MSpanInuse": gauge(memstats.MSpanInuse),
+		"MSpanSys":   gauge(memstats.MSpanSys),
+		"Mallocs":    gauge(memstats.Mallocs),
 
-	sendMetricByJSON("NextGC", gauge(memstats.NextGC))
-	sendMetricByJSON("NumForcedGC", gauge(memstats.NumForcedGC))
-	sendMetricByJSON("NumGC", gauge(memstats.NumGC))
+		"NextGC":      gauge(memstats.NextGC),
+		"NumForcedGC": gauge(memstats.NumForcedGC),
+		"NumGC":       gauge(memstats.NumGC),
 
-	sendMetricByJSON("OtherSys", gauge(memstats.OtherSys))
-	sendMetricByJSON("PauseTotalNs", gauge(memstats.PauseTotalNs))
-	sendMetricByJSON("StackInuse", gauge(memstats.StackInuse))
+		"OtherSys":     gauge(memstats.OtherSys),
+		"PauseTotalNs": gauge(memstats.PauseTotalNs),
+		"StackInuse":   gauge(memstats.StackInuse),
 
-	sendMetricByJSON("StackSys", gauge(memstats.StackSys))
-	sendMetricByJSON("Sys", gauge(memstats.Sys))
-	sendMetricByJSON("TotalAlloc", gauge(memstats.TotalAlloc))
+		"StackSys":   gauge(memstats.StackSys),
+		"Sys":        gauge(memstats.Sys),
+		"TotalAlloc": gauge(memstats.TotalAlloc),
 
-	// Кастомные метрики
-	sendMetricByJSON("PollCount", counter(PollCount))
-	sendMetricByJSON("RandomValue", gauge(RandomValue))
+		// Кастомные метрики
+		"PollCount":   counter(PollCount),
+		"RandomValue": gauge(RandomValue),
+	}
+
+	sendMetricsBatchByJSON(metrics)
 }
 
 // sendMetricByURL Отправляет метрику Post запросом, посредством url.
@@ -152,6 +158,14 @@ func sendMetricByJSON(paramName string, paramValue interface{}) {
 		return
 	}
 
+	if Env.Key != "" {
+		err := msg.InitHash(Env.Key)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
+
 	jsonBody, err := json.Marshal(msg)
 	if err != nil {
 		log.Println(err)
@@ -162,6 +176,57 @@ func sendMetricByJSON(paramName string, paramValue interface{}) {
 		SetHeader("Content-Type", "application/json").
 		SetBody(jsonBody).
 		Post(`/update/`)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+func sendMetricsBatchByJSON(metrics map[string]interface{}) {
+	client := resty.New()
+	client.SetBaseURL(ServerURL)
+
+	var metricsToSend []message.Metrics
+	var msg *message.Metrics
+	for mN, mV := range metrics {
+		msg = &message.Metrics{}
+
+		msg.ID = mN
+		switch value := mV.(type) {
+		case gauge:
+			msg.MType = internal.GaugeTypeName
+			float64Val := float64(value)
+			msg.Value = &float64Val
+		case counter:
+			msg.MType = internal.CounterTypeName
+			int64Val := int64(value)
+			msg.Delta = &int64Val
+		default:
+			log.Printf("unhandled metric type '%T'", value)
+			return
+		}
+
+		if Env.Key != "" {
+			err := msg.InitHash(Env.Key)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+		}
+
+		metricsToSend = append(metricsToSend, *msg)
+	}
+
+	jsonBody, err := json.Marshal(metricsToSend)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	_, err = client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(jsonBody).
+		Post(`/updates/`)
 	if err != nil {
 		log.Println(err)
 		return
