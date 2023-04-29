@@ -14,9 +14,9 @@ func main() {
 	for {
 		select {
 		case <-pollTicker.C:
-			agent.UpdateMetrics()
+			go agent.UpdateMetrics()
 		case <-reportTicker.C:
-			agent.SendMetrics()
+			go agent.SendMetrics()
 		}
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"net/url"
 	"runtime"
+	"sync"
 	"time"
 )
 
@@ -22,6 +23,8 @@ var memstats runtime.MemStats
 var PollCount counter
 var RandomValue gauge
 var ServerURL string
+
+var memStatsMutex sync.RWMutex
 
 type Environment struct {
 	ServerAddress  string        `env:"ADDRESS"`
@@ -66,12 +69,17 @@ func ParseEnvArgs() {
 }
 
 func UpdateMetrics() {
+	memStatsMutex.Lock()
 	runtime.ReadMemStats(&memstats)
 	PollCount++
 	RandomValue = gauge(rand.Float64())
+	memStatsMutex.Unlock()
 }
 
 func SendMetrics() {
+	memStatsMutex.RLock()
+	defer memStatsMutex.RUnlock()
+
 	metrics := map[string]interface{}{
 		"Alloc":       gauge(memstats.Alloc),
 		"BuckHashSys": gauge(memstats.BuckHashSys),
