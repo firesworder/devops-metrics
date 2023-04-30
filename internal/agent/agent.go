@@ -86,6 +86,14 @@ func UpdateMetrics() {
 	memStatsMutex.Unlock()
 }
 
+func updateMemStats() {
+	memStatsMutex.Lock()
+	runtime.ReadMemStats(&memstats)
+	PollCount++
+	RandomValue = gauge(rand.Float64())
+	memStatsMutex.Unlock()
+}
+
 func updateGoPsutilStats() {
 	vM, err := mem.VirtualMemory()
 	if err != nil {
