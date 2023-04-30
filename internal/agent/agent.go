@@ -8,6 +8,8 @@ import (
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/go-resty/resty/v2"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
 	"log"
 	"math/rand"
 	"net/url"
@@ -23,8 +25,16 @@ var memstats runtime.MemStats
 var PollCount counter
 var RandomValue gauge
 var ServerURL string
+var goPsutilStats GoPsutilStats
 
 var memStatsMutex sync.RWMutex
+var gpsStatsMutex sync.RWMutex
+
+type GoPsutilStats struct {
+	TotalMemory    float64
+	FreeMemory     float64
+	CPUutilization []float64
+}
 
 type Environment struct {
 	ServerAddress  string        `env:"ADDRESS"`
@@ -74,6 +84,23 @@ func UpdateMetrics() {
 	PollCount++
 	RandomValue = gauge(rand.Float64())
 	memStatsMutex.Unlock()
+}
+
+func updateGoPsutilStats() {
+	vM, err := mem.VirtualMemory()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	goPsutilStats.TotalMemory = float64(vM.Total)
+	goPsutilStats.FreeMemory = float64(vM.Free)
+
+	cpuS, err := cpu.Percent(500*time.Millisecond, true)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	goPsutilStats.CPUutilization = cpuS
 }
 
 func SendMetrics() {
