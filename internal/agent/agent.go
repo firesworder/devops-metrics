@@ -129,8 +129,6 @@ func SendMetrics() {
 	updateMetricsMutex.RLock()
 	defer updateMetricsMutex.RUnlock()
 
-	// todo: добавить новые метрики в отправку
-
 	metrics := map[string]interface{}{
 		"Alloc":       gauge(memstats.Alloc),
 		"BuckHashSys": gauge(memstats.BuckHashSys),
@@ -171,6 +169,15 @@ func SendMetrics() {
 		// Кастомные метрики
 		"PollCount":   counter(PollCount),
 		"RandomValue": gauge(RandomValue),
+	}
+
+	// goPSUtil метрики
+	metrics["TotalMemory"] = gauge(goPsutilStats.TotalMemory)
+	metrics["FreeMemory"] = gauge(goPsutilStats.FreeMemory)
+	var metricID string
+	for i, cpuUtilStat := range goPsutilStats.CPUutilization {
+		metricID = fmt.Sprintf("CPUutilization%d", i)
+		metrics[metricID] = gauge(cpuUtilStat)
 	}
 
 	sendMetricsBatchByJSON(metrics)
