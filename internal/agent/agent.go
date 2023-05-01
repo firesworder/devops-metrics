@@ -31,9 +31,6 @@ var goPsutilStats GoPsutilStats
 
 var updateMetricsMutex sync.RWMutex
 
-// bool значение в канале как метка, что нужно выполнить задачу
-var sendWorkPoolCh chan bool
-
 // Для тестирования функции UpdateMetrics
 var testUMWG *sync.WaitGroup
 
@@ -50,6 +47,15 @@ type Environment struct {
 	Key            string        `env:"KEY"`
 	RateLimit      int           `env:"RATE_LIMIT"`
 }
+
+type WorkPool struct {
+	ch           chan bool
+	workersCount int
+	wgStart      sync.WaitGroup
+	wgFinish     sync.WaitGroup
+}
+
+var WPool WorkPool
 
 var Env Environment
 
@@ -85,31 +91,40 @@ func ParseEnvArgs() {
 	}
 }
 
-func InitWorkPool() {
-	workersCount := Env.RateLimit
+func (wp *WorkPool) Start() {
+	// определен. кол-ва воркеров
 	if Env.RateLimit == 0 {
-		workersCount = 1
+		wp.workersCount = 1
+	} else {
+		wp.workersCount = Env.RateLimit
 	}
 
-	sendWorkPoolCh = make(chan bool, workersCount)
+	// определение буф.канала
+	wp.ch = make(chan bool, wp.workersCount)
 
-	// создать и запустить воркеры
-	wg := &sync.WaitGroup{}
-	wg.Add(workersCount)
-	for i := 0; i < workersCount; i++ {
-		go func(workerIndex int, wg *sync.WaitGroup) {
-			wg.Done() // сигнал о том, что горутина-воркер запустилась
-			for _ = range sendWorkPoolCh {
+	// определение waitGroup для запуска и завершения воркеров
+	wp.wgStart, wp.wgFinish = sync.WaitGroup{}, sync.WaitGroup{}
+	wp.wgStart.Add(wp.workersCount)
+	wp.wgFinish.Add(wp.workersCount)
+
+	// создание и запуск воркеров
+	for i := 0; i < wp.workersCount; i++ {
+		go func(workerIndex int) {
+			wp.wgStart.Done() // сигнал о том, что горутина-воркер запустилась
+			for _ = range wp.ch {
 				log.Printf("worker with index '%d' used for SendMetrics()", workerIndex)
 				SendMetrics()
 			}
-		}(i, wg)
+			wp.wgFinish.Done()
+		}(i)
 	}
-	wg.Wait()
+	// ждать пока все воркеры запустятся
+	wp.wgStart.Wait()
 }
 
-func FinishWorkPool() {
-	close(sendWorkPoolCh)
+func (wp *WorkPool) Close() {
+	close(wp.ch)
+	wp.wgFinish.Wait()
 }
 
 func UpdateMetrics() {
@@ -155,9 +170,9 @@ func updateGoPsutilStats() (err error) {
 	return
 }
 
-func CreateSendMetricsJob(ctx context.Context) {
+func (wp *WorkPool) CreateSendMetricsJob(ctx context.Context) {
 	select {
-	case sendWorkPoolCh <- true:
+	case wp.ch <- true:
 		log.Println("job sent into workpool channel")
 	case <-ctx.Done():
 		log.Println("job was canceled by context")

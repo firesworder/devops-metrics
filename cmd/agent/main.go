@@ -9,8 +9,8 @@ import (
 func main() {
 	agent.ParseEnvArgs()
 	agent.InitServerURLByEnv()
-	agent.InitWorkPool()
-	defer agent.FinishWorkPool()
+	agent.WPool.Start()
+	defer agent.WPool.Close()
 	// подготовка тикеров на обновление и отправку
 	pollTicker := time.NewTicker(agent.Env.PollInterval)
 	reportTicker := time.NewTicker(agent.Env.ReportInterval)
@@ -19,7 +19,7 @@ func main() {
 		case <-pollTicker.C:
 			go agent.UpdateMetrics()
 		case <-reportTicker.C:
-			go agent.CreateSendMetricsJob(context.Background())
+			go agent.WPool.CreateSendMetricsJob(context.Background())
 		}
 	}
 }

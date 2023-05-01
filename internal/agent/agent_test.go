@@ -504,27 +504,31 @@ func TestUpdateMetrics(t *testing.T) {
 
 func TestInitWorkPool(t *testing.T) {
 	Env.RateLimit = 15
-	require.NotPanics(t, InitWorkPool)
-	assert.NotEqual(t, sendWorkPoolCh, nil)
-
-	// подчищаю изменения внес. тестом
-	Env.RateLimit = 0
-	close(sendWorkPoolCh)
+	wp := WorkPool{}
+	require.NotPanics(t, wp.Start)
+	assert.NotEqual(t, wp.ch, nil)
+	wp.Close()
 }
 
 // Не обрабатывает вариант когда отправлено было больше запросов(заданий) чем требовалось!
 func TestCreateSendMetricsJob(t *testing.T) {
-	testPassed := make(chan bool)
+	// данные для теста
+	gotRequestCountCh := make(chan bool)
 	Env.RateLimit = 3
-	InitWorkPool()
+	wp := WorkPool{}
+	wp.Start()
 	gotRequestCount := 0
 	wantRequestCount := 5
 
+	// запуск тестового сервера
+	serverMutex := sync.Mutex{}
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		serverMutex.Lock()
 		gotRequestCount++
 		if gotRequestCount == wantRequestCount {
-			testPassed <- true
+			gotRequestCountCh <- true
 		}
+		serverMutex.Unlock()
 	}))
 	defer svr.Close()
 	ServerURL = svr.URL
@@ -533,17 +537,14 @@ func TestCreateSendMetricsJob(t *testing.T) {
 	ctxWT, cancelCtx := context.WithTimeout(context.Background(), timeoutTime)
 	defer cancelCtx()
 	for i := 0; i < wantRequestCount; i++ {
-		go CreateSendMetricsJob(ctxWT)
+		go wp.CreateSendMetricsJob(ctxWT)
 	}
 
 	select {
 	case <-ctxWT.Done():
 		t.Errorf("timeout exceeded")
-	case <-testPassed:
-		t.Log("Test passed!")
+	case <-gotRequestCountCh:
+		wp.Close()
+		assert.Equal(t, wantRequestCount, gotRequestCount)
 	}
-
-	// подчищаю изменения внес. тестом
-	Env.RateLimit = 0
-	close(sendWorkPoolCh)
 }
