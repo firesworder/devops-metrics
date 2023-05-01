@@ -111,7 +111,7 @@ func (wp *WorkPool) Start() {
 	for i := 0; i < wp.workersCount; i++ {
 		go func(workerIndex int) {
 			wp.wgStart.Done() // сигнал о том, что горутина-воркер запустилась
-			for _ = range wp.ch {
+			for range wp.ch {
 				log.Printf("worker with index '%d' used for SendMetrics()", workerIndex)
 				SendMetrics()
 			}
