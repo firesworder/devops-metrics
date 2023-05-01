@@ -31,6 +31,9 @@ var goPsutilStats GoPsutilStats
 
 var updateMetricsMutex sync.RWMutex
 
+// bool значение в канале как метка, что нужно выполнить задачу
+var sendWorkPoolCh chan bool
+
 // Для тестирования функции UpdateMetrics
 var testUMWG *sync.WaitGroup
 
@@ -82,6 +85,33 @@ func ParseEnvArgs() {
 	}
 }
 
+func InitWorkPool() {
+	workersCount := Env.RateLimit
+	if Env.RateLimit == 0 {
+		workersCount = 1
+	}
+
+	sendWorkPoolCh = make(chan bool, workersCount)
+
+	// создать и запустить воркеры
+	wg := &sync.WaitGroup{}
+	wg.Add(workersCount)
+	for i := 0; i < workersCount; i++ {
+		go func(workerIndex int, wg *sync.WaitGroup) {
+			wg.Done() // сигнал о том, что горутина-воркер запустилась
+			for _ = range sendWorkPoolCh {
+				log.Printf("worker with index '%d' used for SendMetrics()", workerIndex)
+				SendMetrics()
+			}
+		}(i, wg)
+	}
+	wg.Wait()
+}
+
+func FinishWorkPool() {
+	close(sendWorkPoolCh)
+}
+
 func UpdateMetrics() {
 	// полностью блокируем данные метрик на время обновления
 	updateMetricsMutex.Lock()
@@ -123,6 +153,15 @@ func updateGoPsutilStats() (err error) {
 	}
 	goPsutilStats.CPUutilization = cpuS
 	return
+}
+
+func CreateSendMetricsJob(ctx context.Context) {
+	select {
+	case sendWorkPoolCh <- true:
+		log.Println("job sent into workpool channel")
+	case <-ctx.Done():
+		log.Println("job was canceled by context")
+	}
 }
 
 func SendMetrics() {

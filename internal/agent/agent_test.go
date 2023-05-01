@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/message"
@@ -498,4 +499,51 @@ func TestUpdateMetrics(t *testing.T) {
 	// сравнение значений
 	assert.NotEqual(t, memstatsNow, memstatsBefore)
 	assert.NotEqual(t, goPsutilStatsNow, goPsutilStatsBefore)
+	testUMWG = nil
+}
+
+func TestInitWorkPool(t *testing.T) {
+	Env.RateLimit = 15
+	require.NotPanics(t, InitWorkPool)
+	assert.NotEqual(t, sendWorkPoolCh, nil)
+
+	// подчищаю изменения внес. тестом
+	Env.RateLimit = 0
+	close(sendWorkPoolCh)
+}
+
+// Не обрабатывает вариант когда отправлено было больше запросов(заданий) чем требовалось!
+func TestCreateSendMetricsJob(t *testing.T) {
+	testPassed := make(chan bool)
+	Env.RateLimit = 3
+	InitWorkPool()
+	gotRequestCount := 0
+	wantRequestCount := 5
+
+	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotRequestCount++
+		if gotRequestCount == wantRequestCount {
+			testPassed <- true
+		}
+	}))
+	defer svr.Close()
+	ServerURL = svr.URL
+
+	timeoutTime := time.Second * 2
+	ctxWT, cancelCtx := context.WithTimeout(context.Background(), timeoutTime)
+	defer cancelCtx()
+	for i := 0; i < wantRequestCount; i++ {
+		go CreateSendMetricsJob(ctxWT)
+	}
+
+	select {
+	case <-ctxWT.Done():
+		t.Errorf("timeout exceeded")
+	case <-testPassed:
+		t.Log("Test passed!")
+	}
+
+	// подчищаю изменения внес. тестом
+	Env.RateLimit = 0
+	close(sendWorkPoolCh)
 }
