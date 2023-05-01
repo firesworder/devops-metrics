@@ -12,11 +12,12 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
 
-func TestUpdateMetrics(t *testing.T) {
+func Test_updateMemStats(t *testing.T) {
 	runtime.ReadMemStats(&memstats)
 	allocMetricBefore := memstats.Alloc
 	pollCountBefore := PollCount
@@ -28,7 +29,8 @@ func TestUpdateMetrics(t *testing.T) {
 		demoSlice = append(demoSlice, "demo")
 	}
 
-	UpdateMetrics()
+	err := updateMemStats()
+	require.NoError(t, err)
 	allocMetricAfter := memstats.Alloc
 	pollCountAfter := PollCount
 	randomValueAfter := RandomValue
@@ -449,4 +451,51 @@ func Test_sendMetricsBatchByJSON(t *testing.T) {
 		return gotRequest.msgBatch[i].ID < gotRequest.msgBatch[j].ID
 	})
 	assert.Equal(t, wantRequest, gotRequest)
+}
+
+func Test_updateGoPsutilStats(t *testing.T) {
+	var err error
+	err = updateGoPsutilStats()
+	require.NoError(t, err)
+	// before
+	tmB, fmB, cpuUB := goPsutilStats.TotalMemory, goPsutilStats.FreeMemory, goPsutilStats.CPUutilization
+
+	// нагрузка, чтобы повлиять на значения параметров
+	demoSlice := []string{"demo"}
+	for i := 0; i < 100; i++ {
+		demoSlice = append(demoSlice, "demo")
+	}
+
+	err = updateGoPsutilStats()
+	require.NoError(t, err)
+	// after
+	tmA, fmA, cpuUA := goPsutilStats.TotalMemory, goPsutilStats.FreeMemory, goPsutilStats.CPUutilization
+	assert.Equal(t, tmB, tmA, "total memory stat differs")
+	assert.NotEqual(t, fmB, fmA, "free memory has not changed")
+	assert.NotEqual(t, cpuUB, cpuUA, "cpu utils stats have not changed")
+}
+
+func TestUpdateMetrics(t *testing.T) {
+	// взять текущие значения метрик
+	testUMWG = &sync.WaitGroup{}
+	testUMWG.Add(1)
+	go UpdateMetrics()
+	testUMWG.Wait()
+	memstatsBefore, goPsutilStatsBefore := memstats, goPsutilStats
+
+	// нагрузка, чтобы повлиять на значения параметров
+	demoSlice := []string{"demo"}
+	for i := 0; i < 100; i++ {
+		demoSlice = append(demoSlice, "demo")
+	}
+
+	// получить значения метрик после создания нагрузки
+	testUMWG.Add(1)
+	go UpdateMetrics()
+	testUMWG.Wait()
+	memstatsNow, goPsutilStatsNow := memstats, goPsutilStats
+
+	// сравнение значений
+	assert.NotEqual(t, memstatsNow, memstatsBefore)
+	assert.NotEqual(t, goPsutilStatsNow, goPsutilStatsBefore)
 }

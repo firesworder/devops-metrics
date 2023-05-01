@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
+	"golang.org/x/sync/errgroup"
 	"log"
 	"math/rand"
 	"net/url"
@@ -27,8 +29,10 @@ var RandomValue gauge
 var ServerURL string
 var goPsutilStats GoPsutilStats
 
-var memStatsMutex sync.RWMutex
-var gpsStatsMutex sync.RWMutex
+var updateMetricsMutex sync.RWMutex
+
+// Для тестирования функции UpdateMetrics
+var testUMWG *sync.WaitGroup
 
 type GoPsutilStats struct {
 	TotalMemory    float64
@@ -79,25 +83,35 @@ func ParseEnvArgs() {
 }
 
 func UpdateMetrics() {
-	memStatsMutex.Lock()
+	// полностью блокируем данные метрик на время обновления
+	updateMetricsMutex.Lock()
+	defer updateMetricsMutex.Unlock()
+	defer func() {
+		if testUMWG != nil {
+			testUMWG.Done()
+		}
+	}()
+
+	g, _ := errgroup.WithContext(context.Background())
+	g.Go(updateMemStats)
+	g.Go(updateGoPsutilStats)
+
+	if err := g.Wait(); err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+func updateMemStats() (err error) {
 	runtime.ReadMemStats(&memstats)
 	PollCount++
 	RandomValue = gauge(rand.Float64())
-	memStatsMutex.Unlock()
+	return
 }
 
-func updateMemStats() {
-	memStatsMutex.Lock()
-	runtime.ReadMemStats(&memstats)
-	PollCount++
-	RandomValue = gauge(rand.Float64())
-	memStatsMutex.Unlock()
-}
-
-func updateGoPsutilStats() {
+func updateGoPsutilStats() (err error) {
 	vM, err := mem.VirtualMemory()
 	if err != nil {
-		log.Println(err)
 		return
 	}
 	goPsutilStats.TotalMemory = float64(vM.Total)
@@ -105,15 +119,17 @@ func updateGoPsutilStats() {
 
 	cpuS, err := cpu.Percent(500*time.Millisecond, true)
 	if err != nil {
-		log.Println(err)
 		return
 	}
 	goPsutilStats.CPUutilization = cpuS
+	return
 }
 
 func SendMetrics() {
-	memStatsMutex.RLock()
-	defer memStatsMutex.RUnlock()
+	updateMetricsMutex.RLock()
+	defer updateMetricsMutex.RUnlock()
+
+	// todo: добавить новые метрики в отправку
 
 	metrics := map[string]interface{}{
 		"Alloc":       gauge(memstats.Alloc),
