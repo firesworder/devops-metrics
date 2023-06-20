@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/firesworder/devopsmetrics/internal/agent"
 	"time"
 )
@@ -8,15 +9,17 @@ import (
 func main() {
 	agent.ParseEnvArgs()
 	agent.InitServerURLByEnv()
+	agent.WPool.Start()
+	defer agent.WPool.Close()
 	// подготовка тикеров на обновление и отправку
 	pollTicker := time.NewTicker(agent.Env.PollInterval)
 	reportTicker := time.NewTicker(agent.Env.ReportInterval)
 	for {
 		select {
 		case <-pollTicker.C:
-			agent.UpdateMetrics()
+			go agent.UpdateMetrics()
 		case <-reportTicker.C:
-			agent.SendMetrics()
+			go agent.WPool.CreateSendMetricsJob(context.Background())
 		}
 	}
 }

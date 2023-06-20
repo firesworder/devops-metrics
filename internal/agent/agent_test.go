@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/message"
@@ -12,11 +13,12 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
 
-func TestUpdateMetrics(t *testing.T) {
+func Test_updateMemStats(t *testing.T) {
 	runtime.ReadMemStats(&memstats)
 	allocMetricBefore := memstats.Alloc
 	pollCountBefore := PollCount
@@ -28,7 +30,8 @@ func TestUpdateMetrics(t *testing.T) {
 		demoSlice = append(demoSlice, "demo")
 	}
 
-	UpdateMetrics()
+	err := updateMemStats()
+	require.NoError(t, err)
 	allocMetricAfter := memstats.Alloc
 	pollCountAfter := PollCount
 	randomValueAfter := RandomValue
@@ -322,6 +325,51 @@ func TestParseEnvArgs(t *testing.T) {
 			},
 			wantPanic: false,
 		},
+		{
+			name:   "Test 10. Field 'RateLimit', cmd",
+			cmdStr: "file.exe --a=cmd.site -l=2",
+			envVars: map[string]string{
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
+			},
+			wantEnv: Environment{
+				ServerAddress:  "cmd.site",
+				PollInterval:   5 * time.Second,
+				ReportInterval: 20 * time.Second,
+				Key:            "",
+				RateLimit:      2,
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 11. Field 'RateLimit', env",
+			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s -l=1",
+			envVars: map[string]string{
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s", "RATE_LIMIT": "3",
+			},
+			wantEnv: Environment{
+				ServerAddress:  "cmd.site",
+				PollInterval:   5 * time.Second,
+				ReportInterval: 20 * time.Second,
+				Key:            "",
+				RateLimit:      3,
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 12. Field 'RateLimit', not set",
+			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s",
+			envVars: map[string]string{
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
+			},
+			wantEnv: Environment{
+				ServerAddress:  "cmd.site",
+				PollInterval:   5 * time.Second,
+				ReportInterval: 20 * time.Second,
+				Key:            "",
+				RateLimit:      0,
+			},
+			wantPanic: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -330,9 +378,10 @@ func TestParseEnvArgs(t *testing.T) {
 			Env.ReportInterval = 10 * time.Second
 			Env.PollInterval = 2 * time.Second
 			Env.Key = ""
+			Env.RateLimit = 0
 
 			// удаляю переменные окружения, если они были до этого установлены
-			for _, key := range [4]string{"ADDRESS", "REPORT_INTERVAL", "POLL_INTERVAL", "KEY"} {
+			for _, key := range [5]string{"ADDRESS", "REPORT_INTERVAL", "POLL_INTERVAL", "KEY", "RATE_LIMIT"} {
 				err := os.Unsetenv(key)
 				require.NoError(t, err)
 			}
@@ -403,4 +452,99 @@ func Test_sendMetricsBatchByJSON(t *testing.T) {
 		return gotRequest.msgBatch[i].ID < gotRequest.msgBatch[j].ID
 	})
 	assert.Equal(t, wantRequest, gotRequest)
+}
+
+func Test_updateGoPsutilStats(t *testing.T) {
+	var err error
+	err = updateGoPsutilStats()
+	require.NoError(t, err)
+	// before
+	tmB, fmB, cpuUB := goPsutilStats.TotalMemory, goPsutilStats.FreeMemory, goPsutilStats.CPUutilization
+
+	// нагрузка, чтобы повлиять на значения параметров
+	demoSlice := []string{"demo"}
+	for i := 0; i < 100; i++ {
+		demoSlice = append(demoSlice, "demo")
+	}
+
+	err = updateGoPsutilStats()
+	require.NoError(t, err)
+	// after
+	tmA, fmA, cpuUA := goPsutilStats.TotalMemory, goPsutilStats.FreeMemory, goPsutilStats.CPUutilization
+	assert.Equal(t, tmB, tmA, "total memory stat differs")
+	assert.NotEqual(t, fmB, fmA, "free memory has not changed")
+	assert.NotEqual(t, cpuUB, cpuUA, "cpu utils stats have not changed")
+}
+
+func TestUpdateMetrics(t *testing.T) {
+	// взять текущие значения метрик
+	testUMWG = &sync.WaitGroup{}
+	testUMWG.Add(1)
+	go UpdateMetrics()
+	testUMWG.Wait()
+	memstatsBefore, goPsutilStatsBefore := memstats, goPsutilStats
+
+	// нагрузка, чтобы повлиять на значения параметров
+	demoSlice := []string{"demo"}
+	for i := 0; i < 100; i++ {
+		demoSlice = append(demoSlice, "demo")
+	}
+
+	// получить значения метрик после создания нагрузки
+	testUMWG.Add(1)
+	go UpdateMetrics()
+	testUMWG.Wait()
+	memstatsNow, goPsutilStatsNow := memstats, goPsutilStats
+
+	// сравнение значений
+	assert.NotEqual(t, memstatsNow, memstatsBefore)
+	assert.NotEqual(t, goPsutilStatsNow, goPsutilStatsBefore)
+	testUMWG = nil
+}
+
+func TestInitWorkPool(t *testing.T) {
+	Env.RateLimit = 15
+	wp := WorkPool{}
+	require.NotPanics(t, wp.Start)
+	assert.NotEqual(t, wp.ch, nil)
+	wp.Close()
+}
+
+// Не обрабатывает вариант когда отправлено было больше запросов(заданий) чем требовалось!
+func TestCreateSendMetricsJob(t *testing.T) {
+	// данные для теста
+	gotRequestCountCh := make(chan bool)
+	Env.RateLimit = 3
+	wp := WorkPool{}
+	wp.Start()
+	gotRequestCount := 0
+	wantRequestCount := 5
+
+	// запуск тестового сервера
+	serverMutex := sync.Mutex{}
+	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		serverMutex.Lock()
+		gotRequestCount++
+		if gotRequestCount == wantRequestCount {
+			gotRequestCountCh <- true
+		}
+		serverMutex.Unlock()
+	}))
+	defer svr.Close()
+	ServerURL = svr.URL
+
+	timeoutTime := time.Second * 2
+	ctxWT, cancelCtx := context.WithTimeout(context.Background(), timeoutTime)
+	defer cancelCtx()
+	for i := 0; i < wantRequestCount; i++ {
+		go wp.CreateSendMetricsJob(ctxWT)
+	}
+
+	select {
+	case <-ctxWT.Done():
+		t.Errorf("timeout exceeded")
+	case <-gotRequestCountCh:
+		wp.Close()
+		assert.Equal(t, wantRequestCount, gotRequestCount)
+	}
 }
