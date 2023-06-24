@@ -3,7 +3,6 @@ package filestore
 import (
 	"fmt"
 	"github.com/firesworder/devopsmetrics/internal"
-	"github.com/firesworder/devopsmetrics/internal/helper"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -156,7 +155,7 @@ func TestFileStore_Write(t *testing.T) {
 			assert.Equal(t, tt.wantError, err != nil)
 
 			if !tt.wantError {
-				helper.AssertEqualFileContent(t, tt.wantContentAs, f.StoreFilePath)
+				AssertEqualFileContent(t, tt.wantContentAs, f.StoreFilePath)
 			}
 		})
 	}

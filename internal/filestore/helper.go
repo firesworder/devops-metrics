@@ -1,4 +1,4 @@
-package helper
+package filestore
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -7,6 +7,7 @@ import (
 	"testing"
 )
 
+// AssertEqualFileContent сравнивает контент на идентичность(в рамках тестов, testify).
 func AssertEqualFileContent(t *testing.T, expectedFile string, gotFile string) {
 	// file with expected content
 	require.FileExists(t, expectedFile)
