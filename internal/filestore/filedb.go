@@ -1,3 +1,4 @@
+// Package filestore используется в серверной части для организации хранения метрик в файле.
 package filestore
 
 import (
@@ -8,10 +9,14 @@ import (
 	"path/filepath"
 )
 
+// FileStore реализует хранение файла метрик.
+// Для использования доступны методы записи и чтения в\из файла storage.MetricRepository.
 type FileStore struct {
 	StoreFilePath string
 }
 
+// NewFileStore конструктор для FileStore.
+// Если в storeFilePath передали пустую строку - возвращает nil, иначе FileStore объект.
 func NewFileStore(storeFilePath string) *FileStore {
 	// FileStore имеет смысл только с НЕ пустым путем к файлу
 	if storeFilePath != "" {
@@ -20,6 +25,7 @@ func NewFileStore(storeFilePath string) *FileStore {
 	return nil
 }
 
+// Write записывает объект storage.MetricRepository в файл.
 func (f *FileStore) Write(memStorage storage.MetricRepository) error {
 	if _, err := os.Stat(f.StoreFilePath); os.IsNotExist(err) {
 		err = os.MkdirAll(filepath.Dir(f.StoreFilePath), 0644)
@@ -45,6 +51,8 @@ func (f *FileStore) Write(memStorage storage.MetricRepository) error {
 	return nil
 }
 
+// Read читает объект storage.MetricRepository в файл.
+// Если файла не существует - выбрасывает ошибку.
 func (f *FileStore) Read() (*storage.MemStorage, error) {
 	file, err := os.OpenFile(f.StoreFilePath, os.O_RDONLY, 0644)
 	if err != nil {
