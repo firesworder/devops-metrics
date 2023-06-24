@@ -21,8 +21,8 @@ import (
 func Test_updateMemStats(t *testing.T) {
 	runtime.ReadMemStats(&memstats)
 	allocMetricBefore := memstats.Alloc
-	pollCountBefore := PollCount
-	randomValueBefore := RandomValue
+	pollCountBefore := pollCount
+	randomValueBefore := randomValue
 
 	// нагрузка, чтобы повлиять на значения параметров в runtime.memstats
 	demoSlice := []string{"demo"}
@@ -33,8 +33,8 @@ func Test_updateMemStats(t *testing.T) {
 	err := updateMemStats()
 	require.NoError(t, err)
 	allocMetricAfter := memstats.Alloc
-	pollCountAfter := PollCount
-	randomValueAfter := RandomValue
+	pollCountAfter := pollCount
+	randomValueAfter := randomValue
 
 	assert.NotEqual(t, allocMetricBefore, allocMetricAfter, "metric values were not updated")
 	assert.Equal(t, true, pollCountBefore+1 == pollCountAfter,
@@ -80,7 +80,7 @@ func TestSendMetricByURL(t *testing.T) {
 				actualRequestURL = r.URL.Path
 			}))
 			defer svr.Close()
-			ServerURL = svr.URL
+			serverURL = svr.URL
 			sendMetricByURL(tt.args.paramName, tt.args.paramValue)
 			assert.Equal(t, tt.wantRequestURL, actualRequestURL)
 		})
@@ -192,7 +192,7 @@ func TestSendMetricByJson(t *testing.T) {
 			}))
 			defer svr.Close()
 			Env.Key = tt.envKey
-			ServerURL = svr.URL
+			serverURL = svr.URL
 			sendMetricByJSON(tt.args.paramName, tt.args.paramValue)
 			require.Equal(t, tt.wantRequest, gotRequest)
 		})
@@ -208,8 +208,8 @@ func TestSendMetrics(t *testing.T) {
 		gotMetricsReq = append(gotMetricsReq, r.URL.Path)
 	}))
 	defer svr.Close()
-	ServerURL = svr.URL
-	SendMetrics()
+	serverURL = svr.URL
+	sendMetrics()
 	assert.Lenf(t, gotMetricsReq, metricsCount, "Expected %d requests, got %d", metricsCount, len(gotMetricsReq))
 }
 
@@ -218,14 +218,14 @@ func TestParseEnvArgs(t *testing.T) {
 		name      string
 		cmdStr    string
 		envVars   map[string]string
-		wantEnv   Environment
+		wantEnv   environment
 		wantPanic bool
 	}{
 		{
 			name:    "Test correct 1. Empty cmd args and env vars.",
 			cmdStr:  "file.exe",
 			envVars: map[string]string{},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "localhost:8080", PollInterval: 2 * time.Second, ReportInterval: 10 * time.Second,
 			},
 			wantPanic: false,
@@ -234,7 +234,7 @@ func TestParseEnvArgs(t *testing.T) {
 			name:    "Test correct 2. Set cmd args and empty env vars.",
 			cmdStr:  "file.exe --a=localhost:3030 -r=15s -p=3s",
 			envVars: map[string]string{},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "localhost:3030", PollInterval: 3 * time.Second, ReportInterval: 15 * time.Second,
 			},
 			wantPanic: false,
@@ -245,7 +245,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"ADDRESS": "localhost:3030", "REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "localhost:3030", PollInterval: 5 * time.Second, ReportInterval: 20 * time.Second,
 			},
 			wantPanic: false,
@@ -256,7 +256,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"ADDRESS": "env.site", "REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "env.site", PollInterval: 5 * time.Second, ReportInterval: 20 * time.Second,
 			},
 			wantPanic: false,
@@ -267,7 +267,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"ADDRESS": "env.site", "REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "env.site", PollInterval: 5 * time.Second, ReportInterval: 20 * time.Second,
 			},
 			wantPanic: false,
@@ -278,7 +278,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "cmd.site", PollInterval: 5 * time.Second, ReportInterval: 20 * time.Second,
 			},
 			wantPanic: false,
@@ -289,7 +289,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress:  "cmd.site",
 				PollInterval:   5 * time.Second,
 				ReportInterval: 20 * time.Second,
@@ -303,7 +303,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s", "KEY": "ad123b",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress:  "cmd.site",
 				PollInterval:   5 * time.Second,
 				ReportInterval: 20 * time.Second,
@@ -317,7 +317,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress:  "cmd.site",
 				PollInterval:   5 * time.Second,
 				ReportInterval: 20 * time.Second,
@@ -331,7 +331,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress:  "cmd.site",
 				PollInterval:   5 * time.Second,
 				ReportInterval: 20 * time.Second,
@@ -346,7 +346,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s", "RATE_LIMIT": "3",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress:  "cmd.site",
 				PollInterval:   5 * time.Second,
 				ReportInterval: 20 * time.Second,
@@ -361,7 +361,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress:  "cmd.site",
 				PollInterval:   5 * time.Second,
 				ReportInterval: 20 * time.Second,
@@ -446,7 +446,7 @@ func Test_sendMetricsBatchByJSON(t *testing.T) {
 	}))
 	defer svr.Close()
 	Env.Key = envKey
-	ServerURL = svr.URL
+	serverURL = svr.URL
 	sendMetricsBatchByJSON(args)
 	sort.Slice(gotRequest.msgBatch, func(i, j int) bool {
 		return gotRequest.msgBatch[i].ID < gotRequest.msgBatch[j].ID
@@ -504,7 +504,7 @@ func TestUpdateMetrics(t *testing.T) {
 
 func TestInitWorkPool(t *testing.T) {
 	Env.RateLimit = 15
-	wp := WorkPool{}
+	wp := workPool{}
 	require.NotPanics(t, wp.Start)
 	assert.NotEqual(t, wp.ch, nil)
 	wp.Close()
@@ -515,7 +515,7 @@ func TestCreateSendMetricsJob(t *testing.T) {
 	// данные для теста
 	gotRequestCountCh := make(chan bool)
 	Env.RateLimit = 3
-	wp := WorkPool{}
+	wp := workPool{}
 	wp.Start()
 	gotRequestCount := 0
 	wantRequestCount := 5
@@ -531,7 +531,7 @@ func TestCreateSendMetricsJob(t *testing.T) {
 		serverMutex.Unlock()
 	}))
 	defer svr.Close()
-	ServerURL = svr.URL
+	serverURL = svr.URL
 
 	timeoutTime := time.Second * 2
 	ctxWT, cancelCtx := context.WithTimeout(context.Background(), timeoutTime)

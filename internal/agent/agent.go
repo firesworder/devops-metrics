@@ -1,3 +1,6 @@
+// Package agent реализует работу агента сбора метрик(в cmd/agent/ используются функции этого пакета).
+// Агент собирает требуемые(по заданию) метрики, подготавливает их к отправке и отправляет на сервер.
+// Также в рамках этого пакета определены функции работающие с переменными окружения агента.
 package agent
 
 import (
@@ -20,27 +23,35 @@ import (
 	"time"
 )
 
-type gauge float64
-type counter int64
+// типы необходимые для использования с метриками(по заданию)
+type (
+	gauge   float64
+	counter int64
+)
 
-var memstats runtime.MemStats
-var PollCount counter
-var RandomValue gauge
-var ServerURL string
-var goPsutilStats GoPsutilStats
+// serverURL содержит адрес сервера
+var serverURL string
 
+// переменные в которых хранятся значения метрик(в сыром виде) для отправки
+var (
+	memstats      runtime.MemStats
+	pollCount     counter
+	randomValue   gauge
+	goPsutilStats = struct {
+		TotalMemory    float64
+		FreeMemory     float64
+		CPUutilization []float64
+	}{}
+)
+
+// updateMetricsMutex для RW блокировки переменных со значениями метрик на время записи и чтения
 var updateMetricsMutex sync.RWMutex
 
 // Для тестирования функции UpdateMetrics
 var testUMWG *sync.WaitGroup
 
-type GoPsutilStats struct {
-	TotalMemory    float64
-	FreeMemory     float64
-	CPUutilization []float64
-}
-
-type Environment struct {
+// environment для получения(из ENV и cmd) и хранения переменных окружения агента.
+type environment struct {
 	ServerAddress  string        `env:"ADDRESS"`
 	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
 	PollInterval   time.Duration `env:"POLL_INTERVAL"`
@@ -48,16 +59,19 @@ type Environment struct {
 	RateLimit      int           `env:"RATE_LIMIT"`
 }
 
-type WorkPool struct {
+// workPool содержит переменные служебного использования для воркпула.
+type workPool struct {
 	ch           chan bool
 	workersCount int
 	wgStart      sync.WaitGroup
 	wgFinish     sync.WaitGroup
 }
 
-var WPool WorkPool
+// WPool воркпул, отправляющий метрики на сервер.
+var WPool workPool
 
-var Env Environment
+// Env объект с переменными окружения(из ENV и cmd args).
+var Env environment
 
 func init() {
 	InitCmdArgs()
@@ -65,11 +79,12 @@ func init() {
 	runtime.ReadMemStats(&memstats)
 }
 
+// InitServerURLByEnv Устанавливает глоб-ую переменную serverURL по переменной окружения ServerAddress.
 func InitServerURLByEnv() {
-	ServerURL = (&url.URL{Scheme: "http", Host: Env.ServerAddress}).String()
+	serverURL = (&url.URL{Scheme: "http", Host: Env.ServerAddress}).String()
 }
 
-// InitCmdArgs Определяет флаги командной строки и линкует их с соотв полями объекта Env
+// InitCmdArgs Определяет флаги командной строки и линкует их с соотв полями объекта Env.
 // В рамках этой же функции происходит и заполнение дефолтными значениями
 func InitCmdArgs() {
 	flag.StringVar(&Env.ServerAddress, "a", "localhost:8080", "Server address")
@@ -79,7 +94,7 @@ func InitCmdArgs() {
 	flag.IntVar(&Env.RateLimit, "l", 0, "rate limit(send routines at one time)")
 }
 
-// ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения
+// ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения.
 func ParseEnvArgs() {
 	// Парсинг аргументов cmd
 	flag.Parse()
@@ -91,7 +106,8 @@ func ParseEnvArgs() {
 	}
 }
 
-func (wp *WorkPool) Start() {
+// Start запускает воркпул. Возвращает управление когда все воркеры запущены.
+func (wp *workPool) Start() {
 	// определен. кол-ва воркеров
 	if Env.RateLimit == 0 {
 		wp.workersCount = 1
@@ -112,8 +128,8 @@ func (wp *WorkPool) Start() {
 		go func(workerIndex int) {
 			wp.wgStart.Done() // сигнал о том, что горутина-воркер запустилась
 			for range wp.ch {
-				log.Printf("worker with index '%d' used for SendMetrics()", workerIndex)
-				SendMetrics()
+				log.Printf("worker with index '%d' used for sendMetrics()", workerIndex)
+				sendMetrics()
 			}
 			wp.wgFinish.Done()
 		}(i)
@@ -122,11 +138,14 @@ func (wp *WorkPool) Start() {
 	wp.wgStart.Wait()
 }
 
-func (wp *WorkPool) Close() {
+// Close останавливает воркпул. Также как и Start дожидается завершения всех воркеров.
+func (wp *workPool) Close() {
 	close(wp.ch)
 	wp.wgFinish.Wait()
 }
 
+// UpdateMetrics основная(вызываемая в cmd) функция получения метрик для отправки.
+// Внутри отдельными горутинами собираются данные из memstats и go-psutil.
 func UpdateMetrics() {
 	// полностью блокируем данные метрик на время обновления
 	updateMetricsMutex.Lock()
@@ -147,13 +166,15 @@ func UpdateMetrics() {
 	}
 }
 
+// updateMemStats получает актуальные значения метрик из memstats.
 func updateMemStats() (err error) {
 	runtime.ReadMemStats(&memstats)
-	PollCount++
-	RandomValue = gauge(rand.Float64())
+	pollCount++
+	randomValue = gauge(rand.Float64())
 	return
 }
 
+// updateGoPsutilStats получает актуальные значения метрик из go-psutil.
 func updateGoPsutilStats() (err error) {
 	vM, err := mem.VirtualMemory()
 	if err != nil {
@@ -170,7 +191,8 @@ func updateGoPsutilStats() (err error) {
 	return
 }
 
-func (wp *WorkPool) CreateSendMetricsJob(ctx context.Context) {
+// CreateSendMetricsJob создает задание на отправку метрик в воркпуле.
+func (wp *workPool) CreateSendMetricsJob(ctx context.Context) {
 	select {
 	case wp.ch <- true:
 		log.Println("job sent into workpool channel")
@@ -179,7 +201,8 @@ func (wp *WorkPool) CreateSendMetricsJob(ctx context.Context) {
 	}
 }
 
-func SendMetrics() {
+// sendMetrics отправляет метрики на сервер.
+func sendMetrics() {
 	updateMetricsMutex.RLock()
 	defer updateMetricsMutex.RUnlock()
 
@@ -221,8 +244,8 @@ func SendMetrics() {
 		"TotalAlloc": gauge(memstats.TotalAlloc),
 
 		// Кастомные метрики
-		"PollCount":   counter(PollCount),
-		"RandomValue": gauge(RandomValue),
+		"PollCount":   counter(pollCount),
+		"RandomValue": gauge(randomValue),
 	}
 
 	// goPSUtil метрики
@@ -237,16 +260,15 @@ func SendMetrics() {
 	sendMetricsBatchByJSON(metrics)
 }
 
-// sendMetricByURL Отправляет метрику Post запросом, посредством url.
-// Пока что не обрабатывает ответ сервера, ошибки выбрасывает в консоль!
+// sendMetricByURL отправляет метрику Post запросом, посредством url.
 func sendMetricByURL(paramName string, paramValue interface{}) {
 	client := resty.New()
 	var requestURL string
 	switch value := paramValue.(type) {
 	case gauge:
-		requestURL = fmt.Sprintf("%s/update/%s/%s/%f", ServerURL, internal.GaugeTypeName, paramName, value)
+		requestURL = fmt.Sprintf("%s/update/%s/%s/%f", serverURL, internal.GaugeTypeName, paramName, value)
 	case counter:
-		requestURL = fmt.Sprintf("%s/update/%s/%s/%d", ServerURL, internal.CounterTypeName, paramName, value)
+		requestURL = fmt.Sprintf("%s/update/%s/%s/%d", serverURL, internal.CounterTypeName, paramName, value)
 	default:
 		log.Printf("unhandled metric type '%T'", value)
 	}
@@ -259,11 +281,10 @@ func sendMetricByURL(paramName string, paramValue interface{}) {
 	}
 }
 
-// sendMetricByJSON Отправляет метрику Post запросом, в Json формате.
-// Пока что не обрабатывает ответ сервера, ошибки выбрасывает в консоль!
+// sendMetricByJSON отправляет метрику Post запросом, в Json формате.
 func sendMetricByJSON(paramName string, paramValue interface{}) {
 	client := resty.New()
-	client.SetBaseURL(ServerURL)
+	client.SetBaseURL(serverURL)
 	var msg message.Metrics
 	msg.ID = paramName
 	switch value := paramValue.(type) {
@@ -304,9 +325,10 @@ func sendMetricByJSON(paramName string, paramValue interface{}) {
 	}
 }
 
+// sendMetricsBatchByJSON отправляет словарь метрик Post запросом, в json формате.
 func sendMetricsBatchByJSON(metrics map[string]interface{}) {
 	client := resty.New()
-	client.SetBaseURL(ServerURL)
+	client.SetBaseURL(serverURL)
 
 	var metricsToSend []message.Metrics
 	var msg *message.Metrics
