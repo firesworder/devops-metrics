@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/firesworder/devopsmetrics/internal"
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"strconv"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/firesworder/devopsmetrics/internal"
 )
 
 type SQLStorage struct {

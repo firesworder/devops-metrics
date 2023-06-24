@@ -2,12 +2,14 @@ package filestore
 
 import (
 	"fmt"
+	"os"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/helper"
 	"github.com/firesworder/devopsmetrics/internal/storage"
-	"github.com/stretchr/testify/assert"
-	"os"
-	"testing"
 )
 
 var metricCounter, _ = storage.NewMetric("PollCount", internal.CounterTypeName, int64(10))

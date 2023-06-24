@@ -3,10 +3,6 @@ package agent
 import (
 	"context"
 	"encoding/json"
-	"github.com/firesworder/devopsmetrics/internal"
-	"github.com/firesworder/devopsmetrics/internal/message"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,6 +12,12 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/firesworder/devopsmetrics/internal"
+	"github.com/firesworder/devopsmetrics/internal/message"
 )
 
 func Test_updateMemStats(t *testing.T) {

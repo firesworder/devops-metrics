@@ -5,19 +5,21 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/caarlos0/env/v7"
-	"github.com/firesworder/devopsmetrics/internal"
-	"github.com/firesworder/devopsmetrics/internal/message"
-	"github.com/go-resty/resty/v2"
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/mem"
-	"golang.org/x/sync/errgroup"
 	"log"
 	"math/rand"
 	"net/url"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/caarlos0/env/v7"
+	"github.com/go-resty/resty/v2"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
+	"golang.org/x/sync/errgroup"
+
+	"github.com/firesworder/devopsmetrics/internal"
+	"github.com/firesworder/devopsmetrics/internal/message"
 )
 
 type gauge float64

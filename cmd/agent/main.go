@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"github.com/firesworder/devopsmetrics/internal/agent"
 	"time"
+
+	"github.com/firesworder/devopsmetrics/internal/agent"
 )
 
 func main() {

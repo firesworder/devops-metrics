@@ -2,10 +2,11 @@ package filestore
 
 import (
 	"encoding/json"
-	"github.com/firesworder/devopsmetrics/internal/storage"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/firesworder/devopsmetrics/internal/storage"
 )
 
 type FileStore struct {

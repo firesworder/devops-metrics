@@ -2,9 +2,10 @@ package storage
 
 import (
 	"context"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 var metric1counter20, _ = NewMetric("testMetric1", "counter", int64(20))

@@ -2,11 +2,12 @@ package storage
 
 import (
 	"fmt"
-	"github.com/firesworder/devopsmetrics/internal"
-	"github.com/firesworder/devopsmetrics/internal/message"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/firesworder/devopsmetrics/internal"
+	"github.com/firesworder/devopsmetrics/internal/message"
 )
 
 type gauge float64

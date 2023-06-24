@@ -7,13 +7,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/caarlos0/env/v7"
-	"github.com/firesworder/devopsmetrics/internal/filestore"
-	"github.com/firesworder/devopsmetrics/internal/message"
-	"github.com/firesworder/devopsmetrics/internal/storage"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"html/template"
 	"io"
 	"log"
@@ -22,6 +15,15 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/caarlos0/env/v7"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	_ "github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/firesworder/devopsmetrics/internal/filestore"
+	"github.com/firesworder/devopsmetrics/internal/message"
+	"github.com/firesworder/devopsmetrics/internal/storage"
 )
 
 func init() {
