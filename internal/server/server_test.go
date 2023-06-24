@@ -58,7 +58,7 @@ func compareMetricsState(t *testing.T, wantMS map[string]storage.Metric, mR stor
 
 func TestAddUpdateMetricHandler(t *testing.T) {
 	s := Server{}
-	ts := httptest.NewServer(s.NewRouter())
+	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
 	tests := []struct {
@@ -218,7 +218,7 @@ func TestAddUpdateMetricHandler(t *testing.T) {
 func TestShowAllMetricsHandler(t *testing.T) {
 	s := Server{}
 	s.LayoutsDir = "./html_layouts/"
-	ts := httptest.NewServer(s.NewRouter())
+	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
 	tests := []struct {
@@ -277,7 +277,7 @@ func TestShowAllMetricsHandler(t *testing.T) {
 
 func TestGetMetricHandler(t *testing.T) {
 	s := Server{}
-	ts := httptest.NewServer(s.NewRouter())
+	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
 	filledState := map[string]storage.Metric{
@@ -389,7 +389,7 @@ func TestGetMetricHandler(t *testing.T) {
 
 func TestAddUpdateMetricJSONHandler(t *testing.T) {
 	s := Server{}
-	ts := httptest.NewServer(s.NewRouter())
+	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
 	tests := []struct {
@@ -668,7 +668,7 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 
 func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 	s := Server{}
-	ts := httptest.NewServer(s.NewRouter())
+	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
 	defaultEnv := Env
@@ -676,7 +676,7 @@ func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 	tests := []struct {
 		name string
 		requestArgs
-		env          Environment
+		env          environment
 		wantResponse response
 		initState    map[string]storage.Metric
 		wantedState  map[string]storage.Metric
@@ -689,7 +689,7 @@ func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 				contentType: "application/json",
 				body:        `{"id":"PollCount","type":"counter","delta":10,"hash":"4ca29a927a89931245cd4ad0782383d0fe0df883d31437cc5b85dc4dad3247c4"}`,
 			},
-			env: Environment{Key: "Ayayaka"},
+			env: environment{Key: "Ayayaka"},
 			wantResponse: response{
 				statusCode:  http.StatusOK,
 				contentType: "application/json",
@@ -713,7 +713,7 @@ func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 				contentType: "application/json",
 				body:        `{"id":"PollCount","type":"counter","delta":20,"hash":"a54ff39f2747a23c5834768f732d53719e143482400db980fcb886fc0a126faa"}`,
 			},
-			env: Environment{Key: "Ayayaka"},
+			env: environment{Key: "Ayayaka"},
 			wantResponse: response{
 				statusCode:  http.StatusOK,
 				contentType: "application/json",
@@ -737,7 +737,7 @@ func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 				contentType: "application/json",
 				body:        `{"id":"RandomValue","type":"gauge","value":12.133,"hash":"19742de723a08df1f3436d0b745ea7743c05520787cb32949497056fce1f7c70"}`,
 			},
-			env: Environment{Key: "Ayayaka"},
+			env: environment{Key: "Ayayaka"},
 			wantResponse: response{
 				statusCode:  http.StatusOK,
 				contentType: "application/json",
@@ -761,7 +761,7 @@ func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 				contentType: "application/json",
 				body:        `{"id":"RandomValue","type":"gauge","value":23.5,"hash":"8dfae3f2574fadf10488b9104ad0d003d2267a8e045b22793c4e8c6b6f989d67"}`,
 			},
-			env: Environment{Key: "Ayayaka"},
+			env: environment{Key: "Ayayaka"},
 			wantResponse: response{
 				statusCode:  http.StatusOK,
 				contentType: "application/json",
@@ -785,7 +785,7 @@ func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 				contentType: "application/json",
 				body:        `{"id":"PollCount","type":"counter","delta":10,"hash":"aaa29a927a89931245cd4ad0782383d0fe0df883d31437cc5b85dc4dad3247c4"}`,
 			},
-			env: Environment{Key: "Ayayaka"},
+			env: environment{Key: "Ayayaka"},
 			wantResponse: response{
 				statusCode:  http.StatusBadRequest,
 				contentType: "text/plain; charset=utf-8",
@@ -808,7 +808,7 @@ func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 				contentType: "application/json",
 				body:        `{"id":"RandomValue","type":"gauge","value":23.5}`,
 			},
-			env: Environment{Key: "Ayayaka"},
+			env: environment{Key: "Ayayaka"},
 			wantResponse: response{
 				statusCode:  http.StatusBadRequest,
 				contentType: "text/plain; charset=utf-8",
@@ -869,7 +869,7 @@ func TestGetMetricJSONHandler(t *testing.T) {
 
 	// костыль, чтоб
 	s := Server{}
-	ts := httptest.NewServer(s.NewRouter())
+	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
 	tests := []struct {
@@ -1020,14 +1020,14 @@ func TestGetMetricJsonHandlerWithHash(t *testing.T) {
 
 	// костыль, чтоб
 	s := Server{}
-	ts := httptest.NewServer(s.NewRouter())
+	ts := httptest.NewServer(s.newRouter())
 	defaultEnv := Env
 	defer ts.Close()
 
 	tests := []struct {
 		name string
 		requestArgs
-		env             Environment
+		env             environment
 		wantResponse    response
 		memStorageState map[string]storage.Metric
 	}{
@@ -1040,7 +1040,7 @@ func TestGetMetricJsonHandlerWithHash(t *testing.T) {
 				contentType: "application/json",
 				body:        `{"id":"PollCount","type":"counter"}`,
 			},
-			env: Environment{Key: "Ayayaka"},
+			env: environment{Key: "Ayayaka"},
 			wantResponse: response{
 				statusCode:  http.StatusNotFound,
 				contentType: "text/plain; charset=utf-8",
@@ -1056,7 +1056,7 @@ func TestGetMetricJsonHandlerWithHash(t *testing.T) {
 				contentType: "application/json",
 				body:        `{"id":"PollCount","type":"counter"}`,
 			},
-			env: Environment{Key: "Ayayaka"},
+			env: environment{Key: "Ayayaka"},
 			wantResponse: response{
 				statusCode:  http.StatusOK,
 				contentType: "application/json",
@@ -1074,7 +1074,7 @@ func TestGetMetricJsonHandlerWithHash(t *testing.T) {
 				contentType: "application/json",
 				body:        `{"id":"RandomValue","type":"gauge"}`,
 			},
-			env: Environment{Key: "Ayayaka"},
+			env: environment{Key: "Ayayaka"},
 			wantResponse: response{
 				statusCode:  http.StatusNotFound,
 				contentType: "text/plain; charset=utf-8",
@@ -1090,7 +1090,7 @@ func TestGetMetricJsonHandlerWithHash(t *testing.T) {
 				contentType: "application/json",
 				body:        `{"id":"RandomValue","type":"gauge"}`,
 			},
-			env: Environment{Key: "Ayayaka"},
+			env: environment{Key: "Ayayaka"},
 			wantResponse: response{
 				statusCode:  http.StatusOK,
 				contentType: "application/json",
@@ -1120,7 +1120,7 @@ func TestServer_PingHandler(t *testing.T) {
 	if err != nil {
 		t.Skipf("cannot connect to db. db mocks are not ready yet")
 	}
-	ts := httptest.NewServer(s.NewRouter())
+	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
 	reqArgs := requestArgs{
@@ -1183,9 +1183,9 @@ func TestServer_InitFileStore(t *testing.T) {
 			s := &Server{
 				FileStore: tt.beforeInitSArgs.FileStore,
 			}
-			Env = Environment{}
+			Env = environment{}
 			Env.StoreFile = tt.beforeInitSArgs.StoreFile
-			s.InitFileStore()
+			s.initFileStore()
 			assert.Equal(t, tt.wantFSArg, s.FileStore)
 		})
 	}
@@ -1278,7 +1278,7 @@ func TestServer_InitMetricStorage(t *testing.T) {
 				FileStore: tt.serverArgs.FileStore,
 			}
 			Env.Restore = tt.Restore
-			serverObj.InitMetricStorage()
+			serverObj.initMetricStorage()
 			assert.Equal(t, tt.wantMetricStorage, serverObj.MetricStorage)
 		})
 	}
@@ -1290,14 +1290,14 @@ func TestParseEnvArgs(t *testing.T) {
 		name      string
 		cmdStr    string
 		envVars   map[string]string
-		wantEnv   Environment
+		wantEnv   environment
 		wantPanic bool
 	}{
 		{
 			name:    "Test correct 1. Empty cmd args and env vars.",
 			cmdStr:  "file.exe",
 			envVars: map[string]string{},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "localhost:8080",
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "/tmp/devops-metrics-db.json",
@@ -1309,7 +1309,7 @@ func TestParseEnvArgs(t *testing.T) {
 			name:    "Test correct 2. Set cmd args and empty env vars.",
 			cmdStr:  "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false",
 			envVars: map[string]string{},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "cmd.site",
 				StoreInterval: 20 * time.Second,
 				StoreFile:     "somefile.json",
@@ -1323,7 +1323,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"ADDRESS": "env.site", "STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "env.site",
 				StoreInterval: 60 * time.Second,
 				StoreFile:     "env.json",
@@ -1337,7 +1337,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"ADDRESS": "env.site", "STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "env.site",
 				StoreInterval: 60 * time.Second,
 				StoreFile:     "env.json",
@@ -1351,7 +1351,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"ADDRESS": "env.site", "STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "env.site",
 				StoreInterval: 60 * time.Second,
 				StoreFile:     "env.json",
@@ -1365,7 +1365,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "cmd.site",
 				StoreInterval: 60 * time.Second,
 				StoreFile:     "env.json",
@@ -1379,7 +1379,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "cmd.site",
 				StoreInterval: 60 * time.Second,
 				StoreFile:     "env.json",
@@ -1394,7 +1394,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true", "KEY": "ayayaka",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "cmd.site",
 				StoreInterval: 60 * time.Second,
 				StoreFile:     "env.json",
@@ -1409,7 +1409,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "cmd.site",
 				StoreInterval: 60 * time.Second,
 				StoreFile:     "env.json",
@@ -1425,7 +1425,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "cmd.site",
 				StoreInterval: 60 * time.Second,
 				StoreFile:     "env.json",
@@ -1440,7 +1440,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true", "DATABASE_DSN": "localhost:8080",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "cmd.site",
 				StoreInterval: 60 * time.Second,
 				StoreFile:     "env.json",
@@ -1455,7 +1455,7 @@ func TestParseEnvArgs(t *testing.T) {
 			envVars: map[string]string{
 				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
 			},
-			wantEnv: Environment{
+			wantEnv: environment{
 				ServerAddress: "cmd.site",
 				StoreInterval: 60 * time.Second,
 				StoreFile:     "env.json",
@@ -1468,7 +1468,7 @@ func TestParseEnvArgs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Устанавливаю env в дефолтные значения(обнулять я его не могу, т.к. flag линки потеряются)
-			Env = Environment{
+			Env = environment{
 				ServerAddress: "localhost:8080",
 				StoreInterval: 300 * time.Second,
 				StoreFile:     "/tmp/devops-metrics-db.json",
@@ -1555,7 +1555,7 @@ func sendTestRequestWithCompression(t *testing.T, ts *httptest.Server, r request
 
 func TestServer_gzipCompressor(t *testing.T) {
 	s := Server{}
-	ts := httptest.NewServer(s.NewRouter())
+	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
 	tests := []struct {
@@ -1604,7 +1604,7 @@ func TestServer_gzipCompressor(t *testing.T) {
 
 func TestServer_gzipDecompressor(t *testing.T) {
 	s := Server{}
-	ts := httptest.NewServer(s.NewRouter())
+	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
 	tests := []struct {
@@ -1664,7 +1664,7 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 		Env.DatabaseDsn = ""
 		s, _ = NewServer()
 	}
-	ts := httptest.NewServer(s.NewRouter())
+	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
 	tests := []struct {
@@ -1832,9 +1832,9 @@ func TestServer_SyncSaveMetricStorage(t *testing.T) {
 				FileStore:     tt.serverArgs.FileStore,
 				MetricStorage: tt.serverArgs.MetricStorage,
 			}
-			Env = Environment{}
+			Env = environment{}
 			Env.StoreInterval = tt.StoreInterval
-			err := s.SyncSaveMetricStorage()
+			err := s.syncSaveMetricStorage()
 			require.NoError(t, err)
 
 			if tt.serverArgs.FileStore == nil {
@@ -1910,8 +1910,8 @@ func TestServer_InitRepeatableSave(t *testing.T) {
 				MetricStorage: tt.serverArgs.MetricStorage,
 			}
 			Env.StoreInterval = tt.StoreInterval
-			s.InitRepeatableSave()
-			time.Sleep(time.Second) // ждем пока тикер в InitRepeatableSave отработает(горутиной)
+			s.initRepeatableSave()
+			time.Sleep(time.Second) // ждем пока тикер в initRepeatableSave отработает(горутиной)
 
 			if tt.serverArgs.FileStore == nil {
 				t.Skip("Не знаю как пока тестировать кейсы с FileStore == nil")

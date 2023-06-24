@@ -1,3 +1,5 @@
+// Package server реализует серверную часть приложения(за исключением Storage).
+// Содержит прежде всего хэндлеры и миддлвары, а также функциональность необходимую для работы сервера.
 package server
 
 import (
@@ -24,11 +26,13 @@ import (
 	"time"
 )
 
+// Инициализирует параметры командной строки.
 func init() {
-	InitCmdArgs()
+	initCmdArgs()
 }
 
-type Environment struct {
+// environment для получения(из ENV и cmd) и хранения переменных окружения агента.
+type environment struct {
 	ServerAddress string        `env:"ADDRESS"`
 	StoreInterval time.Duration `env:"STORE_INTERVAL"`
 	StoreFile     string        `env:"STORE_FILE"`
@@ -37,11 +41,12 @@ type Environment struct {
 	DatabaseDsn   string        `env:"DATABASE_DSN"`
 }
 
-var Env Environment
+// Env объект с переменными окружения(из ENV и cmd args).
+var Env environment
 
-// InitCmdArgs Определяет флаги командной строки и линкует их с соотв полями объекта Env
-// В рамках этой же функции происходит и заполнение дефолтными значениями
-func InitCmdArgs() {
+// initCmdArgs Определяет флаги командной строки и линкует их с соотв полями объекта Env.
+// В рамках этой же функции происходит и заполнение дефолтными значениями.
+func initCmdArgs() {
 	flag.StringVar(&Env.ServerAddress, "a", "localhost:8080", "server address")
 	flag.BoolVar(&Env.Restore, "r", true, "restore memstorage from store file")
 	flag.DurationVar(&Env.StoreInterval, "i", 300*time.Second, "store interval")
@@ -50,7 +55,7 @@ func InitCmdArgs() {
 	flag.StringVar(&Env.DatabaseDsn, "d", "", "database address")
 }
 
-// ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения
+// ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения.
 func ParseEnvArgs() {
 	// Парсинг аргументов cmd
 	flag.Parse()
@@ -62,6 +67,8 @@ func ParseEnvArgs() {
 	}
 }
 
+// Server реализует серверную логику.
+// Всё взаимодействие с серверной частью происходит через него.
 type Server struct {
 	FileStore     *filestore.FileStore
 	WriteTicker   *time.Ticker
@@ -71,12 +78,15 @@ type Server struct {
 	DBConn        *sql.DB
 }
 
+// NewServer конструктор для Server.
+// Если перем-ая окружения DatabaseDsn установлена - использует ДБ для хранения метрик,
+// иначе хранит в памяти + запись в файл.
 func NewServer() (*Server, error) {
 	server := Server{}
-	server.InitFileStore()
+	server.initFileStore()
 	if Env.DatabaseDsn == "" {
-		server.InitMetricStorage()
-		server.InitRepeatableSave()
+		server.initMetricStorage()
+		server.initRepeatableSave()
 	} else {
 		sqlStorage, err := storage.NewSQLStorage(Env.DatabaseDsn)
 		if err != nil {
@@ -85,7 +95,7 @@ func NewServer() (*Server, error) {
 		server.MetricStorage = sqlStorage
 		server.DBConn = sqlStorage.Connection
 	}
-	server.Router = server.NewRouter()
+	server.Router = server.newRouter()
 
 	workingDir, _ := os.Getwd()
 	server.LayoutsDir = filepath.Join(workingDir, "/internal/server/html_layouts")
@@ -93,13 +103,17 @@ func NewServer() (*Server, error) {
 	return &server, nil
 }
 
-func (s *Server) InitFileStore() {
+// initFileStore инициализирует объект файл-хранилища метрик.
+// Иниц-ия происходит только если DatabaseDsn не определен, а путь к файлу - определен.
+func (s *Server) initFileStore() {
 	if Env.DatabaseDsn == "" && Env.StoreFile != "" {
 		s.FileStore = filestore.NewFileStore(Env.StoreFile)
 	}
 }
 
-func (s *Server) InitMetricStorage() {
+// initMetricStorage инициал-ет MetricStorage.
+// Выполняется только при соблюдении условий.
+func (s *Server) initMetricStorage() {
 	if Env.DatabaseDsn == "" && Env.Restore && s.FileStore != nil {
 		var err error
 		s.MetricStorage, err = s.FileStore.Read()
@@ -115,7 +129,9 @@ func (s *Server) InitMetricStorage() {
 	}
 }
 
-func (s *Server) InitRepeatableSave() {
+// initRepeatableSave регулярно(параметр StoreInterval) сохраняет состояние MetricStorage в файл.
+// Выполняется только при соблюдении условий.
+func (s *Server) initRepeatableSave() {
 	if Env.DatabaseDsn == "" && Env.StoreInterval > 0 && s.FileStore != nil {
 		go func() {
 			var err error
@@ -135,7 +151,9 @@ func (s *Server) InitRepeatableSave() {
 	}
 }
 
-func (s *Server) SyncSaveMetricStorage() error {
+// syncSaveMetricStorage сохраняет MetricStorage в конце обработки успешного(200) запроса.
+// Выполняется только при соблюдении условий.
+func (s *Server) syncSaveMetricStorage() error {
 	if Env.DatabaseDsn == "" && Env.StoreInterval == 0 && s.FileStore != nil && s.MetricStorage != nil {
 		err := s.FileStore.Write(s.MetricStorage)
 		return err
@@ -143,7 +161,8 @@ func (s *Server) SyncSaveMetricStorage() error {
 	return nil
 }
 
-func (s *Server) NewRouter() chi.Router {
+// newRouter определяет и возвращает роутер для сервера.
+func (s *Server) newRouter() chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(s.gzipDecompressor)
@@ -165,6 +184,7 @@ func (s *Server) NewRouter() chi.Router {
 	return r
 }
 
+// gzipResponseWriter для реализации gzipCompressor.
 type gzipResponseWriter struct {
 	http.ResponseWriter // нужен, чтобы хандлеры не спотыкались об отсутствие возм.установить header например.
 	Writer              io.Writer
@@ -174,6 +194,7 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
+// gzipDecompressor - middleware для обработки входящих запросов с gzip сжатием.
 func (s *Server) gzipDecompressor(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if strings.Contains(request.Header.Get("Content-Encoding"), "gzip") {
@@ -189,6 +210,7 @@ func (s *Server) gzipDecompressor(next http.Handler) http.Handler {
 	})
 }
 
+// gzipDecompressor - middleware для gzip сжатия исходящих запросов.
 func (s *Server) gzipCompressor(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		// если не допускает сжатие - ничего не делать
@@ -207,6 +229,8 @@ func (s *Server) gzipCompressor(next http.Handler) http.Handler {
 	})
 }
 
+// handlerShowAllMetrics - обрабатывает GET запросы вывода всех метрик сохраненных на сервере.
+// В ответ отправляет HTML список [метрика, значение]
 func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if s.LayoutsDir == "" {
@@ -241,6 +265,9 @@ func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http
 	}
 }
 
+// handlerShowAllMetrics - обрабатывает GET запросы получения информация по метрике.
+// Наименование метрики получает из URL.
+// В ответ возвращает значение метрики(в теле ответа).
 func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
 	metricName := chi.URLParam(request, "metricName")
 	metric, err := s.MetricStorage.GetMetric(request.Context(), metricName)
@@ -256,6 +283,11 @@ func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
 	writer.Write([]byte(metric.GetValueString()))
 }
 
+// handlerAddUpdateMetric - обрабатывает POST запросы сохранения метрики на сервере.
+// Метрика(наим-ие, тип и значение) передается через URLParam.
+// В ответ возвращает статус обработки запроса.
+//
+// Если метрика с таким именем не присутствует на сервере - добавляет ее, иначе обновляет существующую.
 func (s *Server) handlerAddUpdateMetric(writer http.ResponseWriter, request *http.Request) {
 	typeName := chi.URLParam(request, "typeName")
 	metricName := chi.URLParam(request, "metricName")
@@ -276,12 +308,17 @@ func (s *Server) handlerAddUpdateMetric(writer http.ResponseWriter, request *htt
 		http.Error(writer, errorObj.Error(), http.StatusBadRequest)
 		return
 	}
-	if errorObj = s.SyncSaveMetricStorage(); errorObj != nil {
+	if errorObj = s.syncSaveMetricStorage(); errorObj != nil {
 		http.Error(writer, errorObj.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
+// handlerJSONAddUpdateMetric - обрабатывает POST запросы сохранения метрики на сервере.
+// Метрика(наим-ие, тип и значение) передается через тело запроса, посредством message.Metrics.
+// В ответ возвращает сохраненную на сервере метрику(после выполнения запроса).
+//
+// Если метрика с таким именем не присутствует на сервере - добавляет ее, иначе обновляет существующую.
 func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request *http.Request) {
 	var metricMessage message.Metrics
 
@@ -316,7 +353,7 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 		http.Error(writer, errorObj.Error(), http.StatusBadRequest)
 		return
 	}
-	if errorObj = s.SyncSaveMetricStorage(); errorObj != nil {
+	if errorObj = s.syncSaveMetricStorage(); errorObj != nil {
 		http.Error(writer, errorObj.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -346,6 +383,9 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 	writer.Write(msgJSON)
 }
 
+// handlerJSONGetMetric - обрабатывает POST запросы сохранения метрики на сервере.
+// Наименование треб-ой метрики передается через тело запроса, посредством message.Metrics.
+// В ответ возвращает сохраненную на сервере метрику.
 func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.Request) {
 	var metricMessage message.Metrics
 
@@ -386,6 +426,7 @@ func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.
 	writer.Write(msgJSON)
 }
 
+// handlerPing - обрабатывает GET запрос доступности(ping) сервера.
 func (s *Server) handlerPing(writer http.ResponseWriter, request *http.Request) {
 	if s.DBConn == nil {
 		writer.WriteHeader(http.StatusInternalServerError)
@@ -399,6 +440,10 @@ func (s *Server) handlerPing(writer http.ResponseWriter, request *http.Request) 
 	}
 }
 
+// handlerJSONAddUpdateMetric - обрабатывает POST запросы сохранения набора(словаря) метрик на сервере.
+// Метрики передаются как словарь message.Metrics.
+// В ответ возвращает статус обработки запроса.
+// Не существующие на сервере метрики - будут добавлены, иначе обновлены.
 func (s *Server) handlerBatchUpdate(writer http.ResponseWriter, request *http.Request) {
 	var metricMessagesBatch []message.Metrics
 	var metrics []storage.Metric
@@ -436,7 +481,7 @@ func (s *Server) handlerBatchUpdate(writer http.ResponseWriter, request *http.Re
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 	}
 
-	if errorObj := s.SyncSaveMetricStorage(); errorObj != nil {
+	if errorObj := s.syncSaveMetricStorage(); errorObj != nil {
 		http.Error(writer, errorObj.Error(), http.StatusInternalServerError)
 		return
 	}
