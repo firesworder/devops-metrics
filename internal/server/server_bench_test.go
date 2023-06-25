@@ -38,7 +38,6 @@ func resetDBState(dbConn *sql.DB) {
 	}
 }
 
-// todo: реализовать две версии, одну для MemStorage, вторую для SQLStorage.
 func getServer(useDB bool) *Server {
 	if useDB {
 		Env.DatabaseDsn = "postgresql://postgres:admin@localhost:5432/devops"
