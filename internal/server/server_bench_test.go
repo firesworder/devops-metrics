@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/firesworder/devopsmetrics/internal/storage"
@@ -19,6 +20,8 @@ var (
 	benchMetricGauge1, _  = storage.NewMetric("RandomValue", internal.GaugeTypeName, 12.133)
 	benchMetricGauge2, _  = storage.NewMetric("Alloc", internal.GaugeTypeName, 7.77)
 )
+
+const repeatBenchRun = 100
 
 func getMetricsMap() map[string]storage.Metric {
 	return map[string]storage.Metric{
@@ -78,13 +81,13 @@ func BenchmarkHandlersMemStorage(b *testing.B) {
 
 	b.Run("getMetric", func(b *testing.B) {
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for i := 0; i < repeatBenchRun; i++ {
 			sendRequest(http.MethodGet, ts.URL+"/value/counter/PollCount", "text/plain", "")
 		}
 	})
 
 	b.Run("showAllMetrics", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for i := 0; i < repeatBenchRun; i++ {
 			sendRequest(http.MethodGet, ts.URL+"/", "text/plain", "")
 		}
 	})
@@ -92,7 +95,7 @@ func BenchmarkHandlersMemStorage(b *testing.B) {
 	b.Run("AddUpdateMetric", func(b *testing.B) {
 		urlParams := `/update/counter/PollCount/20`
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for i := 0; i < repeatBenchRun; i++ {
 			sendRequest(http.MethodPost, ts.URL+urlParams, "text/plain", "")
 
 			b.StopTimer()
@@ -106,7 +109,7 @@ func BenchmarkHandlersMemStorage(b *testing.B) {
 		jsonMsg, _ := json.Marshal(metric.GetMessageMetric())
 		url := "/update/"
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for i := 0; i < repeatBenchRun; i++ {
 			sendRequest(http.MethodPost, ts.URL+url, "application/json", string(jsonMsg))
 
 			b.StopTimer()
@@ -119,7 +122,7 @@ func BenchmarkHandlersMemStorage(b *testing.B) {
 		jsonMsg, _ := json.Marshal(message.Metrics{ID: "PollCount"})
 		url := "/value/"
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for i := 0; i < repeatBenchRun; i++ {
 			sendRequest(http.MethodPost, ts.URL+url, "application/json", string(jsonMsg))
 		}
 	})
@@ -135,7 +138,7 @@ func BenchmarkHandlersMemStorage(b *testing.B) {
 
 		url := "/updates/"
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for i := 0; i < repeatBenchRun; i++ {
 			sendRequest(http.MethodPost, ts.URL+url, "application/json", string(jsonMsg))
 
 			b.StopTimer()
@@ -150,14 +153,16 @@ func BenchmarkHandlersSQLStorage(b *testing.B) {
 	ts := httptest.NewServer(s.Router)
 	defer ts.Close()
 
+	fmt.Println(b.N)
+
 	b.Run("getMetric", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for i := 0; i < repeatBenchRun; i++ {
 			sendRequest(http.MethodGet, ts.URL+"/value/counter/PollCount", "text/plain", "")
 		}
 	})
 
 	b.Run("showAllMetrics", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for i := 0; i < repeatBenchRun; i++ {
 			sendRequest(http.MethodGet, ts.URL+"/", "text/plain", "")
 		}
 	})
@@ -165,7 +170,7 @@ func BenchmarkHandlersSQLStorage(b *testing.B) {
 	b.Run("AddUpdateMetric", func(b *testing.B) {
 		urlParams := `/update/counter/PollCount/20`
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for i := 0; i < repeatBenchRun; i++ {
 			sendRequest(http.MethodPost, ts.URL+urlParams, "text/plain", "")
 
 			b.StopTimer()
@@ -179,7 +184,7 @@ func BenchmarkHandlersSQLStorage(b *testing.B) {
 		jsonMsg, _ := json.Marshal(metric.GetMessageMetric())
 		url := "/update/"
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for i := 0; i < repeatBenchRun; i++ {
 			sendRequest(http.MethodPost, ts.URL+url, "application/json", string(jsonMsg))
 
 			b.StopTimer()
@@ -192,7 +197,7 @@ func BenchmarkHandlersSQLStorage(b *testing.B) {
 		jsonMsg, _ := json.Marshal(message.Metrics{ID: "PollCount"})
 		url := "/value/"
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for i := 0; i < repeatBenchRun; i++ {
 			sendRequest(http.MethodPost, ts.URL+url, "application/json", string(jsonMsg))
 		}
 	})
@@ -208,7 +213,7 @@ func BenchmarkHandlersSQLStorage(b *testing.B) {
 
 		url := "/updates/"
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for i := 0; i < repeatBenchRun; i++ {
 			sendRequest(http.MethodPost, ts.URL+url, "application/json", string(jsonMsg))
 
 			b.StopTimer()
