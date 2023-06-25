@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/firesworder/devopsmetrics/internal"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -177,21 +178,17 @@ func (db *SQLStorage) GetAll(ctx context.Context) (result map[string]Metric, err
 }
 
 func (db *SQLStorage) GetMetric(ctx context.Context, name string) (metric Metric, err error) {
-	rows, err := db.Connection.QueryContext(ctx,
-		"SELECT m_name, m_value, m_type FROM metrics WHERE m_name = $1 LIMIT 1", name)
+	var mN, mV, mT string
+	var mValue interface{}
+	err = db.Connection.QueryRowContext(ctx,
+		"SELECT m_name, m_value, m_type FROM metrics WHERE m_name = $1 LIMIT 1", name).Scan(&mN, &mV, &mT)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return metric, ErrMetricNotFound
+		}
 		return
 	}
 
-	var mN, mV, mT string
-	var mValue interface{}
-	if !rows.Next() {
-		return metric, ErrMetricNotFound
-	}
-	err = rows.Scan(&mN, &mV, &mT)
-	if err != nil {
-		return
-	}
 	switch mT {
 	case internal.GaugeTypeName:
 		mValue, err = strconv.ParseFloat(mV, 64)
@@ -209,10 +206,6 @@ func (db *SQLStorage) GetMetric(ctx context.Context, name string) (metric Metric
 		return
 	}
 
-	err = rows.Err()
-	if err != nil {
-		return
-	}
 	return *m, nil
 }
 
