@@ -6,49 +6,10 @@ import (
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/firesworder/devopsmetrics/internal/storage"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"sort"
-	"strings"
 )
-
-// метрики используемые для примеров
-var (
-	exMetricCounter, _ = storage.NewMetric("PollCount", internal.CounterTypeName, int64(10))
-	exMetricGauge1, _  = storage.NewMetric("RandomValue", internal.GaugeTypeName, 12.133)
-	exMetricGauge2, _  = storage.NewMetric("Alloc", internal.GaugeTypeName, 7.77)
-)
-
-func sendRequest(method, url, contentType, content string) (int, string, string) {
-	// создаю реквест
-	req, _ := http.NewRequest(method, url, strings.NewReader(content))
-	req.Header.Set("Content-Type", contentType)
-
-	// делаю реквест на дефолтном клиенте
-	resp, _ := http.DefaultClient.Do(req)
-
-	// читаю ответ сервера
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-
-	return resp.StatusCode, resp.Header.Get("Content-Type"), string(respBody)
-}
-
-func getServer() *Server {
-	// подготовка сервера для примера
-	s, err := NewServer()
-	if err != nil {
-		panic(err)
-	}
-	s.LayoutsDir = "./html_layouts/"
-	s.MetricStorage = storage.NewMemStorage(map[string]storage.Metric{
-		exMetricCounter.Name: *exMetricCounter,
-		exMetricGauge1.Name:  *exMetricGauge1,
-		exMetricGauge2.Name:  *exMetricGauge1,
-	})
-	return s
-}
 
 // Примеры
 
@@ -80,7 +41,7 @@ func ExampleServer_handlerShowAllMetrics() {
 }
 
 func ExampleServer_handlerGet() {
-	s := getServer()
+	s := getServer(false)
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -98,7 +59,7 @@ func ExampleServer_handlerGet() {
 }
 
 func ExampleServer_handlerAddUpdateMetric() {
-	s := getServer()
+	s := getServer(false)
 	nms := s.MetricStorage.(*storage.MemStorage)
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
@@ -118,7 +79,7 @@ func ExampleServer_handlerAddUpdateMetric() {
 }
 
 func ExampleServer_handlerJSONAddUpdateMetric() {
-	s := getServer()
+	s := getServer(false)
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -139,7 +100,7 @@ func ExampleServer_handlerJSONAddUpdateMetric() {
 }
 
 func ExampleServer_handlerJSONGetMetric() {
-	s := getServer()
+	s := getServer(false)
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -179,7 +140,7 @@ func ExampleServer_handlerPing() {
 }
 
 func ExampleServer_handlerBatchUpdate() {
-	s := getServer()
+	s := getServer(false)
 	nms := s.MetricStorage.(*storage.MemStorage)
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()

@@ -1,14 +1,10 @@
 package server
 
 import (
-	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/firesworder/devopsmetrics/internal"
@@ -16,64 +12,7 @@ import (
 	"github.com/firesworder/devopsmetrics/internal/storage"
 )
 
-var (
-	benchMetricCounter, _ = storage.NewMetric("PollCount", internal.CounterTypeName, int64(10))
-	benchMetricGauge1, _  = storage.NewMetric("RandomValue", internal.GaugeTypeName, 12.133)
-	benchMetricGauge2, _  = storage.NewMetric("Alloc", internal.GaugeTypeName, 7.77)
-)
-
 const repeatBenchRun = 100
-
-func getMetricsMap() map[string]storage.Metric {
-	return map[string]storage.Metric{
-		benchMetricCounter.Name: *benchMetricCounter,
-		benchMetricGauge1.Name:  *benchMetricGauge1,
-		benchMetricGauge2.Name:  *benchMetricGauge2,
-	}
-}
-
-func resetDBState(dbConn *sql.DB) {
-	ctx := context.Background()
-	// подготовка состояния таблицы
-	dbConn.ExecContext(ctx, "DELETE FROM metrics")
-	for _, metric := range getMetricsMap() {
-		mN, mV, mT := metric.GetMetricParamsString()
-		dbConn.ExecContext(ctx, "INSERT INTO metrics(m_name, m_value, m_type) VALUES($1, $2, $3)", mN, mV, mT)
-	}
-}
-
-func getServer(useDB bool) *Server {
-	if useDB {
-		Env.DatabaseDsn = "postgresql://postgres:admin@localhost:5432/devops"
-	} else {
-		Env.DatabaseDsn = ""
-	}
-
-	s, err := NewServer()
-	if err != nil {
-		panic(err)
-	}
-	s.LayoutsDir = "./html_layouts/"
-	if !useDB {
-		s.MetricStorage = storage.NewMemStorage(getMetricsMap())
-	}
-	return s
-}
-
-func sendRequest(method, url, contentType, content string) (int, string, string) {
-	// создаю реквест
-	req, _ := http.NewRequest(method, url, strings.NewReader(content))
-	req.Header.Set("Content-Type", contentType)
-
-	// делаю реквест на дефолтном клиенте
-	resp, _ := http.DefaultClient.Do(req)
-
-	// читаю ответ сервера
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-
-	return resp.StatusCode, resp.Header.Get("Content-Type"), string(respBody)
-}
 
 func BenchmarkHandlersMemStorage(b *testing.B) {
 	s := getServer(false)
