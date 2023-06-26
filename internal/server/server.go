@@ -229,8 +229,32 @@ func (s *Server) gzipCompressor(next http.Handler) http.Handler {
 	})
 }
 
-// handlerShowAllMetrics - обрабатывает GET запросы вывода всех метрик сохраненных на сервере.
-// В ответ отправляет HTML список [метрика, значение].
+// Handlers
+
+//	@Title			Server Devops API
+//	@Description	Сервис сбора метрик.
+//	@Version		1.0
+
+//	@Contact.email	cus.never.again@yandex.ru
+
+//	@BasePath	/
+//	@Host		localhost:8080
+
+//	@Tag.name			JSON
+//	@Tag.description	"Группа JSON запросов."
+
+//	@Tag.name			NoJSON
+//	@Tag.description	"Группа запросов не использующих JSON."
+
+// handlerShowAllMetrics godoc
+//
+//	@Tags		NoJSON
+//	@Summary	Обрабатывает GET запросы вывода всех метрик сохраненных на сервере.
+//	@ID			handlerShowAllMetrics
+//	@Produce	html
+//	@Success	200	{string}	string	"ok"
+//	@Failure	500	{string}	string	"Внутренняя ошибка"
+//	@Router		/ [get]
 func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if s.LayoutsDir == "" {
@@ -262,9 +286,19 @@ func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http
 	}
 }
 
-// handlerShowAllMetrics - обрабатывает GET запросы получения информация по метрике.
-// Наименование метрики получает из URL.
-// В ответ возвращает значение метрики(в теле ответа).
+// handlerGet godoc
+//
+//	@Tags			NoJSON
+//	@Summary		Обрабатывает GET запросы получения информация по метрике.
+//	@Description	В ответ возвращает значение метрики(в теле ответа).
+//	@ID				handlerGet
+//	@Produce		plain
+//	@Param			typeName	path		string	true	"Тип метрики"
+//	@Param			metricName	path		int		true	"Название метрики"
+//	@Success		200			{string}	string	"<Значение метрики>"
+//	@Failure		404			{string}	string	"unknown metric"
+//	@Failure		500			{string}	string	"Внутренняя ошибка"
+//	@Router			/value/{typeName}/{metricName} [get]
 func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
 	metric, err := s.MetricStorage.GetMetric(request.Context(), chi.URLParam(request, "metricName"))
 	if err != nil {
@@ -279,11 +313,24 @@ func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
 	writer.Write([]byte(metric.GetValueString()))
 }
 
-// handlerAddUpdateMetric - обрабатывает POST запросы сохранения метрики на сервере.
-// Метрика(наим-ие, тип и значение) передается через URLParam.
+// handlerAddUpdateMetric godoc
+//
+//	@Tags			NoJSON
+//	@Summary		Обрабатывает POST запросы сохранения метрики на сервере.
+//	@Description	Метрика(наим-ие, тип и значение) передается через URLParam.
+//
 // В ответ возвращает статус обработки запроса.
 //
 // Если метрика с таким именем не присутствует на сервере - добавляет ее, иначе обновляет существующую.
+//
+//	@ID				handlerAddUpdateMetric
+//	@Param			typeName	path		string	true	"Тип метрики"
+//	@Param			metricName	path		int		true	"Название метрики"
+//	@Param			metricValue	path		int		true	"Значение метрики"
+//	@Success		200			{string}	string	"ok"
+//	@Failure		404			{string}	string	"unknown metric"
+//	@Failure		500			{string}	string	"Внутренняя ошибка"
+//	@Router			/update/{typeName}/{metricName}/{metricValue} [get]
 func (s *Server) handlerAddUpdateMetric(writer http.ResponseWriter, request *http.Request) {
 	var err error
 
@@ -312,11 +359,26 @@ func (s *Server) handlerAddUpdateMetric(writer http.ResponseWriter, request *htt
 	}
 }
 
-// handlerJSONAddUpdateMetric - обрабатывает POST запросы сохранения метрики на сервере.
-// Метрика(наим-ие, тип и значение) передается через тело запроса, посредством message.Metrics.
+// handlerJSONAddUpdateMetric godoc
+//
+//	@Tags			JSON
+//	@Summary		Обрабатывает POST запросы сохранения метрики на сервере.
+//	@Description	Метрика(наим-ие, тип и значение) передается через тело запроса, посредством message.Metrics.
+//
 // В ответ возвращает сохраненную на сервере метрику(после выполнения запроса).
 //
 // Если метрика с таким именем не присутствует на сервере - добавляет ее, иначе обновляет существующую.
+//
+//	@ID				handlerJSONAddUpdateMetric
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{string}	string	"ok"
+//	@Failure		400	{string}	string	"Неверный запрос"
+//	@Failure		400	{string}	string	"hash is not correct"	если	полученный	хеш	не	совпал	с	созданным	на	сервере.
+//	@Failure		404	{string}	string	"unknown metric"
+//	@Failure		500	{string}	string	"Внутренняя ошибка"
+//	@Failure		501	{string}	string	"Not Implemented"	если	передан	нереализованный	на	сервере	тип	метрики.
+//	@Router			/update/ [post]
 func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request *http.Request) {
 	var metricMessage message.Metrics
 	var metric *storage.Metric
@@ -384,9 +446,22 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 	writer.Write(msgJSON)
 }
 
-// handlerJSONGetMetric - обрабатывает POST запросы сохранения метрики на сервере.
-// Наименование треб-ой метрики передается через тело запроса, посредством message.Metrics.
+// handlerJSONGetMetric godoc
+//
+//	@Tags			JSON
+//	@Summary		Обрабатывает POST запросы получения метрики на сервере.
+//	@Description	Наименование треб-ой метрики передается через тело запроса, посредством message.Metrics.
+//
 // В ответ возвращает сохраненную на сервере метрику.
+//
+//	@ID				handlerJSONGetMetric
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{string}	string	"ok"
+//	@Failure		400	{string}	string	"Неверный запрос"
+//	@Failure		404	{string}	string	"metric with name <metricname> not found"
+//	@Failure		500	{string}	string	"Внутренняя ошибка"
+//	@Router			/value/ [post]
 func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.Request) {
 	var metricMessage message.Metrics
 	var err error
@@ -428,7 +503,14 @@ func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.
 	writer.Write(msgJSON)
 }
 
-// handlerPing - обрабатывает GET запрос доступности(ping) сервера.
+// handlerPing godoc
+//
+//	@Tags		NoJSON
+//	@Summary	Обрабатывает GET запрос доступности(ping) сервера.
+//	@ID			handlerPing
+//	@Success	200	{string}	string	"ok"
+//	@Failure	500	{string}	string	"Внутренняя ошибка"	Ошибка	выдается,	если	БД	недоступна.
+//	@Router		/ping [get]
 func (s *Server) handlerPing(writer http.ResponseWriter, request *http.Request) {
 	if s.DBConn == nil {
 		writer.WriteHeader(http.StatusInternalServerError)
@@ -442,10 +524,23 @@ func (s *Server) handlerPing(writer http.ResponseWriter, request *http.Request) 
 	}
 }
 
-// handlerJSONAddUpdateMetric - обрабатывает POST запросы сохранения набора(словаря) метрик на сервере.
-// Метрики передаются как словарь message.Metrics.
+// handlerBatchUpdate godoc
+//
+//	@Tags			JSON
+//	@Summary		Обрабатывает POST запросы сохранения набора(словаря) метрик на сервере.
+//	@Description	Метрики передаются как словарь message.Metrics.
+//
 // В ответ возвращает статус обработки запроса.
 // Не существующие на сервере метрики - будут добавлены, иначе обновлены.
+//
+//	@ID				handlerBatchUpdate
+//	@Accept			json
+//	@Success		200	{string}	string	"ok"
+//	@Failure		400	{string}	string	"Неверный запрос"
+//	@Failure		400	{string}	string	"hash is not correct"	если	полученный	хеш	не	совпал	с	созданным	на	сервере.
+//	@Failure		500	{string}	string	"Внутренняя ошибка"
+//	@Failure		501	{string}	string	"Not Implemented"	если	передан	нереализованный	на	сервере	тип	метрики.
+//	@Router			/updates/ [post]
 func (s *Server) handlerBatchUpdate(writer http.ResponseWriter, request *http.Request) {
 	var metricMessagesBatch []message.Metrics
 	var metrics []storage.Metric
