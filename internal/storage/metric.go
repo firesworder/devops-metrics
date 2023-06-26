@@ -14,7 +14,7 @@ type gauge float64
 type counter int64
 
 // Metric реализует сущность Метрика и методы для работы с ней.
-// Сущность имеет название Name, и значение Value(по типу Value определяется и тип метрики - gauge/counter)
+// Сущность имеет название Name, и значение Value(по типу Value определяется и тип метрики - gauge/counter).
 type Metric struct {
 	Name  string
 	Value interface{}
@@ -111,7 +111,7 @@ func (m *Metric) GetMessageMetric() (messageMetric message.Metrics) {
 	return
 }
 
-// GetValueString костыль для прохождения автотестов(инкр. 3b)
+// GetValueString костыль для прохождения автотестов(инкр. 3b).
 func (m *Metric) GetValueString() string {
 	switch value := m.Value.(type) {
 	case gauge:
@@ -122,7 +122,7 @@ func (m *Metric) GetValueString() string {
 	return ""
 }
 
-// GetMetricParamsString Возвращает параметры метрики в string формате: Name, Value, Type
+// GetMetricParamsString Возвращает параметры метрики в string формате: Name, Value, Type.
 func (m *Metric) GetMetricParamsString() (mN string, mV string, mT string) {
 	mN = m.Name
 	switch value := m.Value.(type) {

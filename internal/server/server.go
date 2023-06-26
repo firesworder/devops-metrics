@@ -230,7 +230,7 @@ func (s *Server) gzipCompressor(next http.Handler) http.Handler {
 }
 
 // handlerShowAllMetrics - обрабатывает GET запросы вывода всех метрик сохраненных на сервере.
-// В ответ отправляет HTML список [метрика, значение]
+// В ответ отправляет HTML список [метрика, значение].
 func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if s.LayoutsDir == "" {

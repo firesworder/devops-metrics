@@ -25,16 +25,16 @@ import (
 	"github.com/firesworder/devopsmetrics/internal/message"
 )
 
-// типы необходимые для использования с метриками(по заданию)
+// типы необходимые для использования с метриками(по заданию).
 type (
 	gauge   float64
 	counter int64
 )
 
-// serverURL содержит адрес сервера
+// serverURL содержит адрес сервера.
 var serverURL string
 
-// переменные в которых хранятся значения метрик(в сыром виде) для отправки
+// переменные в которых хранятся значения метрик(в сыром виде) для отправки.
 var (
 	memstats      runtime.MemStats
 	pollCount     counter
@@ -46,7 +46,7 @@ var (
 	}{}
 )
 
-// updateMetricsMutex для RW блокировки переменных со значениями метрик на время записи и чтения
+// updateMetricsMutex для RW блокировки переменных со значениями метрик на время записи и чтения.
 var updateMetricsMutex sync.RWMutex
 
 // Для тестирования функции UpdateMetrics
@@ -87,7 +87,7 @@ func InitServerURLByEnv() {
 }
 
 // InitCmdArgs Определяет флаги командной строки и линкует их с соотв полями объекта Env.
-// В рамках этой же функции происходит и заполнение дефолтными значениями
+// В рамках этой же функции происходит и заполнение дефолтными значениями.
 func InitCmdArgs() {
 	flag.StringVar(&Env.ServerAddress, "a", "localhost:8080", "Server address")
 	flag.DurationVar(&Env.ReportInterval, "r", 10*time.Second, "report interval")

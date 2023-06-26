@@ -14,7 +14,7 @@ import (
 
 // SQLStorage реализует хранение и доступ к метрикам в SQL(Postgresql) БД.
 // Доступно свойство Connection, для прямого доступа к БД(легаси, изначально предназначалось для хандлера Ping).
-// BUG(firesworder): убрать прямой доступ к БД, если нужна команда Ping - реализовать через интерфейс MetricRepository
+// BUG(firesworder): убрать прямой доступ к БД, если нужна команда Ping - реализовать через интерфейс MetricRepository.
 type SQLStorage struct {
 	Connection *sql.DB
 }
@@ -65,7 +65,7 @@ func (db *SQLStorage) createTableIfNotExist(ctx context.Context) (err error) {
 	return nil
 }
 
-// MetricRepository реализация
+// MetricRepository реализация.
 
 // AddMetric добавляет метрику.
 func (db *SQLStorage) AddMetric(ctx context.Context, metric Metric) (err error) {
@@ -134,7 +134,7 @@ func (db *SQLStorage) IsMetricInStorage(ctx context.Context, metric Metric) (isE
 }
 
 // UpdateOrAddMetric добавляет или обновляет(если есть в БД) метрику.
-// Обертка над AddMetric и UpdateMetric
+// Обертка над AddMetric и UpdateMetric.
 // Сначала проверяется наличие записи метрики в БД, потом происходит либо добавление либо обновление.
 func (db *SQLStorage) UpdateOrAddMetric(ctx context.Context, metric Metric) (err error) {
 	mInStorage, err := db.IsMetricInStorage(ctx, metric)
