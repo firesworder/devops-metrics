@@ -12,27 +12,33 @@ import (
 	"github.com/firesworder/devopsmetrics/internal"
 )
 
+// SQLStorage реализует хранение и доступ к метрикам в SQL(Postgresql) БД.
+// Доступно свойство Connection, для прямого доступа к БД(легаси, изначально предназначалось для хандлера Ping).
+// BUG(firesworder): убрать прямой доступ к БД, если нужна команда Ping - реализовать через интерфейс MetricRepository
 type SQLStorage struct {
 	Connection *sql.DB
 }
 
+// NewSQLStorage конструктор для SQLStorage.
+// Открывает подключение к БД по DSN и создает таблицы для метрик, если они не существуют.
 func NewSQLStorage(DSN string) (*SQLStorage, error) {
 	// Этот метод вызывается при инициализации сервера, поэтому использую общий контекст
 	ctx := context.Background()
 
 	db := SQLStorage{}
-	err := db.OpenDBConnection(DSN)
+	err := db.openDBConnection(DSN)
 	if err != nil {
 		return nil, err
 	}
-	err = db.CreateTableIfNotExist(ctx)
+	err = db.createTableIfNotExist(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return &db, nil
 }
 
-func (db *SQLStorage) OpenDBConnection(DSN string) error {
+// openDBConnection создает подключение к бд.
+func (db *SQLStorage) openDBConnection(DSN string) error {
 	var err error
 	db.Connection, err = sql.Open("pgx", DSN)
 	if err != nil {
@@ -41,7 +47,8 @@ func (db *SQLStorage) OpenDBConnection(DSN string) error {
 	return nil
 }
 
-func (db *SQLStorage) CreateTableIfNotExist(ctx context.Context) (err error) {
+// createTableIfNotExist создает таблицу(metrics) для хранения метрик, если она еще не создана.
+func (db *SQLStorage) createTableIfNotExist(ctx context.Context) (err error) {
 	_, err = db.Connection.ExecContext(
 		ctx,
 		`CREATE TABLE IF NOT EXISTS metrics
@@ -60,6 +67,7 @@ func (db *SQLStorage) CreateTableIfNotExist(ctx context.Context) (err error) {
 
 // MetricRepository реализация
 
+// AddMetric добавляет метрику.
 func (db *SQLStorage) AddMetric(ctx context.Context, metric Metric) (err error) {
 	mN, mV, mT := metric.GetMetricParamsString()
 	_, err = db.Connection.ExecContext(ctx,
@@ -70,6 +78,9 @@ func (db *SQLStorage) AddMetric(ctx context.Context, metric Metric) (err error) 
 	return
 }
 
+// UpdateMetric обновляет значение метрики.
+// Сначала метрика(переданная в арг-ах функции) находится в БД, затем обновляется в коде и обновление записывается в БД.
+// BUG(firesworder): возвращается кастомная ошибка вместо ErrMetricNotFound.
 func (db *SQLStorage) UpdateMetric(ctx context.Context, metric Metric) (err error) {
 	dbMetric, err := db.GetMetric(ctx, metric.Name)
 	if err != nil {
@@ -93,6 +104,8 @@ func (db *SQLStorage) UpdateMetric(ctx context.Context, metric Metric) (err erro
 	return
 }
 
+// DeleteMetric удаляет метрику.
+// Если метрика не найдена - возвращает ошибку ErrMetricNotFound.
 func (db *SQLStorage) DeleteMetric(ctx context.Context, metric Metric) (err error) {
 	result, err := db.Connection.ExecContext(ctx,
 		"DELETE FROM metrics WHERE m_name = $1", metric.Name)
@@ -106,6 +119,7 @@ func (db *SQLStorage) DeleteMetric(ctx context.Context, metric Metric) (err erro
 	return
 }
 
+// IsMetricInStorage возвращает true, если метрика с таким названием есть в таблице, иначе false.
 func (db *SQLStorage) IsMetricInStorage(ctx context.Context, metric Metric) (isExist bool, err error) {
 	result, err := db.Connection.ExecContext(ctx,
 		"SELECT m_name, m_value, m_type FROM metrics WHERE m_name = $1 LIMIT 1", metric.Name)
@@ -119,6 +133,9 @@ func (db *SQLStorage) IsMetricInStorage(ctx context.Context, metric Metric) (isE
 	return rAff != 0, nil
 }
 
+// UpdateOrAddMetric добавляет или обновляет(если есть в БД) метрику.
+// Обертка над AddMetric и UpdateMetric
+// Сначала проверяется наличие записи метрики в БД, потом происходит либо добавление либо обновление.
 func (db *SQLStorage) UpdateOrAddMetric(ctx context.Context, metric Metric) (err error) {
 	mInStorage, err := db.IsMetricInStorage(ctx, metric)
 	if err != nil {
@@ -133,6 +150,7 @@ func (db *SQLStorage) UpdateOrAddMetric(ctx context.Context, metric Metric) (err
 	return
 }
 
+// GetAll возвращает все метрики в таблице.
 func (db *SQLStorage) GetAll(ctx context.Context) (result map[string]Metric, err error) {
 	result = map[string]Metric{}
 	rows, err := db.Connection.QueryContext(ctx, "SELECT m_name, m_value, m_type FROM metrics")
@@ -179,6 +197,8 @@ func (db *SQLStorage) GetAll(ctx context.Context) (result map[string]Metric, err
 	return
 }
 
+// GetMetric возвращает метрику с названием `name` из таблицы.
+// Если метрика не найдена - возвращает ошибку ErrMetricNotFound.
 func (db *SQLStorage) GetMetric(ctx context.Context, name string) (metric Metric, err error) {
 	var mN, mV, mT string
 	var mValue interface{}
@@ -211,6 +231,11 @@ func (db *SQLStorage) GetMetric(ctx context.Context, name string) (metric Metric
 	return *m, nil
 }
 
+// BatchUpdate обновляет метрики в таблице батчем metrics.
+// Обрабатан кейс нескольких обновлений одной и той же метрики.
+//
+// Сначала запрашиваются все метрики, затем формируется мап "имя метрики" => <суммарное изменение метрики>
+// и далее метрики либо добавляются либо обновляются(если были в БД на момент обновления).
 func (db *SQLStorage) BatchUpdate(ctx context.Context, metrics []Metric) (err error) {
 	existedMetrics, err := db.GetAll(ctx)
 	if err != nil {
