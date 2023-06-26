@@ -150,8 +150,6 @@ func (s *Server) NewRouter() chi.Router {
 
 	r.Use(s.gzipDecompressor)
 	r.Use(s.gzipCompressor)
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
@@ -222,21 +220,18 @@ func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http
 		return
 	}
 
-	pageData := struct {
-		PageTitle string
-		Metrics   map[string]storage.Metric
-	}{
-		PageTitle: "Metrics",
-		Metrics:   allMetrics,
-	}
-
 	tmpl, err := template.ParseFiles(filepath.Join(s.LayoutsDir, "main_page.gohtml"))
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = tmpl.Execute(writer, pageData)
+	err = tmpl.Execute(writer,
+		struct {
+			PageTitle string
+			Metrics   map[string]storage.Metric
+		}{PageTitle: "Metrics", Metrics: allMetrics},
+	)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
@@ -244,8 +239,7 @@ func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http
 }
 
 func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
-	metricName := chi.URLParam(request, "metricName")
-	metric, err := s.MetricStorage.GetMetric(request.Context(), metricName)
+	metric, err := s.MetricStorage.GetMetric(request.Context(), chi.URLParam(request, "metricName"))
 	if err != nil {
 		if errors.Is(err, storage.ErrMetricNotFound) {
 			http.Error(writer, "unknown metric", http.StatusNotFound)
@@ -259,41 +253,46 @@ func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
 }
 
 func (s *Server) handlerAddUpdateMetric(writer http.ResponseWriter, request *http.Request) {
-	typeName := chi.URLParam(request, "typeName")
-	metricName := chi.URLParam(request, "metricName")
-	metricValue := chi.URLParam(request, "metricValue")
+	var err error
 
-	m, metricError := storage.NewMetric(metricName, typeName, metricValue)
-	if metricError != nil {
-		if errors.Is(metricError, storage.ErrUnhandledValueType) {
-			http.Error(writer, metricError.Error(), http.StatusNotImplemented)
+	m, err := storage.NewMetric(
+		chi.URLParam(request, "metricName"),
+		chi.URLParam(request, "typeName"),
+		chi.URLParam(request, "metricValue"),
+	)
+	if err != nil {
+		if errors.Is(err, storage.ErrUnhandledValueType) {
+			http.Error(writer, err.Error(), http.StatusNotImplemented)
 		} else {
-			http.Error(writer, metricError.Error(), http.StatusBadRequest)
+			http.Error(writer, err.Error(), http.StatusBadRequest)
 		}
 		return
 	}
 
-	errorObj := s.MetricStorage.UpdateOrAddMetric(request.Context(), *m)
-	if errorObj != nil {
-		http.Error(writer, errorObj.Error(), http.StatusBadRequest)
+	err = s.MetricStorage.UpdateOrAddMetric(request.Context(), *m)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if errorObj = s.SyncSaveMetricStorage(); errorObj != nil {
-		http.Error(writer, errorObj.Error(), http.StatusInternalServerError)
+	if err = s.SyncSaveMetricStorage(); err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
 func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request *http.Request) {
 	var metricMessage message.Metrics
+	var metric *storage.Metric
+	var err error
 
-	if err := json.NewDecoder(request.Body).Decode(&metricMessage); err != nil {
+	if err = json.NewDecoder(request.Body).Decode(&metricMessage); err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if Env.Key != "" {
-		isHashCorrect, err := metricMessage.CheckHash(Env.Key)
+		var isHashCorrect bool
+		isHashCorrect, err = metricMessage.CheckHash(Env.Key)
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
 			return
@@ -303,36 +302,36 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 		}
 	}
 
-	m, metricError := storage.NewMetricFromMessage(&metricMessage)
-	if metricError != nil {
-		if errors.Is(metricError, storage.ErrUnhandledValueType) {
-			http.Error(writer, metricError.Error(), http.StatusNotImplemented)
+	metric, err = storage.NewMetricFromMessage(&metricMessage)
+	if err != nil {
+		if errors.Is(err, storage.ErrUnhandledValueType) {
+			http.Error(writer, err.Error(), http.StatusNotImplemented)
 		} else {
-			http.Error(writer, metricError.Error(), http.StatusBadRequest)
+			http.Error(writer, err.Error(), http.StatusBadRequest)
 		}
 		return
 	}
 
-	errorObj := s.MetricStorage.UpdateOrAddMetric(request.Context(), *m)
-	if errorObj != nil {
-		http.Error(writer, errorObj.Error(), http.StatusBadRequest)
+	err = s.MetricStorage.UpdateOrAddMetric(request.Context(), *metric)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if errorObj = s.SyncSaveMetricStorage(); errorObj != nil {
-		http.Error(writer, errorObj.Error(), http.StatusInternalServerError)
+	if err = s.SyncSaveMetricStorage(); err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	updatedMetric, err := s.MetricStorage.GetMetric(request.Context(), m.Name)
+	*metric, err = s.MetricStorage.GetMetric(request.Context(), metric.Name)
 	if err != nil {
 		// ошибка не должна произойти, но мало ли
 		http.Error(writer, "metric was not updated:"+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	responseMsg := updatedMetric.GetMessageMetric()
+	responseMsg := metric.GetMessageMetric()
 	if Env.Key != "" {
-		err := responseMsg.InitHash(Env.Key)
+		err = responseMsg.InitHash(Env.Key)
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
 			return
@@ -350,8 +349,9 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 
 func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.Request) {
 	var metricMessage message.Metrics
+	var err error
 
-	if err := json.NewDecoder(request.Body).Decode(&metricMessage); err != nil {
+	if err = json.NewDecoder(request.Body).Decode(&metricMessage); err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -372,7 +372,7 @@ func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.
 
 	responseMsg := metric.GetMessageMetric()
 	if Env.Key != "" {
-		err := responseMsg.InitHash(Env.Key)
+		err = responseMsg.InitHash(Env.Key)
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
 			return
@@ -404,15 +404,17 @@ func (s *Server) handlerPing(writer http.ResponseWriter, request *http.Request) 
 func (s *Server) handlerBatchUpdate(writer http.ResponseWriter, request *http.Request) {
 	var metricMessagesBatch []message.Metrics
 	var metrics []storage.Metric
+	var err error
 
-	if err := json.NewDecoder(request.Body).Decode(&metricMessagesBatch); err != nil {
+	if err = json.NewDecoder(request.Body).Decode(&metricMessagesBatch); err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	for _, metricMessage := range metricMessagesBatch {
 		if Env.Key != "" {
-			isHashCorrect, err := metricMessage.CheckHash(Env.Key)
+			var isHashCorrect bool
+			isHashCorrect, err = metricMessage.CheckHash(Env.Key)
 			if err != nil {
 				http.Error(writer, err.Error(), http.StatusInternalServerError)
 				return
@@ -422,24 +424,25 @@ func (s *Server) handlerBatchUpdate(writer http.ResponseWriter, request *http.Re
 			}
 		}
 
-		m, metricError := storage.NewMetricFromMessage(&metricMessage)
-		if metricError != nil {
-			if errors.Is(metricError, storage.ErrUnhandledValueType) {
-				http.Error(writer, metricError.Error(), http.StatusNotImplemented)
+		var m *storage.Metric
+		m, err = storage.NewMetricFromMessage(&metricMessage)
+		if err != nil {
+			if errors.Is(err, storage.ErrUnhandledValueType) {
+				http.Error(writer, err.Error(), http.StatusNotImplemented)
 			} else {
-				http.Error(writer, metricError.Error(), http.StatusBadRequest)
+				http.Error(writer, err.Error(), http.StatusBadRequest)
 			}
 			return
 		}
 		metrics = append(metrics, *m)
 	}
 
-	if err := s.MetricStorage.BatchUpdate(request.Context(), metrics); err != nil {
+	if err = s.MetricStorage.BatchUpdate(request.Context(), metrics); err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 	}
 
-	if errorObj := s.SyncSaveMetricStorage(); errorObj != nil {
-		http.Error(writer, errorObj.Error(), http.StatusInternalServerError)
+	if err = s.SyncSaveMetricStorage(); err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
