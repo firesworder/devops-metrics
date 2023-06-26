@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+
 	"github.com/firesworder/devopsmetrics/internal"
 )
 
@@ -57,7 +58,5 @@ func (m *Metrics) CheckHash(key string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	wantHash := m.Hash
-
-	return hmac.Equal([]byte(gotHash), []byte(wantHash)), nil
+	return hmac.Equal([]byte(gotHash), []byte(m.Hash)), nil
 }

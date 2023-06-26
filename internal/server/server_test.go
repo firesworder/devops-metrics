@@ -4,11 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"github.com/firesworder/devopsmetrics/internal"
-	"github.com/firesworder/devopsmetrics/internal/filestore"
-	"github.com/firesworder/devopsmetrics/internal/storage"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +11,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/firesworder/devopsmetrics/internal"
+	"github.com/firesworder/devopsmetrics/internal/filestore"
+	"github.com/firesworder/devopsmetrics/internal/storage"
 )
 
 // Переменные для формирования состояния MemStorage

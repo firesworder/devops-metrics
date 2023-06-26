@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/firesworder/devopsmetrics/internal/server"
 	"log"
 	"net/http"
+
+	"github.com/firesworder/devopsmetrics/internal/server"
 )
 
 func main() {
