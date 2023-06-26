@@ -11,20 +11,11 @@ import (
 	"sort"
 )
 
-// Примеры
-
 func ExampleServer_handlerShowAllMetrics() {
-	// подготовка сервера для примера
-	s, err := NewServer()
-	if err != nil {
-		panic(err)
-	}
+	s := Server{}
+	// getMetricsMap возвращает словарь метрик(map[string]storage.Metric) для демонстрации
+	s.MetricStorage = storage.NewMemStorage(getMetricsMap())
 	s.LayoutsDir = "./html_layouts/"
-	s.MetricStorage = storage.NewMemStorage(map[string]storage.Metric{
-		metric1.Name: *metric1,
-		metric2.Name: *metric2,
-		metric3.Name: *metric3,
-	})
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -41,7 +32,9 @@ func ExampleServer_handlerShowAllMetrics() {
 }
 
 func ExampleServer_handlerGet() {
-	s := getServer(false)
+	s := Server{}
+	// getMetricsMap возвращает словарь метрик(map[string]storage.Metric) для демонстрации
+	s.MetricStorage = storage.NewMemStorage(getMetricsMap())
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -59,7 +52,9 @@ func ExampleServer_handlerGet() {
 }
 
 func ExampleServer_handlerAddUpdateMetric() {
-	s := getServer(false)
+	s := Server{}
+	// getMetricsMap возвращает словарь метрик(map[string]storage.Metric) для демонстрации
+	s.MetricStorage = storage.NewMemStorage(getMetricsMap())
 	nms := s.MetricStorage.(*storage.MemStorage)
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
@@ -79,7 +74,9 @@ func ExampleServer_handlerAddUpdateMetric() {
 }
 
 func ExampleServer_handlerJSONAddUpdateMetric() {
-	s := getServer(false)
+	s := Server{}
+	// getMetricsMap возвращает словарь метрик(map[string]storage.Metric) для демонстрации
+	s.MetricStorage = storage.NewMemStorage(getMetricsMap())
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -100,7 +97,9 @@ func ExampleServer_handlerJSONAddUpdateMetric() {
 }
 
 func ExampleServer_handlerJSONGetMetric() {
-	s := getServer(false)
+	s := Server{}
+	// getMetricsMap возвращает словарь метрик(map[string]storage.Metric) для демонстрации
+	s.MetricStorage = storage.NewMemStorage(getMetricsMap())
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -120,8 +119,9 @@ func ExampleServer_handlerJSONGetMetric() {
 }
 
 func ExampleServer_handlerPing() {
-	// подготовка сервера для примера
-	s, _ := NewServer()
+	s := Server{}
+	// getMetricsMap возвращает словарь метрик(map[string]storage.Metric) для демонстрации
+	s.MetricStorage = storage.NewMemStorage(getMetricsMap())
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -140,7 +140,9 @@ func ExampleServer_handlerPing() {
 }
 
 func ExampleServer_handlerBatchUpdate() {
-	s := getServer(false)
+	s := Server{}
+	// getMetricsMap возвращает словарь метрик(map[string]storage.Metric) для демонстрации
+	s.MetricStorage = storage.NewMemStorage(getMetricsMap())
 	nms := s.MetricStorage.(*storage.MemStorage)
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
@@ -170,7 +172,7 @@ func ExampleServer_handlerBatchUpdate() {
 	}
 	// Output:
 	// 200
-	// {RandomValue 13.345}
+	// {Alloc 13.345}
 	// {CounterMetric1 99}
 	// {PollCount 50}
 	// {RandomValue 12.133}
