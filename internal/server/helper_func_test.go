@@ -6,6 +6,7 @@ import (
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -58,7 +59,10 @@ func sendRequest(method, url, contentType, content string) (int, string, string)
 	req.Header.Set("Content-Type", contentType)
 
 	// делаю реквест на дефолтном клиенте
-	resp, _ := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	// читаю ответ сервера
 	defer resp.Body.Close()
