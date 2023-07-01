@@ -1,0 +1,204 @@
+basePath: /
+host: localhost:8080
+info:
+  contact:
+    email: cus.never.again@yandex.ru
+  description: Сервис сбора метрик.
+  title: Server Devops API
+  version: "1.0"
+paths:
+  /:
+    get:
+      operationId: handlerShowAllMetrics
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            type: string
+      summary: Обрабатывает GET запросы вывода всех метрик сохраненных на сервере.
+      tags:
+      - NoJSON
+  /ping:
+    get:
+      operationId: handlerPing
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+        "500":
+          description: "Внутренняя ошибка\"\tОшибка\tвыдается,\tесли\tБД\tнедоступна."
+          schema:
+            type: string
+      summary: Обрабатывает GET запрос доступности(ping) сервера.
+      tags:
+      - NoJSON
+  /update/:
+    post:
+      consumes:
+      - application/json
+      description: Метрика(наим-ие, тип и значение) передается через тело запроса,
+        посредством message.Metrics.
+      operationId: handlerJSONAddUpdateMetric
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+        "400":
+          description: "hash is not correct\"\tесли\tполученный\tхеш\tне\tсовпал\tс\tсозданным\tна\tсервере."
+          schema:
+            type: string
+        "404":
+          description: unknown metric
+          schema:
+            type: string
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            type: string
+        "501":
+          description: "Not Implemented\"\tесли\tпередан\tнереализованный\tна\tсервере\tтип\tметрики."
+          schema:
+            type: string
+      summary: Обрабатывает POST запросы сохранения метрики на сервере.
+      tags:
+      - JSON
+  /update/{typeName}/{metricName}/{metricValue}:
+    get:
+      description: Метрика(наим-ие, тип и значение) передается через URLParam.
+      operationId: handlerAddUpdateMetric
+      parameters:
+      - description: Тип метрики
+        in: path
+        name: typeName
+        required: true
+        type: string
+      - description: Название метрики
+        in: path
+        name: metricName
+        required: true
+        type: integer
+      - description: Значение метрики
+        in: path
+        name: metricValue
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+        "404":
+          description: unknown metric
+          schema:
+            type: string
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            type: string
+      summary: Обрабатывает POST запросы сохранения метрики на сервере.
+      tags:
+      - NoJSON
+  /updates/:
+    post:
+      consumes:
+      - application/json
+      description: Метрики передаются как словарь message.Metrics.
+      operationId: handlerBatchUpdate
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+        "400":
+          description: "hash is not correct\"\tесли\tполученный\tхеш\tне\tсовпал\tс\tсозданным\tна\tсервере."
+          schema:
+            type: string
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            type: string
+        "501":
+          description: "Not Implemented\"\tесли\tпередан\tнереализованный\tна\tсервере\tтип\tметрики."
+          schema:
+            type: string
+      summary: Обрабатывает POST запросы сохранения набора(словаря) метрик на сервере.
+      tags:
+      - JSON
+  /value/:
+    post:
+      consumes:
+      - application/json
+      description: Наименование треб-ой метрики передается через тело запроса, посредством
+        message.Metrics.
+      operationId: handlerJSONGetMetric
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Неверный запрос
+          schema:
+            type: string
+        "404":
+          description: metric with name <metricname> not found
+          schema:
+            type: string
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            type: string
+      summary: Обрабатывает POST запросы получения метрики на сервере.
+      tags:
+      - JSON
+  /value/{typeName}/{metricName}:
+    get:
+      description: В ответ возвращает значение метрики(в теле ответа).
+      operationId: handlerGet
+      parameters:
+      - description: Тип метрики
+        in: path
+        name: typeName
+        required: true
+        type: string
+      - description: Название метрики
+        in: path
+        name: metricName
+        required: true
+        type: integer
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: <Значение метрики>
+          schema:
+            type: string
+        "404":
+          description: unknown metric
+          schema:
+            type: string
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            type: string
+      summary: Обрабатывает GET запросы получения информация по метрике.
+      tags:
+      - NoJSON
+swagger: "2.0"
+tags:
+- description: '"Группа JSON запросов."'
+  name: JSON
+- description: '"Группа запросов не использующих JSON."'
+  name: NoJSON

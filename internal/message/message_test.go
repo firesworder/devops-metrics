@@ -1,9 +1,11 @@
 package message
 
 import (
-	"github.com/firesworder/devopsmetrics/internal"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/firesworder/devopsmetrics/internal"
 )
 
 func TestMetrics_InitHash(t *testing.T) {

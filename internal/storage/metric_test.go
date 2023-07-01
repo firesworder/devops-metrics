@@ -2,11 +2,13 @@ package storage
 
 import (
 	"fmt"
-	"github.com/firesworder/devopsmetrics/internal"
-	"github.com/firesworder/devopsmetrics/internal/message"
-	"github.com/stretchr/testify/assert"
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/firesworder/devopsmetrics/internal"
+	"github.com/firesworder/devopsmetrics/internal/message"
 )
 
 func TestMetric_Update(t *testing.T) {

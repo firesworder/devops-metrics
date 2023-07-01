@@ -2,12 +2,13 @@ package filestore
 
 import (
 	"fmt"
-	"github.com/firesworder/devopsmetrics/internal"
-	"github.com/firesworder/devopsmetrics/internal/helper"
-	"github.com/firesworder/devopsmetrics/internal/storage"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/firesworder/devopsmetrics/internal"
+	"github.com/firesworder/devopsmetrics/internal/storage"
 )
 
 var metricCounter, _ = storage.NewMetric("PollCount", internal.CounterTypeName, int64(10))
@@ -156,7 +157,7 @@ func TestFileStore_Write(t *testing.T) {
 			assert.Equal(t, tt.wantError, err != nil)
 
 			if !tt.wantError {
-				helper.AssertEqualFileContent(t, tt.wantContentAs, f.StoreFilePath)
+				AssertEqualFileContent(t, tt.wantContentAs, f.StoreFilePath)
 			}
 		})
 	}

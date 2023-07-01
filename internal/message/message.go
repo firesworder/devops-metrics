@@ -1,3 +1,5 @@
+// Package message реализует объект сообщения-метрики, общий для приложения.
+// Именно такими "сообщениями" обмениваются агентная и серверная часть приложения, через JSON.
 package message
 
 import (
@@ -5,9 +7,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+
 	"github.com/firesworder/devopsmetrics/internal"
 )
 
+// Metrics объект сообщения-метрики.
 type Metrics struct {
 	ID    string   `json:"id"`              // Имя метрики
 	MType string   `json:"type"`            // Параметр, принимающий значение gauge или counter
@@ -16,6 +20,7 @@ type Metrics struct {
 	Hash  string   `json:"hash,omitempty"`  // Значение хеш-функции
 }
 
+// InitHash формирует подписанный(hmac) хэш метрики и записывает в свойство Hash объекта.
 func (m *Metrics) InitHash(key string) error {
 	if key == "" {
 		return fmt.Errorf("key cannot be empty")
@@ -41,6 +46,8 @@ func (m *Metrics) InitHash(key string) error {
 	return nil
 }
 
+// CheckHash сверяет полученный и ожидаемый(для ключа key) хеш для метрики.
+// Если хэши совпадает - возвращает true, иначе false.
 func (m *Metrics) CheckHash(key string) (bool, error) {
 	gotHash := m.Hash
 	defer func() {
@@ -51,7 +58,5 @@ func (m *Metrics) CheckHash(key string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	wantHash := m.Hash
-
-	return hmac.Equal([]byte(gotHash), []byte(wantHash)), nil
+	return hmac.Equal([]byte(gotHash), []byte(m.Hash)), nil
 }

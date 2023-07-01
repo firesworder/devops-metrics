@@ -2,21 +2,28 @@ package storage
 
 import (
 	"fmt"
-	"github.com/firesworder/devopsmetrics/internal"
-	"github.com/firesworder/devopsmetrics/internal/message"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/firesworder/devopsmetrics/internal"
+	"github.com/firesworder/devopsmetrics/internal/message"
 )
 
 type gauge float64
 type counter int64
 
+// Metric реализует сущность Метрика и методы для работы с ней.
+// Сущность имеет название Name, и значение Value(по типу Value определяется и тип метрики - gauge/counter).
 type Metric struct {
 	Name  string
 	Value interface{}
 }
 
+// NewMetric конструктор для Metric.
+// Создает по аргументам конструктора объект метрики.
+// В `rawValue` можно передавать типы: string и int64/float64(для counter/gauge соотв-но).
+// typeName поддерживается только "gauge" и "counter", любой другой вызовет ошибку ErrUnhandledValueType.
 func NewMetric(name string, typeName string, rawValue interface{}) (*Metric, error) {
 	var metricValue interface{}
 	switch typeName {
@@ -52,6 +59,7 @@ func NewMetric(name string, typeName string, rawValue interface{}) (*Metric, err
 	return &Metric{Name: name, Value: metricValue}, nil
 }
 
+// NewMetricFromMessage возвращает объект метрики из message.Metrics.
 func NewMetricFromMessage(metrics *message.Metrics) (newMetric *Metric, err error) {
 	switch metrics.MType {
 	case internal.CounterTypeName:
@@ -70,6 +78,8 @@ func NewMetricFromMessage(metrics *message.Metrics) (newMetric *Metric, err erro
 	return
 }
 
+// Update обновляет значение метрики.
+// Для типа "gauge" - перезаписывает значение, для "counter" - прибавляет новое значение к уже существующему.
 func (m *Metric) Update(value interface{}) error {
 	if reflect.TypeOf(m.Value) != reflect.TypeOf(value) {
 		return fmt.Errorf("current(%T) and new(%T) value type mismatch",
@@ -85,6 +95,7 @@ func (m *Metric) Update(value interface{}) error {
 	return nil
 }
 
+// GetMessageMetric возващает message.Metrics из объекта метрики.
 func (m *Metric) GetMessageMetric() (messageMetric message.Metrics) {
 	messageMetric.ID = m.Name
 	switch value := m.Value.(type) {
@@ -100,7 +111,7 @@ func (m *Metric) GetMessageMetric() (messageMetric message.Metrics) {
 	return
 }
 
-// GetValueString костыль для прохождения автотестов(инкр. 3b)
+// GetValueString костыль для прохождения автотестов(инкр. 3b).
 func (m *Metric) GetValueString() string {
 	switch value := m.Value.(type) {
 	case gauge:
@@ -111,7 +122,7 @@ func (m *Metric) GetValueString() string {
 	return ""
 }
 
-// GetMetricParamsString Возвращает параметры метрики в string формате: Name, Value, Type
+// GetMetricParamsString Возвращает параметры метрики в string формате: Name, Value, Type.
 func (m *Metric) GetMetricParamsString() (mN string, mV string, mT string) {
 	mN = m.Name
 	switch value := m.Value.(type) {
