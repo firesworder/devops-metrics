@@ -1,7 +1,6 @@
 package customlinter
 
 import (
-	"github.com/bombsimon/wsl/v4"
 	"github.com/gordonklaus/ineffassign/pkg/ineffassign"
 	"github.com/sashamelentyev/usestdlibvars/pkg/analyzer"
 	"golang.org/x/tools/go/analysis"
@@ -105,7 +104,6 @@ var StandardAnalyzers = []*analysis.Analyzer{
 
 // ChosenPublicAnalyzers список выбранных кастомных анализаторов
 var ChosenPublicAnalyzers = []*analysis.Analyzer{
-	wsl.NewAnalyzer(nil),
 	ineffassign.Analyzer,
 	analyzer.New(),
 }
