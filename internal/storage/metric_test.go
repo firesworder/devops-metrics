@@ -13,11 +13,11 @@ import (
 
 func TestMetric_Update(t *testing.T) {
 	tests := []struct {
-		name          string
-		updatedMetric Metric
 		newValue      interface{}
+		updatedMetric Metric
 		wantMetric    Metric
 		wantError     error
+		name          string
 	}{
 		{
 			name:          "Test 1. Correct update, type counter",
@@ -61,15 +61,15 @@ func TestMetric_Update(t *testing.T) {
 
 func TestNewMetric(t *testing.T) {
 	type args struct {
+		rawValue interface{}
 		name     string
 		typeName string
-		rawValue interface{}
 	}
 	tests := []struct {
-		name      string
-		args      args
 		want      *Metric
 		wantError error
+		name      string
+		args      args
 	}{
 		// Counter
 		{
@@ -193,10 +193,10 @@ func TestNewMetric(t *testing.T) {
 func TestNewMetricFromMessage(t *testing.T) {
 	float64Val, int64Val := 12.133, int64(10)
 	tests := []struct {
-		name       string
 		message    *message.Metrics
 		wantMetric *Metric
 		wantErr    error
+		name       string
 	}{
 		{
 			name:       "Test correct counter #1.",

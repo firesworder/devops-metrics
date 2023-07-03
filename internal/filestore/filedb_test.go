@@ -19,9 +19,9 @@ func TestNewFileStore(t *testing.T) {
 		storeFilePath string
 	}
 	tests := []struct {
+		want *FileStore
 		name string
 		args args
-		want *FileStore
 	}{
 		{
 			name: "Test #1. Not empty filepath.",
@@ -43,9 +43,9 @@ func TestNewFileStore(t *testing.T) {
 
 func TestFileStore_Read(t *testing.T) {
 	tests := []struct {
+		want          *storage.MemStorage
 		name          string
 		storeFilePath string
-		want          *storage.MemStorage
 		wantErr       bool
 	}{
 		{

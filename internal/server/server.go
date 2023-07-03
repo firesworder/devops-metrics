@@ -36,11 +36,11 @@ func init() {
 // environment для получения(из ENV и cmd) и хранения переменных окружения агента.
 type environment struct {
 	ServerAddress string        `env:"ADDRESS"`
-	StoreInterval time.Duration `env:"STORE_INTERVAL"`
 	StoreFile     string        `env:"STORE_FILE"`
-	Restore       bool          `env:"RESTORE"`
 	Key           string        `env:"KEY"`
 	DatabaseDsn   string        `env:"DATABASE_DSN"`
+	Restore       bool          `env:"RESTORE"`
+	StoreInterval time.Duration `env:"STORE_INTERVAL"`
 }
 
 // Env объект с переменными окружения(из ENV и cmd args).
@@ -75,9 +75,9 @@ type Server struct {
 	FileStore     *filestore.FileStore
 	WriteTicker   *time.Ticker
 	Router        chi.Router
-	LayoutsDir    string
 	MetricStorage storage.MetricRepository
 	DBConn        *sql.DB
+	LayoutsDir    string
 }
 
 // NewServer конструктор для Server.
@@ -276,8 +276,8 @@ func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http
 
 	err = tmpl.Execute(writer,
 		struct {
-			PageTitle string
 			Metrics   map[string]storage.Metric
+			PageTitle string
 		}{PageTitle: "Metrics", Metrics: allMetrics},
 	)
 	if err != nil {

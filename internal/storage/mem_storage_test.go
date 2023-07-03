@@ -24,11 +24,11 @@ func init() {
 
 func TestMemStorage_AddMetric(t *testing.T) {
 	tests := []struct {
-		name        string
 		metricToAdd Metric
 		startState  map[string]Metric
 		wantedState map[string]Metric
 		wantError   error
+		name        string
 	}{
 		{
 			name:        "Test 1. Add metric to empty storage state.",
@@ -73,11 +73,11 @@ func TestMemStorage_AddMetric(t *testing.T) {
 
 func TestMemStorage_DeleteMetric(t *testing.T) {
 	tests := []struct {
-		name           string
+		wantError      error
 		metricToDelete Metric
 		startState     map[string]Metric
 		wantedState    map[string]Metric
-		wantError      error
+		name           string
 	}{
 		{
 			name:           "Test 1. Delete metric from state contains ONLY that metric.",
@@ -145,9 +145,9 @@ func TestMemStorage_DeleteMetric(t *testing.T) {
 
 func TestMemStorage_IsMetricInStorage(t *testing.T) {
 	tests := []struct {
-		name          string
 		metricToCheck Metric
 		startState    map[string]Metric
+		name          string
 		wantedResult  bool
 	}{
 		{
@@ -194,12 +194,12 @@ func TestMemStorage_IsMetricInStorage(t *testing.T) {
 
 func TestMemStorage_UpdateMetric(t *testing.T) {
 	tests := []struct {
-		name           string
 		metricToUpdate Metric
 		newValue       interface{}
 		startState     map[string]Metric
 		wantedState    map[string]Metric
 		wantError      error
+		name           string
 	}{
 		{
 			name:           "Test 1. Empty state",
@@ -250,10 +250,10 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 func TestMemStorage_UpdateOrAddMetric(t *testing.T) {
 
 	tests := []struct {
-		name        string
 		metricObj   Metric
 		startState  map[string]Metric
 		wantedState map[string]Metric
+		name        string
 	}{
 		{
 			name:       "Test 1. Add new metric.",
@@ -290,9 +290,9 @@ func TestMemStorage_UpdateOrAddMetric(t *testing.T) {
 
 func TestMemStorage_GetAll(t *testing.T) {
 	tests := []struct {
-		name  string
 		state map[string]Metric
 		want  map[string]Metric
+		name  string
 	}{
 		{
 			name:  "Test 1. Empty state.",
@@ -324,11 +324,11 @@ func TestMemStorage_GetAll(t *testing.T) {
 
 func TestMemStorage_GetMetric(t *testing.T) {
 	tests := []struct {
-		name       string
 		state      map[string]Metric
 		metricName string
 		wantMetric Metric
 		wantError  error
+		name       string
 	}{
 		{
 			name:       "Test 1. State contains requested metric.",
@@ -359,9 +359,9 @@ func TestMemStorage_GetMetric(t *testing.T) {
 
 func TestNewMemStorage(t *testing.T) {
 	tests := []struct {
-		name       string
 		argMetrics map[string]Metric
 		want       MemStorage
+		name       string
 	}{
 		{
 			name:       "Test 1. Not nil arg metrics.",

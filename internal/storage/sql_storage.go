@@ -163,7 +163,7 @@ func (db *SQLStorage) GetAll(ctx context.Context) (result map[string]Metric, err
 	var metric *Metric
 	for rows.Next() {
 		// сбрасываю значения переменных в начале итерации
-		mN, mV, mT, mValue, metric = "", "", "", nil, nil
+		mN, mV, mT, mValue = "", "", "", nil
 
 		err = rows.Scan(&mN, &mV, &mT)
 		if err != nil {

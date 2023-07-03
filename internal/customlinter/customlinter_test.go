@@ -18,11 +18,11 @@ func Test_getStaticCheckAnalyzers(t *testing.T) {
 func Test_isNameSliceContains(t *testing.T) {
 	var wantResult, gotResult bool
 
-	wantResult, gotResult = true, false
+	wantResult = true
 	gotResult = isNameSliceContains([]string{"S1000", "SA1500", "ST0011"}, "SA1500")
 	assert.Equal(t, wantResult, gotResult)
 
-	wantResult, gotResult = false, false
+	wantResult = false
 	gotResult = isNameSliceContains([]string{"S1000", "SA1500", "ST0011"}, "Q1010")
 	assert.Equal(t, wantResult, gotResult)
 }

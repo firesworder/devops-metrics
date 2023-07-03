@@ -46,8 +46,8 @@ func Test_updateMemStats(t *testing.T) {
 
 func TestSendMetricByURL(t *testing.T) {
 	type args struct {
-		paramName  string
 		paramValue interface{}
+		paramName  string
 	}
 	tests := []struct {
 		name           string
@@ -93,19 +93,19 @@ func TestSendMetricByJson(t *testing.T) {
 	int64Value, float64Value := int64(10), float64(12.133)
 
 	type args struct {
-		paramName  string
 		paramValue interface{}
+		paramName  string
 	}
 	type wantRequest struct {
-		contentType string
 		msg         *message.Metrics
+		contentType string
 	}
 
 	tests := []struct {
-		name        string
-		args        args
-		envKey      string
 		wantRequest *wantRequest
+		name        string
+		envKey      string
+		args        args
 	}{
 		{
 			name:   "Test 1. Gauge metric.",
