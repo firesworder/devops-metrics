@@ -2,12 +2,21 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/firesworder/devopsmetrics/internal/agent"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
 func main() {
+	fmt.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s\n", buildVersion, buildDate, buildCommit)
+
 	agent.ParseEnvArgs()
 	agent.InitServerURLByEnv()
 	agent.WPool.Start()
