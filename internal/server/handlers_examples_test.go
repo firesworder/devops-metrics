@@ -69,8 +69,8 @@ func ExampleServer_handlerAddUpdateMetric() {
 
 	// Output:
 	// 200
-	// {PollCount 10}
-	// {PollCount 30}
+	// {10 PollCount}
+	// {30 PollCount}
 }
 
 func ExampleServer_handlerJSONAddUpdateMetric() {
@@ -172,8 +172,8 @@ func ExampleServer_handlerBatchUpdate() {
 	}
 	// Output:
 	// 200
-	// {Alloc 13.345}
-	// {CounterMetric1 99}
-	// {PollCount 50}
-	// {RandomValue 12.133}
+	// {13.345 Alloc}
+	// {99 CounterMetric1}
+	// {50 PollCount}
+	// {12.133 RandomValue}
 }
