@@ -92,6 +92,13 @@ func TestSendMetricByURL(t *testing.T) {
 func TestSendMetricByJson(t *testing.T) {
 	int64Value, float64Value := int64(10), float64(12.133)
 
+	// отключаю шифрование в тесте, т.к. эта функция(шифрования\дешифрования) проверяется отдельно
+	envCK := Env.PublicCryptoKeyFp
+	Env.PublicCryptoKeyFp = ""
+	defer func() {
+		Env.PublicCryptoKeyFp = envCK
+	}()
+
 	type args struct {
 		paramValue interface{}
 		paramName  string
@@ -372,6 +379,55 @@ func TestParseEnvArgs(t *testing.T) {
 			},
 			wantPanic: false,
 		},
+
+		{
+			name:   "Test 13. Field 'PublicCryptoKeyFp', cmd",
+			cmdStr: "file.exe --a=cmd.site -l=2 -crypto-key=C:\\tmp\\cert.pem",
+			envVars: map[string]string{
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
+			},
+			wantEnv: environment{
+				ServerAddress:     "cmd.site",
+				PollInterval:      5 * time.Second,
+				ReportInterval:    20 * time.Second,
+				Key:               "",
+				PublicCryptoKeyFp: "C:\\tmp\\cert.pem",
+				RateLimit:         2,
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 14. Field 'PublicCryptoKeyFp', env",
+			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s -l=1",
+			envVars: map[string]string{
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s", "RATE_LIMIT": "3", "CRYPTO_KEY": "C:\\tmp\\cert2.pem",
+			},
+			wantEnv: environment{
+				ServerAddress:     "cmd.site",
+				PollInterval:      5 * time.Second,
+				ReportInterval:    20 * time.Second,
+				Key:               "",
+				PublicCryptoKeyFp: "C:\\tmp\\cert2.pem",
+				RateLimit:         3,
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 15. Field 'PublicCryptoKeyFp', not set",
+			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s",
+			envVars: map[string]string{
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
+			},
+			wantEnv: environment{
+				ServerAddress:     "cmd.site",
+				PollInterval:      5 * time.Second,
+				ReportInterval:    20 * time.Second,
+				Key:               "",
+				RateLimit:         0,
+				PublicCryptoKeyFp: "",
+			},
+			wantPanic: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -381,9 +437,10 @@ func TestParseEnvArgs(t *testing.T) {
 			Env.PollInterval = 2 * time.Second
 			Env.Key = ""
 			Env.RateLimit = 0
+			Env.PublicCryptoKeyFp = ""
 
 			// удаляю переменные окружения, если они были до этого установлены
-			for _, key := range [5]string{"ADDRESS", "REPORT_INTERVAL", "POLL_INTERVAL", "KEY", "RATE_LIMIT"} {
+			for _, key := range [6]string{"ADDRESS", "REPORT_INTERVAL", "POLL_INTERVAL", "KEY", "RATE_LIMIT", "CRYPTO_KEY"} {
 				err := os.Unsetenv(key)
 				require.NoError(t, err)
 			}
@@ -408,6 +465,14 @@ func TestParseEnvArgs(t *testing.T) {
 
 func Test_sendMetricsBatchByJSON(t *testing.T) {
 	int64Value, float64Value := int64(10), float64(2.27)
+
+	// отключаю шифрование в тесте, т.к. эта функция(шифрования\дешифрования) проверяется отдельно
+	envCK := Env.PublicCryptoKeyFp
+	Env.PublicCryptoKeyFp = ""
+	defer func() {
+		Env.PublicCryptoKeyFp = envCK
+	}()
+
 	envKey := "Ayaka"
 	type request struct {
 		contentType string
