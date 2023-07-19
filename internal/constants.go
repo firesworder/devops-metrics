@@ -1,3 +1,4 @@
+// Package internal явным образом используется только для хранения констант.
 package internal
 
 // GaugeTypeName название типа gauge.

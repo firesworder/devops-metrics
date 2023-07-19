@@ -6,14 +6,19 @@ require (
 	github.com/caarlos0/env/v7 v7.1.0
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-resty/resty/v2 v2.7.0
+	github.com/gordonklaus/ineffassign v0.0.0-20230610083614-0e73809eb601
 	github.com/jackc/pgx/v5 v5.3.1
+	github.com/sashamelentyev/usestdlibvars v1.23.0
 	github.com/shirou/gopsutil/v3 v3.23.3
 	github.com/stretchr/testify v1.8.2
 	github.com/swaggo/swag v1.16.1
-	golang.org/x/sync v0.1.0
+	golang.org/x/sync v0.3.0
+	golang.org/x/tools v0.10.0
+	honnef.co/go/tools v0.4.3
 )
 
 require (
+	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
@@ -35,11 +40,12 @@ require (
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-	golang.org/x/crypto v0.6.0 // indirect
-	golang.org/x/net v0.8.0 // indirect
-	golang.org/x/sys v0.6.0 // indirect
-	golang.org/x/text v0.8.0 // indirect
-	golang.org/x/tools v0.7.0 // indirect
+	golang.org/x/crypto v0.10.0 // indirect
+	golang.org/x/exp/typeparams v0.0.0-20230626212559-97b1e661b5df // indirect
+	golang.org/x/mod v0.11.0 // indirect
+	golang.org/x/net v0.11.0 // indirect
+	golang.org/x/sys v0.9.0 // indirect
+	golang.org/x/text v0.10.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

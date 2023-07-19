@@ -40,9 +40,9 @@ var (
 	pollCount     counter
 	randomValue   gauge
 	goPsutilStats = struct {
+		CPUutilization []float64
 		TotalMemory    float64
 		FreeMemory     float64
-		CPUutilization []float64
 	}{}
 )
 
@@ -54,11 +54,11 @@ var testUMWG *sync.WaitGroup
 
 // environment для получения(из ENV и cmd) и хранения переменных окружения агента.
 type environment struct {
+	Key            string        `env:"KEY"`
 	ServerAddress  string        `env:"ADDRESS"`
+	RateLimit      int           `env:"RATE_LIMIT"`
 	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
 	PollInterval   time.Duration `env:"POLL_INTERVAL"`
-	Key            string        `env:"KEY"`
-	RateLimit      int           `env:"RATE_LIMIT"`
 }
 
 // workPool содержит переменные служебного использования для воркпула.

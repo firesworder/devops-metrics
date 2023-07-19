@@ -45,9 +45,9 @@ type requestArgs struct {
 }
 
 type response struct {
-	statusCode  int
 	contentType string
 	body        string
+	statusCode  int
 }
 
 func compareMetricsState(t *testing.T, wantMS map[string]storage.Metric, mR storage.MetricRepository,
@@ -64,11 +64,11 @@ func TestAddUpdateMetricHandler(t *testing.T) {
 	defer ts.Close()
 
 	tests := []struct {
+		initState    map[string]storage.Metric
+		wantedState  map[string]storage.Metric
 		name         string
 		request      requestArgs
 		wantResponse response
-		initState    map[string]storage.Metric
-		wantedState  map[string]storage.Metric
 	}{
 		{
 			name:         "Test 1. Correct request. Counter type. Add metric. Empty state",
@@ -224,10 +224,10 @@ func TestShowAllMetricsHandler(t *testing.T) {
 	defer ts.Close()
 
 	tests := []struct {
+		memStorageState map[string]storage.Metric
 		name            string
 		request         requestArgs
 		wantResponse    response
-		memStorageState map[string]storage.Metric
 	}{
 		{
 			name:    "Test 1. Correct request, empty state.",
@@ -290,10 +290,10 @@ func TestGetMetricHandler(t *testing.T) {
 	emptyState := map[string]storage.Metric{}
 
 	tests := []struct {
+		memStorageState map[string]storage.Metric
 		name            string
 		request         requestArgs
 		wantResponse    response
-		memStorageState map[string]storage.Metric
 	}{
 		{
 			name:    "Test 1. Correct url, empty state.",
@@ -395,11 +395,11 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 	defer ts.Close()
 
 	tests := []struct {
-		name string
+		initState   map[string]storage.Metric
+		wantedState map[string]storage.Metric
+		name        string
 		requestArgs
 		wantResponse response
-		initState    map[string]storage.Metric
-		wantedState  map[string]storage.Metric
 	}{
 		{
 			name: "Test correct counter #1. Add metric. Empty state",
@@ -676,12 +676,12 @@ func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 	defaultEnv := Env
 
 	tests := []struct {
-		name string
+		initState   map[string]storage.Metric
+		wantedState map[string]storage.Metric
+		name        string
 		requestArgs
-		env          environment
 		wantResponse response
-		initState    map[string]storage.Metric
-		wantedState  map[string]storage.Metric
+		env          environment
 	}{
 		{
 			name: "Test correct counter #1. Add metric.",
@@ -875,10 +875,10 @@ func TestGetMetricJSONHandler(t *testing.T) {
 	defer ts.Close()
 
 	tests := []struct {
-		name string
-		requestArgs
-		wantResponse    response
 		memStorageState map[string]storage.Metric
+		name            string
+		requestArgs
+		wantResponse response
 	}{
 		{
 			name: "Test correct counter #1. Correct request, metric is not present.",
@@ -1027,11 +1027,11 @@ func TestGetMetricJsonHandlerWithHash(t *testing.T) {
 	defer ts.Close()
 
 	tests := []struct {
-		name string
-		requestArgs
-		env             environment
-		wantResponse    response
 		memStorageState map[string]storage.Metric
+		name            string
+		requestArgs
+		wantResponse response
+		env          environment
 	}{
 		// counter
 		{
@@ -1155,13 +1155,13 @@ func TestServer_PingHandler(t *testing.T) {
 
 func TestServer_InitFileStore(t *testing.T) {
 	type ServerArgsPart struct {
-		StoreFile string
 		FileStore *filestore.FileStore
+		StoreFile string
 	}
 	tests := []struct {
+		wantFSArg       *filestore.FileStore
 		name            string
 		beforeInitSArgs ServerArgsPart
-		wantFSArg       *filestore.FileStore
 	}{
 		{
 			name: "Test #1. StoreFile field is not empty",
@@ -1195,14 +1195,14 @@ func TestServer_InitFileStore(t *testing.T) {
 
 func TestServer_InitMetricStorage(t *testing.T) {
 	type serverArgs struct {
-		Restore   bool
 		FileStore *filestore.FileStore
+		Restore   bool
 	}
 
 	tests := []struct {
-		name string
-		serverArgs
 		wantMetricStorage storage.MetricRepository
+		name              string
+		serverArgs
 	}{
 		{
 			name: "Test #1. Restore=True and StoreFile exist and correct.",
@@ -1561,11 +1561,11 @@ func TestServer_gzipCompressor(t *testing.T) {
 	defer ts.Close()
 
 	tests := []struct {
-		name string
+		initState   map[string]storage.Metric
+		wantedState map[string]storage.Metric
+		name        string
 		requestArgsWC
 		wantResponse responseWC
-		initState    map[string]storage.Metric
-		wantedState  map[string]storage.Metric
 	}{
 		{
 			name: "Test 1. Request for 'AddUpdateMetricJSONHandler'",
@@ -1610,11 +1610,11 @@ func TestServer_gzipDecompressor(t *testing.T) {
 	defer ts.Close()
 
 	tests := []struct {
-		name string
+		initState   map[string]storage.Metric
+		wantedState map[string]storage.Metric
+		name        string
 		requestArgsWC
 		wantResponse responseWC
-		initState    map[string]storage.Metric
-		wantedState  map[string]storage.Metric
 	}{
 		{
 			name: "Test 1. Request for 'AddUpdateMetricJSONHandler'",
@@ -1670,11 +1670,11 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 	defer ts.Close()
 
 	tests := []struct {
-		name string
-		requestArgs
-		wantResponse     response
 		memStorageState  map[string]storage.Metric
 		wantStorageState map[string]storage.Metric
+		name             string
+		requestArgs
+		wantResponse response
 	}{
 		{
 			name: "Test 1. Empty metrics table.",
@@ -1785,14 +1785,14 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 // Тестирую изолированно только саму функцию(а не ее инъекции в обновл. MS хендлеры)
 func TestServer_SyncSaveMetricStorage(t *testing.T) {
 	type serverArgs struct {
-		StoreInterval time.Duration
 		FileStore     *filestore.FileStore
 		MetricStorage storage.MetricRepository
+		StoreInterval time.Duration
 	}
 	tests := []struct {
-		name string
-		serverArgs
+		name       string
 		wantFileAs string
+		serverArgs
 	}{
 		{
 			name: "Test #1. StoreInterval == 0 and FileStore != nil. MS != nil.",
@@ -1861,9 +1861,9 @@ func TestServer_SyncSaveMetricStorage(t *testing.T) {
 
 func TestServer_InitRepeatableSave(t *testing.T) {
 	type serverArgs struct {
-		StoreInterval time.Duration
 		FileStore     *filestore.FileStore
 		MetricStorage storage.MetricRepository
+		StoreInterval time.Duration
 	}
 	tests := []struct {
 		name string

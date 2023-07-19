@@ -16,8 +16,8 @@ type counter int64
 // Metric реализует сущность Метрика и методы для работы с ней.
 // Сущность имеет название Name, и значение Value(по типу Value определяется и тип метрики - gauge/counter).
 type Metric struct {
-	Name  string
 	Value interface{}
+	Name  string
 }
 
 // NewMetric конструктор для Metric.

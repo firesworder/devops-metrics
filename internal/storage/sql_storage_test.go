@@ -34,10 +34,10 @@ func TestSqlStorage_BatchUpdate(t *testing.T) {
 	defer sqlStorage.Connection.Close()
 
 	tests := []struct {
-		name         string
-		metricsBatch []Metric
 		initDBState  map[string]Metric
 		wantDBState  map[string]Metric
+		name         string
+		metricsBatch []Metric
 	}{
 		{
 			name: "Test 1. First batch(empty table metrics)",
@@ -105,10 +105,10 @@ func TestSQLStorage_AddMetric(t *testing.T) {
 	defer sqlStorage.Connection.Close()
 
 	tests := []struct {
-		name        string
 		metric      Metric
 		initDBState map[string]Metric
 		wantDBState map[string]Metric
+		name        string
 		wantError   bool
 	}{
 		{
@@ -164,10 +164,10 @@ func TestSQLStorage_UpdateMetric(t *testing.T) {
 	defer sqlStorage.Connection.Close()
 
 	tests := []struct {
-		name        string
-		metric      Metric
 		initDBState map[string]Metric
 		wantDBState map[string]Metric
+		metric      Metric
+		name        string
 		wantError   bool
 	}{
 		{
@@ -227,10 +227,10 @@ func TestSQLStorage_DeleteMetric(t *testing.T) {
 	defer sqlStorage.Connection.Close()
 
 	tests := []struct {
-		name        string
-		metric      Metric
 		initDBState map[string]Metric
 		wantDBState map[string]Metric
+		name        string
+		metric      Metric
 		wantError   bool
 	}{
 		{
@@ -286,9 +286,9 @@ func TestSQLStorage_IsMetricInStorage(t *testing.T) {
 	defer sqlStorage.Connection.Close()
 
 	tests := []struct {
+		initDBState map[string]Metric
 		name        string
 		metric      Metric
-		initDBState map[string]Metric
 		isExist     bool
 		wantError   bool
 	}{
@@ -342,10 +342,10 @@ func TestSQLStorage_UpdateOrAddMetric(t *testing.T) {
 	defer sqlStorage.Connection.Close()
 
 	tests := []struct {
-		name        string
-		metric      Metric
 		initDBState map[string]Metric
 		wantDBState map[string]Metric
+		name        string
+		metric      Metric
 		wantError   bool
 	}{
 		{
@@ -453,11 +453,11 @@ func TestSQLStorage_GetMetric(t *testing.T) {
 	defer sqlStorage.Connection.Close()
 
 	tests := []struct {
+		initDBState map[string]Metric
+		wantError   error
 		name        string
 		metricName  string
-		initDBState map[string]Metric
 		wantMetric  Metric
-		wantError   error
 	}{
 		{
 			name:        "Test 1. Metric not present in db. Counter type",
