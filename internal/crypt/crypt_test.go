@@ -34,7 +34,7 @@ func TestEncodeDecode(t *testing.T) {
 		{
 			name:          "Test 1. Correct encode->decode chain.",
 			msg:           msg,
-			certFp:        "test\\cert_1_test.pem",
+			certFp:        "test\\publicKey_1_test.pem",
 			privateKeyFp:  "test\\privateKey_1_test.pem",
 			wantEncodeErr: false,
 			wantDecodeErr: false,
@@ -42,7 +42,7 @@ func TestEncodeDecode(t *testing.T) {
 		{
 			name:          "Test 2. Incorrect pair cert+privateKey.",
 			msg:           msg,
-			certFp:        "test\\cert_1_test.pem",
+			certFp:        "test\\publicKey_1_test.pem",
 			privateKeyFp:  "test\\privateKey_2_test.pem",
 			wantEncodeErr: false,
 			wantDecodeErr: true,
@@ -58,7 +58,7 @@ func TestEncodeDecode(t *testing.T) {
 		{
 			name:          "Test 4. Cert file is not exist.",
 			msg:           msg,
-			certFp:        "test\\cert_2313_test.pem",
+			certFp:        "test\\publicKey_232323_test.pem",
 			privateKeyFp:  "test\\privateKey_2_test.pem",
 			wantEncodeErr: true,
 			wantDecodeErr: false,
@@ -66,15 +66,15 @@ func TestEncodeDecode(t *testing.T) {
 		{
 			name:          "Test 5. Incorrect privateKey file.",
 			msg:           msg,
-			certFp:        "test\\cert_1_test.pem",
-			privateKeyFp:  "test\\cert_2_test.pem",
+			certFp:        "test\\publicKey_1_test.pem",
+			privateKeyFp:  "test\\publicKey_2_test.pem",
 			wantEncodeErr: false,
 			wantDecodeErr: true,
 		},
 		{
 			name:          "Test 6. PrivateKey file is not exist.",
 			msg:           msg,
-			certFp:        "test\\cert_1_test.pem",
+			certFp:        "test\\publicKey_1_test.pem",
 			privateKeyFp:  "test\\privateKey_33323_test.pem",
 			wantEncodeErr: false,
 			wantDecodeErr: true,
