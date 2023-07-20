@@ -1,11 +1,14 @@
 package crypt
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"io"
+	"net/http"
 	"testing"
 )
 
@@ -96,6 +99,47 @@ func TestEncodeDecode(t *testing.T) {
 			}
 
 			assert.Equal(t, string(msg), string(gotMsg))
+		})
+	}
+}
+
+func TestNewReader(t *testing.T) {
+	// шифруем сообщение ключом 1
+	demoMsg := []byte("test message")
+	encDemoMsg, err := Encode("test\\publicKey_1_test.pem", demoMsg)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name         string
+		privateKeyFp string
+		wantErr      bool
+	}{
+		{
+			name:         "Test 1. Reader created successfully.",
+			privateKeyFp: "test\\privateKey_1_test.pem",
+			wantErr:      false,
+		},
+		{
+			name:         "Test 2. Reader error(can not decrypt msg).",
+			privateKeyFp: "test\\privateKey_2_test.pem",
+			wantErr:      true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reqReader, err := http.NewRequest(http.MethodPost, "testUrl", bytes.NewReader(encDemoMsg))
+			require.NoError(t, err)
+			defer reqReader.Body.Close()
+
+			r, err := NewReader(tt.privateKeyFp, reqReader.Body)
+			reqReader.Body.Close()
+			assert.Equal(t, tt.wantErr, err != nil)
+			if err == nil {
+				readerContent, err := io.ReadAll(r)
+				require.NoError(t, err)
+				defer r.Close()
+				assert.Equal(t, readerContent, demoMsg)
+			}
 		})
 	}
 }

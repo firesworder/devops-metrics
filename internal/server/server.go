@@ -4,11 +4,13 @@ package server
 
 import (
 	"compress/gzip"
+	"crypto/rsa"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/firesworder/devopsmetrics/internal/crypt"
 	"html/template"
 	"io"
 	"log"
@@ -35,12 +37,13 @@ func init() {
 
 // environment для получения(из ENV и cmd) и хранения переменных окружения агента.
 type environment struct {
-	ServerAddress string        `env:"ADDRESS"`
-	StoreFile     string        `env:"STORE_FILE"`
-	Key           string        `env:"KEY"`
-	DatabaseDsn   string        `env:"DATABASE_DSN"`
-	Restore       bool          `env:"RESTORE"`
-	StoreInterval time.Duration `env:"STORE_INTERVAL"`
+	ServerAddress      string        `env:"ADDRESS"`
+	StoreFile          string        `env:"STORE_FILE"`
+	Key                string        `env:"KEY"`
+	DatabaseDsn        string        `env:"DATABASE_DSN"`
+	Restore            bool          `env:"RESTORE"`
+	StoreInterval      time.Duration `env:"STORE_INTERVAL"`
+	PrivateCryptoKeyFp string        `env:"CRYPTO_KEY"`
 }
 
 // Env объект с переменными окружения(из ENV и cmd args).
@@ -55,6 +58,7 @@ func initCmdArgs() {
 	flag.StringVar(&Env.StoreFile, "f", "/tmp/devops-metrics-db.json", "store file")
 	flag.StringVar(&Env.Key, "k", "", "key for hash func")
 	flag.StringVar(&Env.DatabaseDsn, "d", "", "database address")
+	flag.StringVar(&Env.PrivateCryptoKeyFp, "crypto-key", "", "filepath to private key")
 }
 
 // ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения.
@@ -169,6 +173,7 @@ func (s *Server) newRouter() chi.Router {
 
 	r.Use(s.gzipDecompressor)
 	r.Use(s.gzipCompressor)
+	r.Use(s.decryptMessage)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
@@ -226,6 +231,25 @@ func (s *Server) gzipCompressor(next http.Handler) http.Handler {
 		// оборачиваю ответ в gzip
 		writer.Header().Set("Content-Encoding", "gzip")
 		next.ServeHTTP(gzipResponseWriter{ResponseWriter: writer, Writer: gzipWriter}, request)
+	})
+}
+
+// decryptMessage - middleware для расшифр. в асимм.шифровании
+func (s *Server) decryptMessage(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if Env.PrivateCryptoKeyFp != "" {
+			r, err := crypt.NewReader(Env.PrivateCryptoKeyFp, request.Body)
+			// если есть ошибка и это не ошибка расшифровки - выбросить http ошибку
+			// если ошибка расшифровки - ничего не делать(оставить изначальный request.Body)
+			if err != nil && !errors.Is(err, rsa.ErrDecryption) {
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+				return
+				// если ошибок нет - заменить reader на расшифр.сообщение
+			} else if err == nil {
+				request.Body = r
+			}
+		}
+		next.ServeHTTP(writer, request)
 	})
 }
 

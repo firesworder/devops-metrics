@@ -3,12 +3,14 @@
 package crypt
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -66,4 +68,34 @@ func Decode(privateKeyFp string, encryptedMsg []byte) ([]byte, error) {
 	}
 
 	return msg, nil
+}
+
+type Reader struct {
+	decryptedMsg io.Reader
+}
+
+func NewReader(privateKeyFp string, innerReader io.ReadCloser) (*Reader, error) {
+	r := &Reader{}
+
+	body, err := io.ReadAll(innerReader)
+	if err != nil {
+		return nil, err
+	}
+	defer innerReader.Close()
+
+	decryptedMsgBytes, err := Decode(privateKeyFp, body)
+	if err != nil {
+		return nil, err
+	}
+	r.decryptedMsg = bytes.NewReader(decryptedMsgBytes)
+
+	return r, nil
+}
+
+func (r *Reader) Read(p []byte) (n int, err error) {
+	return r.decryptedMsg.Read(p)
+}
+
+func (r *Reader) Close() error {
+	return nil
 }

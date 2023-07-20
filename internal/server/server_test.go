@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"github.com/firesworder/devopsmetrics/internal/crypt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -1777,6 +1778,89 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
 
 			compareMetricsState(t, tt.wantStorageState, s.MetricStorage, context.Background())
+		})
+	}
+}
+
+func TestServer_decryptMessage(t *testing.T) {
+	testKeysDir := "..\\crypt\\test\\"
+
+	s, err := NewServer()
+	require.NoError(t, err)
+	ts := httptest.NewServer(s.Router)
+	defer ts.Close()
+
+	testBody := `{"id":"RandomValue","type":"gauge","value":12.13}`
+	// зашифрованное сообщение публичным ключом 1
+	encMsg, err := crypt.Encode(testKeysDir+"publicKey_1_test.pem", []byte(testBody))
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		req            requestArgs
+		privateKeyName string
+		wantResponse   response
+	}{
+		{
+			name: "Test 1. Encrypted msg, correct pair public+private key.",
+			req: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+			},
+			wantResponse: response{
+				contentType: "application/json",
+				statusCode:  http.StatusOK,
+			},
+			privateKeyName: "privateKey_1_test.pem",
+		},
+		{
+			name: "Test 2. Encrypted msg, not correct pair public+private key.",
+			req: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+			},
+			wantResponse: response{
+				contentType: "text/plain; charset=utf-8",
+				statusCode:  http.StatusBadRequest,
+			},
+			privateKeyName: "privateKey_2_test.pem",
+		},
+		{
+			name: "Test 3. Without encryption",
+			req: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+			},
+			wantResponse: response{
+				contentType: "application/json",
+				statusCode:  http.StatusOK,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// очищаю изменения в сторедже
+			s.MetricStorage = &storage.MemStorage{Metrics: map[string]storage.Metric{}}
+			// если указан приватный ключ - тестировать с шифрованием
+			if tt.privateKeyName != "" {
+				tt.req.body = string(encMsg)
+				Env.PrivateCryptoKeyFp = testKeysDir + tt.privateKeyName
+			} else {
+				Env.PrivateCryptoKeyFp = ""
+				tt.req.body = testBody
+			}
+
+			statusCode, contentType, body := sendTestRequest(t, ts, tt.req)
+
+			require.Equal(t, tt.wantResponse.statusCode, statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, contentType)
+			if statusCode == http.StatusOK {
+				// если хандлер отработал штатно, то тела ответа будет равно телу запроса
+				assert.Equal(t, testBody, body)
+			}
 		})
 	}
 }
