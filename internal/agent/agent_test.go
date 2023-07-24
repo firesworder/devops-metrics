@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -537,10 +536,6 @@ func TestParseEnvArgs(t *testing.T) {
 			Env.Key = ""
 			Env.RateLimit = 0
 			Env.PublicCryptoKeyFp = ""
-
-			if tt.wantEnv.ConfigFilepath == "env_config_test.json" {
-				fmt.Println("hey'")
-			}
 
 			UpdateOSEnvState(t, testEnvVars, tt.envVars)
 			// устанавливаю os.Args как эмулятор вызванной команды
