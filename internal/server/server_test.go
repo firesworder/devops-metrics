@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"flag"
 	"github.com/firesworder/devopsmetrics/internal/crypt"
 	"io"
 	"net/http"
@@ -33,6 +34,33 @@ func init() {
 	metric3, _ = storage.NewMetric("Alloc", internal.GaugeTypeName, 7.77)
 	unknownMetric, _ = storage.NewMetric("UnknownMetric", internal.CounterTypeName, int64(10))
 	unknownMetric2, _ = storage.NewMetric("UnknownMetric", internal.GaugeTypeName, 7.77)
+}
+
+var testEnvVars = []string{
+	"ADDRESS", "STORE_FILE", "STORE_INTERVAL", "RESTORE", "KEY", "DATABASE_DSN", "CRYPTO_KEY", "CONFIG",
+}
+
+func SaveOSVarsState(testEnvVars []string) map[string]string {
+	osEnvVarsState := map[string]string{}
+	for _, key := range testEnvVars {
+		if v, ok := os.LookupEnv(key); ok {
+			osEnvVarsState[key] = v
+		}
+	}
+	return osEnvVarsState
+}
+
+func UpdateOSEnvState(t *testing.T, testEnvVars []string, newState map[string]string) {
+	// удаляю переменные окружения, если они были до этого установлены
+	for _, key := range testEnvVars {
+		err := os.Unsetenv(key)
+		require.NoError(t, err)
+	}
+	// устанавливаю переменные окружения использованные для теста
+	for key, value := range newState {
+		err := os.Setenv(key, value)
+		require.NoError(t, err)
+	}
 }
 
 // В рамках этой функции реализован и тест parseMetricParams, т.к. последнее является неотъемлимой
@@ -1288,6 +1316,7 @@ func TestServer_InitMetricStorage(t *testing.T) {
 }
 
 func TestParseEnvArgs(t *testing.T) {
+	savedState := SaveOSVarsState(testEnvVars)
 	envBefore := Env
 	tests := []struct {
 		name      string
@@ -1467,6 +1496,75 @@ func TestParseEnvArgs(t *testing.T) {
 			},
 			wantPanic: false,
 		},
+		// поле ConfigFilepath
+		{
+			name:   "Test 13. Field 'ConfigFilepath', set by cmd key 'c'. File exist.",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false -c=env_config_test.json",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: environment{
+				ServerAddress:      "cmd.site",
+				StoreInterval:      60 * time.Second,
+				StoreFile:          "env.json",
+				Restore:            true,
+				DatabaseDsn:        "",
+				PrivateCryptoKeyFp: "/path/to/key.pem",
+				ConfigFilepath:     "env_config_test.json",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 14. Field 'ConfigFilepath', set by cmd key 'config'. File exist.",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false -config=env_config_test.json",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: environment{
+				ServerAddress:      "cmd.site",
+				StoreInterval:      60 * time.Second,
+				StoreFile:          "env.json",
+				Restore:            true,
+				DatabaseDsn:        "",
+				PrivateCryptoKeyFp: "/path/to/key.pem",
+				ConfigFilepath:     "env_config_test.json",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 15. Field 'ConfigFilepath', set by env var 'CONFIG'. File exist.",
+			cmdStr: "file.exe -a=cmd.site -i=20s -r=false",
+			envVars: map[string]string{
+				"STORE_INTERVAL": "60s", "CONFIG": "env_config_test.json", "RESTORE": "true",
+			},
+			wantEnv: environment{
+				ServerAddress:      "cmd.site",
+				StoreInterval:      60 * time.Second,
+				StoreFile:          "/path/to/file.db",
+				Restore:            true,
+				DatabaseDsn:        "",
+				PrivateCryptoKeyFp: "/path/to/key.pem",
+				ConfigFilepath:     "env_config_test.json",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 16. Field 'ConfigFilepath', set by env var 'CONFIG'. File not exist.",
+			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s -config=env_config_test.json",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true", "CONFIG": "not_existed_config.json",
+			},
+			wantEnv: environment{
+				ServerAddress:      "cmd.site",
+				StoreInterval:      60 * time.Second,
+				StoreFile:          "env.json",
+				Restore:            true,
+				DatabaseDsn:        "",
+				PrivateCryptoKeyFp: "/path/to/key.pem",
+				ConfigFilepath:     "not_existed_config.json",
+			},
+			wantPanic: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1480,18 +1578,11 @@ func TestParseEnvArgs(t *testing.T) {
 				DatabaseDsn:   "",
 			}
 
-			// удаляю переменные окружения, если они были до этого установлены
-			for _, key := range [6]string{"ADDRESS", "STORE_FILE", "STORE_INTERVAL", "RESTORE", "KEY", "DATABASE_DSN"} {
-				err := os.Unsetenv(key)
-				require.NoError(t, err)
-			}
-			// устанавливаю переменные окружения использованные для теста
-			for key, value := range tt.envVars {
-				err := os.Setenv(key, value)
-				require.NoError(t, err)
-			}
+			UpdateOSEnvState(t, testEnvVars, tt.envVars)
 			// устанавливаю os.Args как эмулятор вызванной команды
 			os.Args = strings.Split(tt.cmdStr, " ")
+			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.PanicOnError)
+			initCmdArgs()
 
 			// сама проверка корректности парсинга\получения ошибок
 			if tt.wantPanic {
@@ -1503,6 +1594,7 @@ func TestParseEnvArgs(t *testing.T) {
 		})
 	}
 	Env = envBefore
+	UpdateOSEnvState(t, testEnvVars, savedState)
 }
 
 // responseWC == response with compression(gzip), increment 8

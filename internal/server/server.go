@@ -44,6 +44,7 @@ type environment struct {
 	Restore            bool          `env:"RESTORE"`
 	StoreInterval      time.Duration `env:"STORE_INTERVAL"`
 	PrivateCryptoKeyFp string        `env:"CRYPTO_KEY"`
+	ConfigFilepath     string        `env:"CONFIG"`
 }
 
 // Env объект с переменными окружения(из ENV и cmd args).
@@ -59,6 +60,8 @@ func initCmdArgs() {
 	flag.StringVar(&Env.Key, "k", "", "key for hash func")
 	flag.StringVar(&Env.DatabaseDsn, "d", "", "database address")
 	flag.StringVar(&Env.PrivateCryptoKeyFp, "crypto-key", "", "filepath to private key")
+	flag.StringVar(&Env.ConfigFilepath, "config", "", "filepath to json env config")
+	flag.StringVar(&Env.ConfigFilepath, "c", "", "filepath to json env config")
 }
 
 // ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения.
@@ -69,6 +72,12 @@ func ParseEnvArgs() {
 	// Парсинг перем окружения
 	err := env.Parse(&Env)
 	if err != nil {
+		panic(err)
+	}
+
+	// Парсинг json конфига
+	err = parseJSONConfig()
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		panic(err)
 	}
 }
