@@ -61,6 +61,7 @@ type environment struct {
 	ReportInterval    time.Duration `env:"REPORT_INTERVAL"`
 	PollInterval      time.Duration `env:"POLL_INTERVAL"`
 	PublicCryptoKeyFp string        `env:"CRYPTO_KEY"`
+	ConfigFilepath    string        `env:"CONFIG"`
 }
 
 // workPool содержит переменные служебного использования для воркпула.
@@ -97,6 +98,8 @@ func InitCmdArgs() {
 	flag.StringVar(&Env.Key, "k", "", "key for hash func")
 	flag.IntVar(&Env.RateLimit, "l", 0, "rate limit(send routines at one time)")
 	flag.StringVar(&Env.PublicCryptoKeyFp, "crypto-key", "", "filepath to public key")
+	flag.StringVar(&Env.ConfigFilepath, "config", "", "filepath to json env config")
+	flag.StringVar(&Env.ConfigFilepath, "c", "", "filepath to json env config")
 }
 
 // ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения.
@@ -108,6 +111,13 @@ func ParseEnvArgs() {
 	err := env.Parse(&Env)
 	if err != nil {
 		panic(err)
+	}
+
+	if Env.ConfigFilepath != "" {
+		err = parseJSONConfig()
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 

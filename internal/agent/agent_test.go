@@ -3,6 +3,8 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"flag"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,6 +21,31 @@ import (
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/message"
 )
+
+var testEnvVars = []string{"ADDRESS", "REPORT_INTERVAL", "POLL_INTERVAL", "KEY", "RATE_LIMIT", "CRYPTO_KEY", "CONFIG"}
+
+func SaveOSVarsState(testEnvVars []string) map[string]string {
+	osEnvVarsState := map[string]string{}
+	for _, key := range testEnvVars {
+		if v, ok := os.LookupEnv(key); ok {
+			osEnvVarsState[key] = v
+		}
+	}
+	return osEnvVarsState
+}
+
+func UpdateOSEnvState(t *testing.T, testEnvVars []string, newState map[string]string) {
+	// удаляю переменные окружения, если они были до этого установлены
+	for _, key := range testEnvVars {
+		err := os.Unsetenv(key)
+		require.NoError(t, err)
+	}
+	// устанавливаю переменные окружения использованные для теста
+	for key, value := range newState {
+		err := os.Setenv(key, value)
+		require.NoError(t, err)
+	}
+}
 
 func Test_updateMemStats(t *testing.T) {
 	runtime.ReadMemStats(&memstats)
@@ -223,6 +250,8 @@ func TestSendMetrics(t *testing.T) {
 }
 
 func TestParseEnvArgs(t *testing.T) {
+	savedState := SaveOSVarsState(testEnvVars)
+
 	tests := []struct {
 		name      string
 		cmdStr    string
@@ -428,6 +457,76 @@ func TestParseEnvArgs(t *testing.T) {
 			},
 			wantPanic: false,
 		},
+
+		// поле ConfigFilepath
+		{
+			name:   "Test 16. Field 'ConfigFilepath', set by cmd key 'c'. File exist.",
+			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s -c=env_config_test.json",
+			envVars: map[string]string{
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
+			},
+			wantEnv: environment{
+				ServerAddress:     "cmd.site",
+				PollInterval:      5 * time.Second,
+				ReportInterval:    20 * time.Second,
+				Key:               "",
+				RateLimit:         0,
+				PublicCryptoKeyFp: "/path/to/key.pem",
+				ConfigFilepath:    "env_config_test.json",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 17. Field 'ConfigFilepath', set by cmd key 'config'. File exist.",
+			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s -config=env_config_test.json",
+			envVars: map[string]string{
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
+			},
+			wantEnv: environment{
+				ServerAddress:     "cmd.site",
+				PollInterval:      5 * time.Second,
+				ReportInterval:    20 * time.Second,
+				Key:               "",
+				RateLimit:         0,
+				PublicCryptoKeyFp: "/path/to/key.pem",
+				ConfigFilepath:    "env_config_test.json",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 18. Field 'ConfigFilepath', set by env var 'CONFIG'. File exist.",
+			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s -config=env_config_test.json",
+			envVars: map[string]string{
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s", "CONFIG": "env_config_test.json",
+			},
+			wantEnv: environment{
+				ServerAddress:     "cmd.site",
+				PollInterval:      5 * time.Second,
+				ReportInterval:    20 * time.Second,
+				Key:               "",
+				RateLimit:         0,
+				PublicCryptoKeyFp: "/path/to/key.pem",
+				ConfigFilepath:    "env_config_test.json",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 19. Field 'ConfigFilepath', set by env var 'CONFIG'. File not exist.",
+			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s -config=env_config_test.json",
+			envVars: map[string]string{
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s", "CONFIG": "not_existed_config.json",
+			},
+			wantEnv: environment{
+				ServerAddress:     "cmd.site",
+				PollInterval:      5 * time.Second,
+				ReportInterval:    20 * time.Second,
+				Key:               "",
+				RateLimit:         0,
+				PublicCryptoKeyFp: "",
+				ConfigFilepath:    "not_existed_config.json",
+			},
+			wantPanic: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -439,18 +538,15 @@ func TestParseEnvArgs(t *testing.T) {
 			Env.RateLimit = 0
 			Env.PublicCryptoKeyFp = ""
 
-			// удаляю переменные окружения, если они были до этого установлены
-			for _, key := range [6]string{"ADDRESS", "REPORT_INTERVAL", "POLL_INTERVAL", "KEY", "RATE_LIMIT", "CRYPTO_KEY"} {
-				err := os.Unsetenv(key)
-				require.NoError(t, err)
+			if tt.wantEnv.ConfigFilepath == "env_config_test.json" {
+				fmt.Println("hey'")
 			}
-			// устанавливаю переменные окружения использованные для теста
-			for key, value := range tt.envVars {
-				err := os.Setenv(key, value)
-				require.NoError(t, err)
-			}
+
+			UpdateOSEnvState(t, testEnvVars, tt.envVars)
 			// устанавливаю os.Args как эмулятор вызванной команды
 			os.Args = strings.Split(tt.cmdStr, " ")
+			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.PanicOnError)
+			InitCmdArgs()
 
 			// сама проверка корректности парсинга\получения ошибок
 			if tt.wantPanic {
@@ -461,6 +557,7 @@ func TestParseEnvArgs(t *testing.T) {
 			}
 		})
 	}
+	UpdateOSEnvState(t, testEnvVars, savedState)
 }
 
 func Test_sendMetricsBatchByJSON(t *testing.T) {
