@@ -33,7 +33,7 @@ func main() {
 	// подготовка тикеров на обновление и отправку
 	pollTicker := time.NewTicker(agent.Env.PollInterval)
 	reportTicker := time.NewTicker(agent.Env.ReportInterval)
-	for isDone := false; isDone != true; {
+	for isDone := false; !isDone; {
 		select {
 		case <-sigClose:
 			log.Printf("received signal %v, stopping", sigClose)
