@@ -413,3 +413,10 @@ func sendMetricsBatchByJSON(metrics map[string]interface{}) {
 		return
 	}
 }
+
+func StopAgent() {
+	// блокируем мьютекс обновления значений метрик
+	updateMetricsMutex.Lock()
+	// закрываем workpool
+	WPool.Close()
+}
