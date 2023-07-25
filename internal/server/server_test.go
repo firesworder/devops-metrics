@@ -1875,7 +1875,7 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 }
 
 func TestServer_decryptMessage(t *testing.T) {
-	testKeysDir := "..\\crypt\\test\\"
+	testKeysDir := "../crypt/test/"
 
 	s, err := NewServer()
 	require.NoError(t, err)

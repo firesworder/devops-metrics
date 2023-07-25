@@ -410,7 +410,7 @@ func TestParseEnvArgs(t *testing.T) {
 
 		{
 			name:   "Test 13. Field 'PublicCryptoKeyFp', cmd",
-			cmdStr: "file.exe --a=cmd.site -l=2 -crypto-key=C:\\tmp\\cert.pem",
+			cmdStr: "file.exe --a=cmd.site -l=2 -crypto-key=C:/tmp/cert.pem",
 			envVars: map[string]string{
 				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s",
 			},
@@ -419,7 +419,7 @@ func TestParseEnvArgs(t *testing.T) {
 				PollInterval:      5 * time.Second,
 				ReportInterval:    20 * time.Second,
 				Key:               "",
-				PublicCryptoKeyFp: "C:\\tmp\\cert.pem",
+				PublicCryptoKeyFp: "C:/tmp/cert.pem",
 				RateLimit:         2,
 			},
 			wantPanic: false,
@@ -428,14 +428,14 @@ func TestParseEnvArgs(t *testing.T) {
 			name:   "Test 14. Field 'PublicCryptoKeyFp', env",
 			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s -l=1",
 			envVars: map[string]string{
-				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s", "RATE_LIMIT": "3", "CRYPTO_KEY": "C:\\tmp\\cert2.pem",
+				"REPORT_INTERVAL": "20s", "POLL_INTERVAL": "5s", "RATE_LIMIT": "3", "CRYPTO_KEY": "C:/tmp/cert2.pem",
 			},
 			wantEnv: environment{
 				ServerAddress:     "cmd.site",
 				PollInterval:      5 * time.Second,
 				ReportInterval:    20 * time.Second,
 				Key:               "",
-				PublicCryptoKeyFp: "C:\\tmp\\cert2.pem",
+				PublicCryptoKeyFp: "C:/tmp/cert2.pem",
 				RateLimit:         3,
 			},
 			wantPanic: false,
