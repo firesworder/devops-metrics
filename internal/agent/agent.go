@@ -78,8 +78,17 @@ var WPool workPool
 // Env объект с переменными окружения(из ENV и cmd args).
 var Env environment
 
+var encoder *crypt.Encoder
+
 func init() {
 	InitCmdArgs()
+	if Env.PublicCryptoKeyFp != "" {
+		var err error
+		encoder, err = crypt.NewEncoder(Env.PublicCryptoKeyFp)
+		if err != nil {
+			panic(err)
+		}
+	}
 	memstats = runtime.MemStats{}
 	runtime.ReadMemStats(&memstats)
 }
@@ -334,8 +343,8 @@ func sendMetricByJSON(paramName string, paramValue interface{}) {
 	}
 
 	// если передан публичный ключ - шифровать сообщение
-	if Env.PublicCryptoKeyFp != "" {
-		bodyContent, err = crypt.Encode(Env.PublicCryptoKeyFp, bodyContent)
+	if encoder != nil {
+		bodyContent, err = encoder.Encode(bodyContent)
 		if err != nil {
 			log.Println(err)
 		}
@@ -397,8 +406,8 @@ func sendMetricsBatchByJSON(metrics map[string]interface{}) {
 	}
 
 	// если передан публичный ключ - шифровать сообщение
-	if Env.PublicCryptoKeyFp != "" {
-		bodyContent, err = crypt.Encode(Env.PublicCryptoKeyFp, bodyContent)
+	if encoder != nil {
+		bodyContent, err = encoder.Encode(bodyContent)
 		if err != nil {
 			log.Println(err)
 		}

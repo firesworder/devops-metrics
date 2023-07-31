@@ -1884,7 +1884,10 @@ func TestServer_decryptMessage(t *testing.T) {
 
 	testBody := `{"id":"RandomValue","type":"gauge","value":12.13}`
 	// зашифрованное сообщение публичным ключом 1
-	encMsg, err := crypt.Encode(testKeysDir+"publicKey_1_test.pem", []byte(testBody))
+
+	encoder, err := crypt.NewEncoder(testKeysDir + "publicKey_1_test.pem")
+	require.NoError(t, err)
+	encMsg, err := encoder.Encode([]byte(testBody))
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -1939,9 +1942,10 @@ func TestServer_decryptMessage(t *testing.T) {
 			// если указан приватный ключ - тестировать с шифрованием
 			if tt.privateKeyName != "" {
 				tt.req.body = string(encMsg)
-				Env.PrivateCryptoKeyFp = testKeysDir + tt.privateKeyName
+				s.Decoder, err = crypt.NewDecoder(testKeysDir + tt.privateKeyName)
+				require.NoError(t, err)
 			} else {
-				Env.PrivateCryptoKeyFp = ""
+				s.Decoder = nil
 				tt.req.body = testBody
 			}
 

@@ -1,18 +1,86 @@
 package crypt
 
 import (
-	"bytes"
 	"encoding/json"
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io"
-	"net/http"
 	"testing"
 )
 
+func TestNewEncoder(t *testing.T) {
+	tests := []struct {
+		name        string
+		publicKeyFp string
+		wantErr     bool
+	}{
+		{
+			name:        "Test 1. Correct public key filepath.",
+			publicKeyFp: "test/publicKey_1_test.pem",
+			wantErr:     false,
+		},
+		{
+			name:        "Test 2. Public key file is not exist",
+			publicKeyFp: "test/file_not_exist.pem",
+			wantErr:     true,
+		},
+		{
+			name:        "Test 3. Public key file exist, but content is not public key",
+			publicKeyFp: "test/privateKey_1_test.pem",
+			wantErr:     true,
+		},
+		{
+			name:        "Test 4. File exist, but empty",
+			publicKeyFp: "test/empty_file.txt",
+			wantErr:     true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewEncoder(tt.publicKeyFp)
+			assert.Equal(t, tt.wantErr, err != nil)
+		})
+	}
+}
+
+func TestNewDecoder(t *testing.T) {
+	tests := []struct {
+		name         string
+		privateKeyFp string
+		wantErr      bool
+	}{
+		{
+			name:         "Test 1. Correct private key filepath.",
+			privateKeyFp: "test/privateKey_1_test.pem",
+			wantErr:      false,
+		},
+		{
+			name:         "Test 2. Private key file is not exist",
+			privateKeyFp: "test/file_not_exist.pem",
+			wantErr:      true,
+		},
+		{
+			name:         "Test 3. Private key file exist, but content is not private key",
+			privateKeyFp: "test/publicKey_1_test.pem",
+			wantErr:      true,
+		},
+		{
+			name:         "Test 4. File exist, but empty",
+			privateKeyFp: "test/empty_file.txt",
+			wantErr:      true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewDecoder(tt.privateKeyFp)
+			assert.Equal(t, tt.wantErr, err != nil)
+		})
+	}
+}
+
 func TestEncodeDecode(t *testing.T) {
+	// подготовка сообщения
 	metricName, metricType, metricValue := "RandomValue", internal.GaugeTypeName, float64(12.13)
 	metricMsg := message.Metrics{
 		ID:    metricName,
@@ -21,124 +89,50 @@ func TestEncodeDecode(t *testing.T) {
 		Value: &metricValue,
 		Hash:  "",
 	}
+
 	err := metricMsg.InitHash("Ayayaka")
 	require.NoError(t, err)
 	msg, err := json.Marshal(metricMsg)
 	require.NoError(t, err)
 
+	// подготовка энкодеров и декодеров
+	encoder1, err := NewEncoder("test/publicKey_1_test.pem")
+	require.NoError(t, err)
+	decoder1, err := NewDecoder("test/privateKey_1_test.pem")
+	require.NoError(t, err)
+
+	decoder2, err := NewDecoder("test/privateKey_2_test.pem")
+	require.NoError(t, err)
+
 	tests := []struct {
-		name          string
-		msg           []byte
-		certFp        string
-		privateKeyFp  string
-		wantEncodeErr bool
-		wantDecodeErr bool
+		name    string
+		encoder *Encoder
+		decoder *Decoder
+		wantErr bool
 	}{
 		{
-			name:          "Test 1. Correct encode->decode chain.",
-			msg:           msg,
-			certFp:        "test/publicKey_1_test.pem",
-			privateKeyFp:  "test/privateKey_1_test.pem",
-			wantEncodeErr: false,
-			wantDecodeErr: false,
+			name:    "Test 1. Correct encode->decode chain.",
+			encoder: encoder1,
+			decoder: decoder1,
+			wantErr: false,
 		},
 		{
-			name:          "Test 2. Incorrect pair cert+privateKey.",
-			msg:           msg,
-			certFp:        "test/publicKey_1_test.pem",
-			privateKeyFp:  "test/privateKey_2_test.pem",
-			wantEncodeErr: false,
-			wantDecodeErr: true,
-		},
-		{
-			name:          "Test 3. Incorrect cert file.",
-			msg:           msg,
-			certFp:        "test/privateKey_1_test.pem",
-			privateKeyFp:  "test/privateKey_2_test.pem",
-			wantEncodeErr: true,
-			wantDecodeErr: false,
-		},
-		{
-			name:          "Test 4. Cert file is not exist.",
-			msg:           msg,
-			certFp:        "test/publicKey_232323_test.pem",
-			privateKeyFp:  "test/privateKey_2_test.pem",
-			wantEncodeErr: true,
-			wantDecodeErr: false,
-		},
-		{
-			name:          "Test 5. Incorrect privateKey file.",
-			msg:           msg,
-			certFp:        "test/publicKey_1_test.pem",
-			privateKeyFp:  "test/publicKey_2_test.pem",
-			wantEncodeErr: false,
-			wantDecodeErr: true,
-		},
-		{
-			name:          "Test 6. PrivateKey file is not exist.",
-			msg:           msg,
-			certFp:        "test/publicKey_1_test.pem",
-			privateKeyFp:  "test/privateKey_33323_test.pem",
-			wantEncodeErr: false,
-			wantDecodeErr: true,
+			name:    "Test 2. Incorrect pair cert+privateKey.",
+			encoder: encoder1,
+			decoder: decoder2,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var encodedMsg, gotMsg []byte
-			encodedMsg, err = Encode(tt.certFp, msg)
-			require.Equal(t, tt.wantEncodeErr, err != nil)
-			if err != nil {
-				return
-			}
-
-			gotMsg, err = Decode(tt.privateKeyFp, encodedMsg)
-			require.Equal(t, tt.wantDecodeErr, err != nil)
-			if err != nil {
-				return
-			}
-
-			assert.Equal(t, string(msg), string(gotMsg))
-		})
-	}
-}
-
-func TestNewReader(t *testing.T) {
-	// шифруем сообщение ключом 1
-	demoMsg := []byte("test message")
-	encDemoMsg, err := Encode("test/publicKey_1_test.pem", demoMsg)
-	require.NoError(t, err)
-
-	tests := []struct {
-		name         string
-		privateKeyFp string
-		wantErr      bool
-	}{
-		{
-			name:         "Test 1. Reader created successfully.",
-			privateKeyFp: "test/privateKey_1_test.pem",
-			wantErr:      false,
-		},
-		{
-			name:         "Test 2. Reader error(can not decrypt msg).",
-			privateKeyFp: "test/privateKey_2_test.pem",
-			wantErr:      true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			reqReader, err := http.NewRequest(http.MethodPost, "testUrl", bytes.NewReader(encDemoMsg))
+			encodedMsg, err = tt.encoder.Encode(msg)
 			require.NoError(t, err)
-			defer reqReader.Body.Close()
 
-			r, err := NewReader(tt.privateKeyFp, reqReader.Body)
-			reqReader.Body.Close()
+			gotMsg, err = tt.decoder.Decode(encodedMsg)
 			assert.Equal(t, tt.wantErr, err != nil)
 			if err == nil {
-				readerContent, err := io.ReadAll(r)
-				require.NoError(t, err)
-				defer r.Close()
-				assert.Equal(t, readerContent, demoMsg)
+				assert.Equal(t, string(msg), string(gotMsg))
 			}
 		})
 	}

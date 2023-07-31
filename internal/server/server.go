@@ -3,6 +3,7 @@
 package server
 
 import (
+	"bytes"
 	"compress/gzip"
 	"crypto/rsa"
 	"database/sql"
@@ -91,6 +92,7 @@ type Server struct {
 	MetricStorage storage.MetricRepository
 	DBConn        *sql.DB
 	LayoutsDir    string
+	Decoder       *crypt.Decoder
 }
 
 // NewServer конструктор для Server.
@@ -111,6 +113,14 @@ func NewServer() (*Server, error) {
 		server.DBConn = sqlStorage.Connection
 	}
 	server.Router = server.newRouter()
+
+	if Env.PrivateCryptoKeyFp != "" {
+		decoder, err := crypt.NewDecoder(Env.PrivateCryptoKeyFp)
+		if err != nil {
+			return nil, err
+		}
+		server.Decoder = decoder
+	}
 
 	workingDir, _ := os.Getwd()
 	server.LayoutsDir = filepath.Join(workingDir, "/internal/server/html_layouts")
@@ -246,8 +256,14 @@ func (s *Server) gzipCompressor(next http.Handler) http.Handler {
 // decryptMessage - middleware для расшифр. в асимм.шифровании
 func (s *Server) decryptMessage(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if Env.PrivateCryptoKeyFp != "" {
-			r, err := crypt.NewReader(Env.PrivateCryptoKeyFp, request.Body)
+		if s.Decoder != nil {
+			body, err := io.ReadAll(request.Body)
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			r, err := s.Decoder.Decode(body)
 			// если есть ошибка и это не ошибка расшифровки - выбросить http ошибку
 			// если ошибка расшифровки - ничего не делать(оставить изначальный request.Body)
 			if err != nil && !errors.Is(err, rsa.ErrDecryption) {
@@ -255,7 +271,8 @@ func (s *Server) decryptMessage(next http.Handler) http.Handler {
 				return
 				// если ошибок нет - заменить reader на расшифр.сообщение
 			} else if err == nil {
-				request.Body = r
+				reader := io.NopCloser(bytes.NewReader(r))
+				request.Body = reader
 			}
 		}
 		next.ServeHTTP(writer, request)
