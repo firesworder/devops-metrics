@@ -33,18 +33,18 @@ func main() {
 	// подготовка тикеров на обновление и отправку
 	pollTicker := time.NewTicker(agent.Env.PollInterval)
 	reportTicker := time.NewTicker(agent.Env.ReportInterval)
-	for isDone := false; !isDone; {
+	for {
 		select {
 		case <-sigClose:
 			log.Printf("received signal %v, stopping", sigClose)
 			cancel()
 			agent.StopAgent()
-			isDone = true
+			log.Println("agent was shutdown gracefully")
+			return
 		case <-pollTicker.C:
 			go agent.UpdateMetrics()
 		case <-reportTicker.C:
 			go agent.WPool.CreateSendMetricsJob(ctx)
 		}
 	}
-	log.Println("agent was shutdown gracefully")
 }
