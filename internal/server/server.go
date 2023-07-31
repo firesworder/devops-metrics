@@ -73,13 +73,13 @@ func ParseEnvArgs() {
 	// Парсинг перем окружения
 	err := env.Parse(&Env)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	// Парсинг json конфига
 	err = parseJSONConfig()
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		panic(err)
+		log.Fatal(err)
 	}
 }
 
