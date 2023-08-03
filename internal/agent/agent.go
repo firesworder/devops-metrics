@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"net/url"
+	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -33,6 +35,9 @@ type (
 
 // serverURL содержит адрес сервера.
 var serverURL string
+
+// содержит v4 ip хоста
+var hostIPV4 string
 
 // переменные в которых хранятся значения метрик(в сыром виде) для отправки.
 var (
@@ -77,6 +82,7 @@ var Env environment
 
 func init() {
 	InitCmdArgs()
+	initHostIp()
 	memstats = runtime.MemStats{}
 	runtime.ReadMemStats(&memstats)
 }
@@ -94,6 +100,24 @@ func InitCmdArgs() {
 	flag.DurationVar(&Env.PollInterval, "p", 2*time.Second, "poll(update) interval")
 	flag.StringVar(&Env.Key, "k", "", "key for hash func")
 	flag.IntVar(&Env.RateLimit, "l", 0, "rate limit(send routines at one time)")
+}
+
+// Определяет host IP для заполнения X-REAL-IP заголовка в запросах к серверу
+func initHostIp() {
+	host, err := os.Hostname()
+	if err != nil {
+		log.Fatal(err)
+	}
+	adds, err := net.LookupHost(host)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, v := range adds {
+		if ip := net.ParseIP(v); ip.To4() != nil {
+			hostIPV4 = v
+			return
+		}
+	}
 }
 
 // ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения.
@@ -277,6 +301,7 @@ func sendMetricByURL(paramName string, paramValue interface{}) {
 
 	_, err := client.R().
 		SetHeader("Content-Type", "text/plain").
+		SetHeader("X-Real-IP", hostIPV4).
 		Post(requestURL)
 	if err != nil {
 		log.Println(err)
@@ -319,6 +344,7 @@ func sendMetricByJSON(paramName string, paramValue interface{}) {
 
 	_, err = client.R().
 		SetHeader("Content-Type", "application/json").
+		SetHeader("X-Real-IP", hostIPV4).
 		SetBody(jsonBody).
 		Post(`/update/`)
 	if err != nil {
@@ -371,6 +397,7 @@ func sendMetricsBatchByJSON(metrics map[string]interface{}) {
 
 	_, err = client.R().
 		SetHeader("Content-Type", "application/json").
+		SetHeader("X-Real-IP", hostIPV4).
 		SetBody(jsonBody).
 		Post(`/updates/`)
 	if err != nil {

@@ -45,6 +45,7 @@ func Test_updateMemStats(t *testing.T) {
 }
 
 func TestSendMetricByURL(t *testing.T) {
+	var requestXRealIP string
 	type args struct {
 		paramValue interface{}
 		paramName  string
@@ -80,17 +81,20 @@ func TestSendMetricByURL(t *testing.T) {
 			var actualRequestURL string
 			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				actualRequestURL = r.URL.Path
+				requestXRealIP = r.Header.Get("X-REAL-IP")
 			}))
 			defer svr.Close()
 			serverURL = svr.URL
 			sendMetricByURL(tt.args.paramName, tt.args.paramValue)
 			assert.Equal(t, tt.wantRequestURL, actualRequestURL)
+			assert.Equal(t, hostIPV4, requestXRealIP)
 		})
 	}
 }
 
 func TestSendMetricByJson(t *testing.T) {
 	int64Value, float64Value := int64(10), float64(12.133)
+	var requestXRealIP string
 
 	type args struct {
 		paramValue interface{}
@@ -186,6 +190,7 @@ func TestSendMetricByJson(t *testing.T) {
 			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotRequest = &wantRequest{}
 				gotRequest.contentType = r.Header.Get("Content-Type")
+				requestXRealIP = r.Header.Get("X-REAL-IP")
 
 				msg := message.Metrics{}
 				err := json.NewDecoder(r.Body).Decode(&msg)
@@ -197,6 +202,7 @@ func TestSendMetricByJson(t *testing.T) {
 			serverURL = svr.URL
 			sendMetricByJSON(tt.args.paramName, tt.args.paramValue)
 			require.Equal(t, tt.wantRequest, gotRequest)
+			assert.Equal(t, hostIPV4, requestXRealIP)
 		})
 	}
 }
@@ -407,6 +413,7 @@ func TestParseEnvArgs(t *testing.T) {
 }
 
 func Test_sendMetricsBatchByJSON(t *testing.T) {
+	var requestXRealIP string
 	int64Value, float64Value := int64(10), float64(2.27)
 	envKey := "Ayaka"
 	type request struct {
@@ -442,6 +449,7 @@ func Test_sendMetricsBatchByJSON(t *testing.T) {
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotRequest = request{}
 		gotRequest.contentType = r.Header.Get("Content-Type")
+		requestXRealIP = r.Header.Get("X-REAL-IP")
 
 		err := json.NewDecoder(r.Body).Decode(&gotRequest.msgBatch)
 		require.NoError(t, err, "cannot decode request body")
@@ -454,6 +462,7 @@ func Test_sendMetricsBatchByJSON(t *testing.T) {
 		return gotRequest.msgBatch[i].ID < gotRequest.msgBatch[j].ID
 	})
 	assert.Equal(t, wantRequest, gotRequest)
+	assert.Equal(t, hostIPV4, requestXRealIP)
 }
 
 func Test_updateGoPsutilStats(t *testing.T) {
@@ -549,4 +558,10 @@ func TestCreateSendMetricsJob(t *testing.T) {
 		wp.Close()
 		assert.Equal(t, wantRequestCount, gotRequestCount)
 	}
+}
+
+func Test_initHostIp(t *testing.T) {
+	hostIPV4 = ""
+	initHostIp()
+	assert.NotEqual(t, hostIPV4, "")
 }
