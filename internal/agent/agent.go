@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/firesworder/devopsmetrics/internal/crypt"
 	"log"
 	"math/rand"
 	"net"
@@ -59,11 +60,13 @@ var testUMWG *sync.WaitGroup
 
 // environment для получения(из ENV и cmd) и хранения переменных окружения агента.
 type environment struct {
-	Key            string        `env:"KEY"`
-	ServerAddress  string        `env:"ADDRESS"`
-	RateLimit      int           `env:"RATE_LIMIT"`
-	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
-	PollInterval   time.Duration `env:"POLL_INTERVAL"`
+	Key               string        `env:"KEY"`
+	ServerAddress     string        `env:"ADDRESS"`
+	RateLimit         int           `env:"RATE_LIMIT"`
+	ReportInterval    time.Duration `env:"REPORT_INTERVAL"`
+	PollInterval      time.Duration `env:"POLL_INTERVAL"`
+	PublicCryptoKeyFp string        `env:"CRYPTO_KEY"`
+	ConfigFilepath    string        `env:"CONFIG"`
 }
 
 // workPool содержит переменные служебного использования для воркпула.
@@ -80,9 +83,18 @@ var WPool workPool
 // Env объект с переменными окружения(из ENV и cmd args).
 var Env environment
 
+var encoder *crypt.Encoder
+
 func init() {
 	InitCmdArgs()
 	initHostIp()
+	if Env.PublicCryptoKeyFp != "" {
+		var err error
+		encoder, err = crypt.NewEncoder(Env.PublicCryptoKeyFp)
+		if err != nil {
+			panic(err)
+		}
+	}
 	memstats = runtime.MemStats{}
 	runtime.ReadMemStats(&memstats)
 }
@@ -100,6 +112,9 @@ func InitCmdArgs() {
 	flag.DurationVar(&Env.PollInterval, "p", 2*time.Second, "poll(update) interval")
 	flag.StringVar(&Env.Key, "k", "", "key for hash func")
 	flag.IntVar(&Env.RateLimit, "l", 0, "rate limit(send routines at one time)")
+	flag.StringVar(&Env.PublicCryptoKeyFp, "crypto-key", "", "filepath to public key")
+	flag.StringVar(&Env.ConfigFilepath, "config", "", "filepath to json env config")
+	flag.StringVar(&Env.ConfigFilepath, "c", "", "filepath to json env config")
 }
 
 // Определяет host IP для заполнения X-REAL-IP заголовка в запросах к серверу
@@ -129,6 +144,13 @@ func ParseEnvArgs() {
 	err := env.Parse(&Env)
 	if err != nil {
 		panic(err)
+	}
+
+	if Env.ConfigFilepath != "" {
+		err = parseJSONConfig()
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -310,6 +332,8 @@ func sendMetricByURL(paramName string, paramValue interface{}) {
 
 // sendMetricByJSON отправляет метрику Post запросом, в Json формате.
 func sendMetricByJSON(paramName string, paramValue interface{}) {
+	var err error
+
 	client := resty.New()
 	client.SetBaseURL(serverURL)
 	var msg message.Metrics
@@ -336,16 +360,25 @@ func sendMetricByJSON(paramName string, paramValue interface{}) {
 		}
 	}
 
-	jsonBody, err := json.Marshal(msg)
+	var bodyContent []byte
+	bodyContent, err = json.Marshal(msg)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
+	// если передан публичный ключ - шифровать сообщение
+	if encoder != nil {
+		bodyContent, err = encoder.Encode(bodyContent)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+
 	_, err = client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("X-Real-IP", hostIPV4).
-		SetBody(jsonBody).
+		SetBody(bodyContent).
 		Post(`/update/`)
 	if err != nil {
 		log.Println(err)
@@ -355,6 +388,8 @@ func sendMetricByJSON(paramName string, paramValue interface{}) {
 
 // sendMetricsBatchByJSON отправляет словарь метрик Post запросом, в json формате.
 func sendMetricsBatchByJSON(metrics map[string]interface{}) {
+	var err error
+
 	client := resty.New()
 	client.SetBaseURL(serverURL)
 
@@ -389,19 +424,35 @@ func sendMetricsBatchByJSON(metrics map[string]interface{}) {
 		metricsToSend = append(metricsToSend, *msg)
 	}
 
-	jsonBody, err := json.Marshal(metricsToSend)
+	var bodyContent []byte
+	bodyContent, err = json.Marshal(metricsToSend)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
+	// если передан публичный ключ - шифровать сообщение
+	if encoder != nil {
+		bodyContent, err = encoder.Encode(bodyContent)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+
 	_, err = client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("X-Real-IP", hostIPV4).
-		SetBody(jsonBody).
+		SetBody(bodyContent).
 		Post(`/updates/`)
 	if err != nil {
 		log.Println(err)
 		return
 	}
+}
+
+func StopAgent() {
+	// блокируем мьютекс обновления значений метрик
+	updateMetricsMutex.Lock()
+	// закрываем workpool
+	WPool.Close()
 }
