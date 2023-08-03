@@ -3,12 +3,15 @@
 package server
 
 import (
+	"bytes"
 	"compress/gzip"
+	"crypto/rsa"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/firesworder/devopsmetrics/internal/crypt"
 	"html/template"
 	"io"
 	"log"
@@ -35,12 +38,14 @@ func init() {
 
 // environment для получения(из ENV и cmd) и хранения переменных окружения агента.
 type environment struct {
-	ServerAddress string        `env:"ADDRESS"`
-	StoreFile     string        `env:"STORE_FILE"`
-	Key           string        `env:"KEY"`
-	DatabaseDsn   string        `env:"DATABASE_DSN"`
-	Restore       bool          `env:"RESTORE"`
-	StoreInterval time.Duration `env:"STORE_INTERVAL"`
+	ServerAddress      string        `env:"ADDRESS"`
+	StoreFile          string        `env:"STORE_FILE"`
+	Key                string        `env:"KEY"`
+	DatabaseDsn        string        `env:"DATABASE_DSN"`
+	Restore            bool          `env:"RESTORE"`
+	StoreInterval      time.Duration `env:"STORE_INTERVAL"`
+	PrivateCryptoKeyFp string        `env:"CRYPTO_KEY"`
+	ConfigFilepath     string        `env:"CONFIG"`
 }
 
 // Env объект с переменными окружения(из ENV и cmd args).
@@ -55,6 +60,9 @@ func initCmdArgs() {
 	flag.StringVar(&Env.StoreFile, "f", "/tmp/devops-metrics-db.json", "store file")
 	flag.StringVar(&Env.Key, "k", "", "key for hash func")
 	flag.StringVar(&Env.DatabaseDsn, "d", "", "database address")
+	flag.StringVar(&Env.PrivateCryptoKeyFp, "crypto-key", "", "filepath to private key")
+	flag.StringVar(&Env.ConfigFilepath, "config", "", "filepath to json env config")
+	flag.StringVar(&Env.ConfigFilepath, "c", "", "filepath to json env config")
 }
 
 // ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения.
@@ -65,7 +73,13 @@ func ParseEnvArgs() {
 	// Парсинг перем окружения
 	err := env.Parse(&Env)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
+	}
+
+	// Парсинг json конфига
+	err = parseJSONConfig()
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		log.Fatal(err)
 	}
 }
 
@@ -78,6 +92,7 @@ type Server struct {
 	MetricStorage storage.MetricRepository
 	DBConn        *sql.DB
 	LayoutsDir    string
+	Decoder       *crypt.Decoder
 }
 
 // NewServer конструктор для Server.
@@ -98,6 +113,14 @@ func NewServer() (*Server, error) {
 		server.DBConn = sqlStorage.Connection
 	}
 	server.Router = server.newRouter()
+
+	if Env.PrivateCryptoKeyFp != "" {
+		decoder, err := crypt.NewDecoder(Env.PrivateCryptoKeyFp)
+		if err != nil {
+			return nil, err
+		}
+		server.Decoder = decoder
+	}
 
 	workingDir, _ := os.Getwd()
 	server.LayoutsDir = filepath.Join(workingDir, "/internal/server/html_layouts")
@@ -169,6 +192,7 @@ func (s *Server) newRouter() chi.Router {
 
 	r.Use(s.gzipDecompressor)
 	r.Use(s.gzipCompressor)
+	r.Use(s.decryptMessage)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
@@ -226,6 +250,32 @@ func (s *Server) gzipCompressor(next http.Handler) http.Handler {
 		// оборачиваю ответ в gzip
 		writer.Header().Set("Content-Encoding", "gzip")
 		next.ServeHTTP(gzipResponseWriter{ResponseWriter: writer, Writer: gzipWriter}, request)
+	})
+}
+
+// decryptMessage - middleware для расшифр. в асимм.шифровании
+func (s *Server) decryptMessage(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if s.Decoder != nil {
+			body, err := io.ReadAll(request.Body)
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			r, err := s.Decoder.Decode(body)
+			// если есть ошибка и это не ошибка расшифровки - выбросить http ошибку
+			// если ошибка расшифровки - ничего не делать(оставить изначальный request.Body)
+			if err != nil && !errors.Is(err, rsa.ErrDecryption) {
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+				return
+				// если ошибок нет - заменить reader на расшифр.сообщение
+			} else if err == nil {
+				reader := io.NopCloser(bytes.NewReader(r))
+				request.Body = reader
+			}
+		}
+		next.ServeHTTP(writer, request)
 	})
 }
 
