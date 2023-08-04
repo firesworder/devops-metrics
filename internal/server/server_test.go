@@ -37,7 +37,7 @@ func init() {
 }
 
 var testEnvVars = []string{
-	"ADDRESS", "STORE_FILE", "STORE_INTERVAL", "RESTORE", "KEY", "DATABASE_DSN", "CRYPTO_KEY", "CONFIG",
+	"ADDRESS", "STORE_FILE", "STORE_INTERVAL", "RESTORE", "KEY", "DATABASE_DSN", "CRYPTO_KEY", "CONFIG", "TRUSTED_SUBNET",
 }
 
 func SaveOSVarsState(testEnvVars []string) map[string]string {
@@ -1511,6 +1511,7 @@ func TestParseEnvArgs(t *testing.T) {
 				DatabaseDsn:        "",
 				PrivateCryptoKeyFp: "/path/to/key.pem",
 				ConfigFilepath:     "env_config_test.json",
+				TrustedSubnet:      "192.168.1.1/24",
 			},
 			wantPanic: false,
 		},
@@ -1528,6 +1529,7 @@ func TestParseEnvArgs(t *testing.T) {
 				DatabaseDsn:        "",
 				PrivateCryptoKeyFp: "/path/to/key.pem",
 				ConfigFilepath:     "env_config_test.json",
+				TrustedSubnet:      "192.168.1.1/24",
 			},
 			wantPanic: false,
 		},
@@ -1545,12 +1547,13 @@ func TestParseEnvArgs(t *testing.T) {
 				DatabaseDsn:        "",
 				PrivateCryptoKeyFp: "/path/to/key.pem",
 				ConfigFilepath:     "env_config_test.json",
+				TrustedSubnet:      "192.168.1.1/24",
 			},
 			wantPanic: false,
 		},
 		{
 			name:   "Test 16. Field 'ConfigFilepath', set by env var 'CONFIG'. File not exist.",
-			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s -config=env_config_test.json",
+			cmdStr: "file.exe --a=cmd.site -r=false --p=3s -config=env_config_test.json",
 			envVars: map[string]string{
 				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true", "CONFIG": "not_existed_config.json",
 			},
@@ -1565,6 +1568,79 @@ func TestParseEnvArgs(t *testing.T) {
 			},
 			wantPanic: true,
 		},
+		// поле TrustedSubnet
+		{
+			name:   "Test 17. Field 'TrustedSubnet', set by cmd key 't'.",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false -t=192.168.1.1/18",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: environment{
+				ServerAddress:      "cmd.site",
+				StoreInterval:      60 * time.Second,
+				StoreFile:          "env.json",
+				Restore:            true,
+				DatabaseDsn:        "",
+				PrivateCryptoKeyFp: "",
+				TrustedSubnet:      "192.168.1.1/18",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 18. Field 'TrustedSubnet', set by env var 'TRUSTED_SUBNET'.",
+			cmdStr: "file.exe -a=cmd.site -i=20s -r=false",
+			envVars: map[string]string{
+				"STORE_INTERVAL": "60s", "CONFIG": "env_config_test.json", "RESTORE": "true",
+				"TRUSTED_SUBNET": "192.168.1.1/12",
+			},
+			wantEnv: environment{
+				ServerAddress:      "cmd.site",
+				StoreInterval:      60 * time.Second,
+				StoreFile:          "/path/to/file.db",
+				Restore:            true,
+				DatabaseDsn:        "",
+				PrivateCryptoKeyFp: "/path/to/key.pem",
+				ConfigFilepath:     "env_config_test.json",
+				TrustedSubnet:      "192.168.1.1/12",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 19. Field 'TrustedSubnet', set by config file field 'trusted_subnet'.",
+			cmdStr: "file.exe -a=cmd.site -i=20s -r=false",
+			envVars: map[string]string{
+				"STORE_INTERVAL": "60s", "CONFIG": "env_config_test.json", "RESTORE": "true",
+			},
+			wantEnv: environment{
+				ServerAddress:      "cmd.site",
+				StoreInterval:      60 * time.Second,
+				StoreFile:          "/path/to/file.db",
+				Restore:            true,
+				DatabaseDsn:        "",
+				PrivateCryptoKeyFp: "/path/to/key.pem",
+				ConfigFilepath:     "env_config_test.json",
+				TrustedSubnet:      "192.168.1.1/24",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 20. Field 'TrustedSubnet', field not set.",
+			cmdStr: "file.exe -a=cmd.site -i=20s -r=false",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: environment{
+				ServerAddress:      "cmd.site",
+				StoreInterval:      60 * time.Second,
+				StoreFile:          "env.json",
+				Restore:            true,
+				DatabaseDsn:        "",
+				PrivateCryptoKeyFp: "",
+				ConfigFilepath:     "",
+				TrustedSubnet:      "",
+			},
+			wantPanic: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1576,6 +1652,7 @@ func TestParseEnvArgs(t *testing.T) {
 				Restore:       true,
 				Key:           "",
 				DatabaseDsn:   "",
+				TrustedSubnet: "",
 			}
 
 			UpdateOSEnvState(t, testEnvVars, tt.envVars)

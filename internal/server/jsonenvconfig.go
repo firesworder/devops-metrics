@@ -14,6 +14,7 @@ type envConfig struct {
 	StoreFile          string `json:"store_file"`
 	DatabaseDsn        string `json:"database_dsn"`
 	PrivateCryptoKeyFp string `json:"crypto_key"`
+	TrustedSubnet      string `json:"trusted_subnet"`
 }
 
 func parseJSONConfig() error {
@@ -25,6 +26,7 @@ func parseJSONConfig() error {
 		"StoreFile":          true,
 		"DatabaseDsn":        true,
 		"PrivateCryptoKeyFp": true,
+		"TrustedSubnet":      true,
 	}
 
 	// словарь [ключ ком.строки: имя ассоц. поля Env]
@@ -35,6 +37,7 @@ func parseJSONConfig() error {
 		"f":          "StoreFile",
 		"d":          "DatabaseDsn",
 		"crypto-key": "PrivateCryptoKeyFp",
+		"t":          "TrustedSubnet",
 	}
 
 	// словарь [перем.окружения: имя ассоц. поля Env]
@@ -45,6 +48,7 @@ func parseJSONConfig() error {
 		"STORE_FILE":     "StoreFile",
 		"DATABASE_DSN":   "DatabaseDsn",
 		"CRYPTO_KEY":     "PrivateCryptoKeyFp",
+		"TRUSTED_SUBNET": "TrustedSubnet",
 	}
 
 	// получаю json из конфига, путь беру из переменной env
@@ -78,6 +82,9 @@ func parseJSONConfig() error {
 	}
 	if fieldsToSet["PrivateCryptoKeyFp"] {
 		Env.PrivateCryptoKeyFp = config.PrivateCryptoKeyFp
+	}
+	if fieldsToSet["TrustedSubnet"] {
+		Env.TrustedSubnet = config.TrustedSubnet
 	}
 	return nil
 }

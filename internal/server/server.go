@@ -46,6 +46,7 @@ type environment struct {
 	StoreInterval      time.Duration `env:"STORE_INTERVAL"`
 	PrivateCryptoKeyFp string        `env:"CRYPTO_KEY"`
 	ConfigFilepath     string        `env:"CONFIG"`
+	TrustedSubnet      string        `env:"TRUSTED_SUBNET"`
 }
 
 // Env объект с переменными окружения(из ENV и cmd args).
@@ -63,6 +64,7 @@ func initCmdArgs() {
 	flag.StringVar(&Env.PrivateCryptoKeyFp, "crypto-key", "", "filepath to private key")
 	flag.StringVar(&Env.ConfigFilepath, "config", "", "filepath to json env config")
 	flag.StringVar(&Env.ConfigFilepath, "c", "", "filepath to json env config")
+	flag.StringVar(&Env.TrustedSubnet, "t", "", "trusted subnet")
 }
 
 // ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения.
