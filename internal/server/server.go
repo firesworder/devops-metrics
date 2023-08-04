@@ -15,6 +15,7 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -95,6 +96,7 @@ type Server struct {
 	DBConn        *sql.DB
 	LayoutsDir    string
 	Decoder       *crypt.Decoder
+	TrustedSubnet *net.IPNet
 }
 
 // NewServer конструктор для Server.
@@ -122,6 +124,14 @@ func NewServer() (*Server, error) {
 			return nil, err
 		}
 		server.Decoder = decoder
+	}
+
+	if Env.TrustedSubnet != "" {
+		_, ipNet, err := net.ParseCIDR(Env.TrustedSubnet)
+		if err != nil {
+			return nil, err
+		}
+		server.TrustedSubnet = ipNet
 	}
 
 	workingDir, _ := os.Getwd()
@@ -192,6 +202,7 @@ func (s *Server) syncSaveMetricStorage() error {
 func (s *Server) newRouter() chi.Router {
 	r := chi.NewRouter()
 
+	r.Use(s.checkRequestSubnet)
 	r.Use(s.gzipDecompressor)
 	r.Use(s.gzipCompressor)
 	r.Use(s.decryptMessage)
@@ -275,6 +286,34 @@ func (s *Server) decryptMessage(next http.Handler) http.Handler {
 			} else if err == nil {
 				reader := io.NopCloser(bytes.NewReader(r))
 				request.Body = reader
+			}
+		}
+		next.ServeHTTP(writer, request)
+	})
+}
+
+func (s *Server) checkRequestSubnet(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if Env.TrustedSubnet != "" {
+			// получить значение X-Real-IP
+			xRealIP := request.Header.Get("X-Real-IP")
+			if xRealIP == "" {
+				http.Error(writer, "header value X-Real-IP can not be empty", http.StatusForbidden)
+				return
+			}
+
+			// спарсить IP из значения
+			userIP := net.ParseIP(xRealIP)
+			if userIP == nil {
+				http.Error(writer, "header value X-Real-IP is not valid", http.StatusBadRequest)
+				return
+			}
+
+			// применить маску к userIP и сравнить с trustedSubnetIP
+			maskedUserIP := userIP.Mask(s.TrustedSubnet.Mask)
+			if maskedUserIP.String() != s.TrustedSubnet.IP.String() {
+				http.Error(writer, "user ip is not in trusted subnet", http.StatusForbidden)
+				return
 			}
 		}
 		next.ServeHTTP(writer, request)

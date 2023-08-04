@@ -70,6 +70,7 @@ type requestArgs struct {
 	method      string
 	url         string
 	contentType string
+	xRealIP     string
 	body        string
 }
 
@@ -876,6 +877,9 @@ func sendTestRequest(t *testing.T, ts *httptest.Server, r requestArgs) (int, str
 	// создаю реквест
 	req, err := http.NewRequest(r.method, ts.URL+r.url, strings.NewReader(r.body))
 	req.Header.Set("Content-Type", "application/json")
+	if r.xRealIP != "" {
+		req.Header.Set("X-Real-IP", r.xRealIP)
+	}
 	require.NoError(t, err)
 
 	// делаю реквест на дефолтном клиенте
@@ -2036,6 +2040,116 @@ func TestServer_decryptMessage(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestServer_checkRequestSubnet(t *testing.T) {
+	tests := []struct {
+		name          string
+		req           requestArgs
+		trustedSubnet string
+		wantResponse  response
+	}{
+		{
+			name: "Test 1. TrustedSubnet field is not set. Update method.",
+			req: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10}`,
+				xRealIP:     "",
+			},
+			trustedSubnet: "",
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10}`,
+			},
+		},
+		{
+			name: "Test 2. TrustedSubnet field is set. Get method. XRealIP is not set.",
+			req: requestArgs{
+				method:      http.MethodPost,
+				url:         "/value/",
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge"}`,
+				xRealIP:     "",
+			},
+			trustedSubnet: "192.168.1.0/24",
+			wantResponse: response{
+				statusCode:  http.StatusForbidden,
+				contentType: "text/plain; charset=utf-8",
+				body:        "header value X-Real-IP can not be empty\n",
+			},
+		},
+		{
+			name: "Test 3. TrustedSubnet field is set. Update method. XRealIP is set, but IP invalid.",
+			req: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10}`,
+				xRealIP:     "192.122.1",
+			},
+			trustedSubnet: "192.168.1.0/24",
+			wantResponse: response{
+				statusCode:  http.StatusBadRequest,
+				contentType: "text/plain; charset=utf-8",
+				body:        "header value X-Real-IP is not valid\n",
+			},
+		},
+		{
+			name: "Test 4. TrustedSubnet field is set. Get method. XRealIP is set, but not in TrustedSubnet.",
+			req: requestArgs{
+				method:      http.MethodPost,
+				url:         "/value/",
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge"}`,
+				xRealIP:     "192.122.1.1",
+			},
+			trustedSubnet: "192.168.1.0/24",
+			wantResponse: response{
+				statusCode:  http.StatusForbidden,
+				contentType: "text/plain; charset=utf-8",
+				body:        "user ip is not in trusted subnet\n",
+			},
+		},
+		{
+			name: "Test 5. TrustedSubnet field is set. Update method. XRealIP is set and in TrustedSubnet.",
+			req: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10}`,
+				xRealIP:     "192.168.1.1",
+			},
+			trustedSubnet: "192.168.1.0/24",
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10}`,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// подготовка к очередному тесту
+			Env.TrustedSubnet = tt.trustedSubnet
+			s, err := NewServer()
+			require.NoError(t, err)
+			s.MetricStorage = &storage.MemStorage{Metrics: map[string]storage.Metric{
+				"RandomValue": {Value: float64(12.23), Name: "RandomValue"},
+			}}
+			ts := httptest.NewServer(s.Router)
+			defer ts.Close()
+
+			statusCode, contentType, respBody := sendTestRequest(t, ts, tt.req)
+			require.Equal(t, tt.wantResponse.statusCode, statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, contentType)
+			assert.Equal(t, tt.wantResponse.body, respBody)
+		})
+	}
+	// сбрасываю TrustedSubnet, чтобы не влиять на другие тесты
+	Env.TrustedSubnet = ""
 }
 
 // Эти тесты должны быть внизу, т.к. вызывают гонку горутинами
