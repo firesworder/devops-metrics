@@ -1,166 +1,58 @@
-// Package server реализует серверную часть приложения(за исключением Storage).
-// Содержит прежде всего хэндлеры и миддлвары, а также функциональность необходимую для работы сервера.
 package server
 
 import (
 	"bytes"
 	"compress/gzip"
 	"crypto/rsa"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/firesworder/devopsmetrics/internal/crypt"
-	"html/template"
-	"io"
-	"log"
-	"net"
-	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"html/template"
+	"io"
+	"net"
+	"net/http"
+	"path/filepath"
+	"strings"
 
-	"github.com/firesworder/devopsmetrics/internal/filestore"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 )
 
-// Server реализует серверную логику.
+// HTTPServer реализует серверную логику.
 // Всё взаимодействие с серверной частью происходит через него.
-type Server struct {
-	FileStore     *filestore.FileStore
-	WriteTicker   *time.Ticker
-	Router        chi.Router
-	MetricStorage storage.MetricRepository
-	DBConn        *sql.DB
-	LayoutsDir    string
-	Decoder       *crypt.Decoder
-	TrustedSubnet *net.IPNet
+type HTTPServer struct {
+	server *TempServer
+	Router chi.Router
 }
 
-// NewServer конструктор для Server.
-// Если перем-ая окружения DatabaseDsn установлена - использует ДБ для хранения метрик,
-// иначе хранит в памяти + запись в файл.
-func NewServer() (*Server, error) {
-	server := Server{}
-	server.initFileStore()
-	if Env.DatabaseDsn == "" {
-		server.initMetricStorage()
-		server.initRepeatableSave()
-	} else {
-		sqlStorage, err := storage.NewSQLStorage(Env.DatabaseDsn)
-		if err != nil {
-			return nil, err
-		}
-		server.MetricStorage = sqlStorage
-		server.DBConn = sqlStorage.Connection
-	}
-	server.Router = server.newRouter()
-
-	if Env.PrivateCryptoKeyFp != "" {
-		decoder, err := crypt.NewDecoder(Env.PrivateCryptoKeyFp)
-		if err != nil {
-			return nil, err
-		}
-		server.Decoder = decoder
-	}
-
-	if Env.TrustedSubnet != "" {
-		_, ipNet, err := net.ParseCIDR(Env.TrustedSubnet)
-		if err != nil {
-			return nil, err
-		}
-		server.TrustedSubnet = ipNet
-	}
-
-	workingDir, _ := os.Getwd()
-	server.LayoutsDir = filepath.Join(workingDir, "/internal/server/html_layouts")
-
-	return &server, nil
-}
-
-// initFileStore инициализирует объект файл-хранилища метрик.
-// Иниц-ия происходит только если DatabaseDsn не определен, а путь к файлу - определен.
-func (s *Server) initFileStore() {
-	if Env.DatabaseDsn == "" && Env.StoreFile != "" {
-		s.FileStore = filestore.NewFileStore(Env.StoreFile)
-	}
-}
-
-// initMetricStorage инициал-ет MetricStorage.
-// Выполняется только при соблюдении условий.
-func (s *Server) initMetricStorage() {
-	if Env.DatabaseDsn == "" && Env.Restore && s.FileStore != nil {
-		var err error
-		s.MetricStorage, err = s.FileStore.Read()
-		if err != nil {
-			log.Println(err)
-			log.Println("Empty MemStorage was initialised")
-			s.MetricStorage = storage.NewMemStorage(map[string]storage.Metric{})
-		}
-		log.Println("MemStorage restored from store_file")
-	} else {
-		s.MetricStorage = storage.NewMemStorage(map[string]storage.Metric{})
-		log.Println("Empty MemStorage was initialised")
-	}
-}
-
-// initRepeatableSave регулярно(параметр StoreInterval) сохраняет состояние MetricStorage в файл.
-// Выполняется только при соблюдении условий.
-func (s *Server) initRepeatableSave() {
-	if Env.DatabaseDsn == "" && Env.StoreInterval > 0 && s.FileStore != nil {
-		go func() {
-			var err error
-			s.WriteTicker = time.NewTicker(Env.StoreInterval)
-			for range s.WriteTicker.C {
-				// нет смысла писать nil MetricStorage
-				if s.MetricStorage == nil {
-					continue
-				}
-
-				err = s.FileStore.Write(s.MetricStorage)
-				if err != nil {
-					log.Println(err)
-				}
-			}
-		}()
-	}
-}
-
-// syncSaveMetricStorage сохраняет MetricStorage в конце обработки успешного(200) запроса.
-// Выполняется только при соблюдении условий.
-func (s *Server) syncSaveMetricStorage() error {
-	if Env.DatabaseDsn == "" && Env.StoreInterval == 0 && s.FileStore != nil && s.MetricStorage != nil {
-		err := s.FileStore.Write(s.MetricStorage)
-		return err
-	}
-	return nil
+func NewHTTPServer(server *TempServer) *HTTPServer {
+	s := HTTPServer{server: server}
+	s.Router = s.newRouter()
+	return &s
 }
 
 // newRouter определяет и возвращает роутер для сервера.
-func (s *Server) newRouter() chi.Router {
+func (hs *HTTPServer) newRouter() chi.Router {
 	r := chi.NewRouter()
 
-	r.Use(s.checkRequestSubnet)
-	r.Use(s.gzipDecompressor)
-	r.Use(s.gzipCompressor)
-	r.Use(s.decryptMessage)
+	r.Use(hs.checkRequestSubnet)
+	r.Use(hs.gzipDecompressor)
+	r.Use(hs.gzipCompressor)
+	r.Use(hs.decryptMessage)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
 	r.Route("/", func(r chi.Router) {
-		r.Get("/", s.handlerShowAllMetrics)
-		r.Get("/value/{typeName}/{metricName}", s.handlerGet)
-		r.Get("/ping", s.handlerPing)
-		r.Post("/updates/", s.handlerBatchUpdate)
-		r.Post("/update/{typeName}/{metricName}/{metricValue}", s.handlerAddUpdateMetric)
-		r.Post("/update/", s.handlerJSONAddUpdateMetric)
-		r.Post("/value/", s.handlerJSONGetMetric)
+		r.Get("/", hs.handlerShowAllMetrics)
+		r.Get("/value/{typeName}/{metricName}", hs.handlerGet)
+		r.Get("/ping", hs.handlerPing)
+		r.Post("/updates/", hs.handlerBatchUpdate)
+		r.Post("/update/{typeName}/{metricName}/{metricValue}", hs.handlerAddUpdateMetric)
+		r.Post("/update/", hs.handlerJSONAddUpdateMetric)
+		r.Post("/value/", hs.handlerJSONGetMetric)
 	})
 	return r
 }
@@ -176,7 +68,7 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 }
 
 // gzipDecompressor - middleware для обработки входящих запросов с gzip сжатием.
-func (s *Server) gzipDecompressor(next http.Handler) http.Handler {
+func (hs *HTTPServer) gzipDecompressor(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if strings.Contains(request.Header.Get("Content-Encoding"), "gzip") {
 			gz, err := gzip.NewReader(request.Body)
@@ -192,7 +84,7 @@ func (s *Server) gzipDecompressor(next http.Handler) http.Handler {
 }
 
 // gzipDecompressor - middleware для gzip сжатия исходящих запросов.
-func (s *Server) gzipCompressor(next http.Handler) http.Handler {
+func (hs *HTTPServer) gzipCompressor(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		// если не допускает сжатие - ничего не делать
 		if !strings.Contains(request.Header.Get("Accept-Encoding"), "gzip") {
@@ -211,16 +103,16 @@ func (s *Server) gzipCompressor(next http.Handler) http.Handler {
 }
 
 // decryptMessage - middleware для расшифр. в асимм.шифровании
-func (s *Server) decryptMessage(next http.Handler) http.Handler {
+func (hs *HTTPServer) decryptMessage(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if s.Decoder != nil {
+		if hs.server.Decoder != nil {
 			body, err := io.ReadAll(request.Body)
 			if err != nil {
 				http.Error(writer, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
-			r, err := s.Decoder.Decode(body)
+			r, err := hs.server.Decoder.Decode(body)
 			// если есть ошибка и это не ошибка расшифровки - выбросить http ошибку
 			// если ошибка расшифровки - ничего не делать(оставить изначальный request.Body)
 			if err != nil && !errors.Is(err, rsa.ErrDecryption) {
@@ -236,7 +128,7 @@ func (s *Server) decryptMessage(next http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) checkRequestSubnet(next http.Handler) http.Handler {
+func (hs *HTTPServer) checkRequestSubnet(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if Env.TrustedSubnet != "" {
 			// получить значение X-Real-IP
@@ -254,8 +146,8 @@ func (s *Server) checkRequestSubnet(next http.Handler) http.Handler {
 			}
 
 			// применить маску к userIP и сравнить с trustedSubnetIP
-			maskedUserIP := userIP.Mask(s.TrustedSubnet.Mask)
-			if maskedUserIP.String() != s.TrustedSubnet.IP.String() {
+			maskedUserIP := userIP.Mask(hs.server.TrustedSubnet.Mask)
+			if maskedUserIP.String() != hs.server.TrustedSubnet.IP.String() {
 				http.Error(writer, "user ip is not in trusted subnet", http.StatusForbidden)
 				return
 			}
@@ -290,20 +182,20 @@ func (s *Server) checkRequestSubnet(next http.Handler) http.Handler {
 //	@Success	200	{string}	string	"ok"
 //	@Failure	500	{string}	string	"Внутренняя ошибка"
 //	@Router		/ [get]
-func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http.Request) {
+func (hs *HTTPServer) handlerShowAllMetrics(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if s.LayoutsDir == "" {
+	if hs.server.LayoutsDir == "" {
 		http.Error(writer, "Not initialised workingDir path", http.StatusInternalServerError)
 		return
 	}
 
-	allMetrics, err := s.MetricStorage.GetAll(request.Context())
+	allMetrics, err := hs.server.MetricStorage.GetAll(request.Context())
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	tmpl, err := template.ParseFiles(filepath.Join(s.LayoutsDir, "main_page.gohtml"))
+	tmpl, err := template.ParseFiles(filepath.Join(hs.server.LayoutsDir, "main_page.gohtml"))
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
@@ -334,8 +226,8 @@ func (s *Server) handlerShowAllMetrics(writer http.ResponseWriter, request *http
 //	@Failure		404			{string}	string	"unknown metric"
 //	@Failure		500			{string}	string	"Внутренняя ошибка"
 //	@Router			/value/{typeName}/{metricName} [get]
-func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
-	metric, err := s.MetricStorage.GetMetric(request.Context(), chi.URLParam(request, "metricName"))
+func (hs *HTTPServer) handlerGet(writer http.ResponseWriter, request *http.Request) {
+	metric, err := hs.server.MetricStorage.GetMetric(request.Context(), chi.URLParam(request, "metricName"))
 	if err != nil {
 		if errors.Is(err, storage.ErrMetricNotFound) {
 			http.Error(writer, "unknown metric", http.StatusNotFound)
@@ -366,7 +258,7 @@ func (s *Server) handlerGet(writer http.ResponseWriter, request *http.Request) {
 //	@Failure		404			{string}	string	"unknown metric"
 //	@Failure		500			{string}	string	"Внутренняя ошибка"
 //	@Router			/update/{typeName}/{metricName}/{metricValue} [get]
-func (s *Server) handlerAddUpdateMetric(writer http.ResponseWriter, request *http.Request) {
+func (hs *HTTPServer) handlerAddUpdateMetric(writer http.ResponseWriter, request *http.Request) {
 	var err error
 
 	m, err := storage.NewMetric(
@@ -383,12 +275,12 @@ func (s *Server) handlerAddUpdateMetric(writer http.ResponseWriter, request *htt
 		return
 	}
 
-	err = s.MetricStorage.UpdateOrAddMetric(request.Context(), *m)
+	err = hs.server.MetricStorage.UpdateOrAddMetric(request.Context(), *m)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if err = s.syncSaveMetricStorage(); err != nil {
+	if err = hs.server.syncSaveMetricStorage(); err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -414,7 +306,7 @@ func (s *Server) handlerAddUpdateMetric(writer http.ResponseWriter, request *htt
 //	@Failure		500	{string}	string	"Внутренняя ошибка"
 //	@Failure		501	{string}	string	"Not Implemented"	если	передан	нереализованный	на	сервере	тип	метрики.
 //	@Router			/update/ [post]
-func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request *http.Request) {
+func (hs *HTTPServer) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request *http.Request) {
 	var metricMessage message.Metrics
 	var metric *storage.Metric
 	var err error
@@ -446,17 +338,17 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 		return
 	}
 
-	err = s.MetricStorage.UpdateOrAddMetric(request.Context(), *metric)
+	err = hs.server.MetricStorage.UpdateOrAddMetric(request.Context(), *metric)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if err = s.syncSaveMetricStorage(); err != nil {
+	if err = hs.server.syncSaveMetricStorage(); err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	*metric, err = s.MetricStorage.GetMetric(request.Context(), metric.Name)
+	*metric, err = hs.server.MetricStorage.GetMetric(request.Context(), metric.Name)
 	if err != nil {
 		// ошибка не должна произойти, но мало ли
 		http.Error(writer, "metric was not updated:"+err.Error(), http.StatusInternalServerError)
@@ -497,7 +389,7 @@ func (s *Server) handlerJSONAddUpdateMetric(writer http.ResponseWriter, request 
 //	@Failure		404	{string}	string	"metric with name <metricname> not found"
 //	@Failure		500	{string}	string	"Внутренняя ошибка"
 //	@Router			/value/ [post]
-func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.Request) {
+func (hs *HTTPServer) handlerJSONGetMetric(writer http.ResponseWriter, request *http.Request) {
 	var metricMessage message.Metrics
 	var err error
 
@@ -506,7 +398,7 @@ func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.
 		return
 	}
 
-	metric, err := s.MetricStorage.GetMetric(request.Context(), metricMessage.ID)
+	metric, err := hs.server.MetricStorage.GetMetric(request.Context(), metricMessage.ID)
 	if err != nil {
 		if errors.Is(err, storage.ErrMetricNotFound) {
 			http.Error(
@@ -546,12 +438,12 @@ func (s *Server) handlerJSONGetMetric(writer http.ResponseWriter, request *http.
 //	@Success	200	{string}	string	"ok"
 //	@Failure	500	{string}	string	"Внутренняя ошибка"	Ошибка	выдается,	если	БД	недоступна.
 //	@Router		/ping [get]
-func (s *Server) handlerPing(writer http.ResponseWriter, request *http.Request) {
-	if s.DBConn == nil {
+func (hs *HTTPServer) handlerPing(writer http.ResponseWriter, request *http.Request) {
+	if hs.server.DBConn == nil {
 		writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	err := s.DBConn.Ping()
+	err := hs.server.DBConn.Ping()
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
 	} else {
@@ -576,7 +468,7 @@ func (s *Server) handlerPing(writer http.ResponseWriter, request *http.Request) 
 //	@Failure		500	{string}	string	"Внутренняя ошибка"
 //	@Failure		501	{string}	string	"Not Implemented"	если	передан	нереализованный	на	сервере	тип	метрики.
 //	@Router			/updates/ [post]
-func (s *Server) handlerBatchUpdate(writer http.ResponseWriter, request *http.Request) {
+func (hs *HTTPServer) handlerBatchUpdate(writer http.ResponseWriter, request *http.Request) {
 	var metricMessagesBatch []message.Metrics
 	var metrics []storage.Metric
 	var err error
@@ -612,11 +504,11 @@ func (s *Server) handlerBatchUpdate(writer http.ResponseWriter, request *http.Re
 		metrics = append(metrics, *m)
 	}
 
-	if err = s.MetricStorage.BatchUpdate(request.Context(), metrics); err != nil {
+	if err = hs.server.MetricStorage.BatchUpdate(request.Context(), metrics); err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 	}
 
-	if err = s.syncSaveMetricStorage(); err != nil {
+	if err = hs.server.syncSaveMetricStorage(); err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}

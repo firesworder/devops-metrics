@@ -16,7 +16,7 @@ const repeatBenchRun = 100
 
 func BenchmarkHandlersMemStorage(b *testing.B) {
 	s := getServer(false)
-	ts := httptest.NewServer(s.Router)
+	ts := httptest.NewServer(s.server.Router)
 	defer ts.Close()
 
 	b.Run("getMetric", func(b *testing.B) {
@@ -39,7 +39,7 @@ func BenchmarkHandlersMemStorage(b *testing.B) {
 			sendRequest(http.MethodPost, ts.URL+urlParams, "text/plain", "")
 
 			b.StopTimer()
-			s.MetricStorage = storage.NewMemStorage(getMetricsMap())
+			s.server.MetricStorage = storage.NewMemStorage(getMetricsMap())
 			b.StartTimer()
 		}
 	})
@@ -53,7 +53,7 @@ func BenchmarkHandlersMemStorage(b *testing.B) {
 			sendRequest(http.MethodPost, ts.URL+url, "application/json", string(jsonMsg))
 
 			b.StopTimer()
-			s.MetricStorage = storage.NewMemStorage(getMetricsMap())
+			s.server.MetricStorage = storage.NewMemStorage(getMetricsMap())
 			b.StartTimer()
 		}
 	})
@@ -82,7 +82,7 @@ func BenchmarkHandlersMemStorage(b *testing.B) {
 			sendRequest(http.MethodPost, ts.URL+url, "application/json", string(jsonMsg))
 
 			b.StopTimer()
-			s.MetricStorage = storage.NewMemStorage(getMetricsMap())
+			s.server.MetricStorage = storage.NewMemStorage(getMetricsMap())
 			b.StartTimer()
 		}
 	})
@@ -90,7 +90,7 @@ func BenchmarkHandlersMemStorage(b *testing.B) {
 
 func BenchmarkHandlersSQLStorage(b *testing.B) {
 	s := getServer(true)
-	ts := httptest.NewServer(s.Router)
+	ts := httptest.NewServer(s.server.Router)
 	defer ts.Close()
 
 	fmt.Println(b.N)
@@ -114,7 +114,7 @@ func BenchmarkHandlersSQLStorage(b *testing.B) {
 			sendRequest(http.MethodPost, ts.URL+urlParams, "text/plain", "")
 
 			b.StopTimer()
-			resetDBState(s.DBConn)
+			resetDBState(s.server.DBConn)
 			b.StartTimer()
 		}
 	})
@@ -128,7 +128,7 @@ func BenchmarkHandlersSQLStorage(b *testing.B) {
 			sendRequest(http.MethodPost, ts.URL+url, "application/json", string(jsonMsg))
 
 			b.StopTimer()
-			resetDBState(s.DBConn)
+			resetDBState(s.server.DBConn)
 			b.StartTimer()
 		}
 	})
@@ -157,7 +157,7 @@ func BenchmarkHandlersSQLStorage(b *testing.B) {
 			sendRequest(http.MethodPost, ts.URL+url, "application/json", string(jsonMsg))
 
 			b.StopTimer()
-			resetDBState(s.DBConn)
+			resetDBState(s.server.DBConn)
 			b.StartTimer()
 		}
 	})

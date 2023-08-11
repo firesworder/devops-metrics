@@ -220,6 +220,7 @@ func TestGRPCServer_serverInterceptor(t *testing.T) {
 			assert.Equal(t, tt.wantStatus.message, errorStatus.Message())
 		})
 	}
+	Env.TrustedSubnet = ""
 }
 
 func TestGRPCServer_GetMetric(t *testing.T) {

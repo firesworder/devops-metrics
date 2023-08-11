@@ -35,22 +35,26 @@ func resetDBState(dbConn *sql.DB) {
 	}
 }
 
-func getServer(useDB bool) *Server {
+func getServer(useDB bool) *HTTPServer {
 	if useDB {
 		Env.DatabaseDsn = "postgresql://postgres:admin@localhost:5432/devops"
 	} else {
 		Env.DatabaseDsn = ""
 	}
 
-	s, err := NewServer()
+	server, err := NewTempServer()
 	if err != nil {
 		panic(err)
 	}
-	s.LayoutsDir = "./html_layouts/"
-	if !useDB {
-		s.MetricStorage = storage.NewMemStorage(getMetricsMap())
+	s := HTTPServer{server: server}
+	if err != nil {
+		panic(err)
 	}
-	return s
+	server.LayoutsDir = "./html_layouts/"
+	if !useDB {
+		s.server.MetricStorage = storage.NewMemStorage(getMetricsMap())
+	}
+	return &s
 }
 
 func sendRequest(method, url, contentType, content string) (int, string, string) {

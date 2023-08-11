@@ -6,16 +6,22 @@ import (
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/message"
 	"github.com/firesworder/devopsmetrics/internal/storage"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"sort"
 )
 
 func ExampleServer_handlerShowAllMetrics() {
-	s := Server{}
+	server, err := NewTempServer()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s := HTTPServer{server: server}
 	// getMetricsMap возвращает словарь метрик(map[string]storage.Metric) для демонстрации
-	s.MetricStorage = storage.NewMemStorage(getMetricsMap())
-	s.LayoutsDir = "./html_layouts/"
+	s.server.MetricStorage = storage.NewMemStorage(getMetricsMap())
+	s.server.LayoutsDir = "./html_layouts/"
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -32,9 +38,14 @@ func ExampleServer_handlerShowAllMetrics() {
 }
 
 func ExampleServer_handlerGet() {
-	s := Server{}
+	server, err := NewTempServer()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s := HTTPServer{server: server}
 	// getMetricsMap возвращает словарь метрик(map[string]storage.Metric) для демонстрации
-	s.MetricStorage = storage.NewMemStorage(getMetricsMap())
+	s.server.MetricStorage = storage.NewMemStorage(getMetricsMap())
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -52,10 +63,15 @@ func ExampleServer_handlerGet() {
 }
 
 func ExampleServer_handlerAddUpdateMetric() {
-	s := Server{}
+	server, err := NewTempServer()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s := HTTPServer{server: server}
 	// getMetricsMap возвращает словарь метрик(map[string]storage.Metric) для демонстрации
-	s.MetricStorage = storage.NewMemStorage(getMetricsMap())
-	nms := s.MetricStorage.(*storage.MemStorage)
+	s.server.MetricStorage = storage.NewMemStorage(getMetricsMap())
+	nms := s.server.MetricStorage.(*storage.MemStorage)
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -74,9 +90,14 @@ func ExampleServer_handlerAddUpdateMetric() {
 }
 
 func ExampleServer_handlerJSONAddUpdateMetric() {
-	s := Server{}
+	server, err := NewTempServer()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s := HTTPServer{server: server}
 	// getMetricsMap возвращает словарь метрик(map[string]storage.Metric) для демонстрации
-	s.MetricStorage = storage.NewMemStorage(getMetricsMap())
+	s.server.MetricStorage = storage.NewMemStorage(getMetricsMap())
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -97,9 +118,14 @@ func ExampleServer_handlerJSONAddUpdateMetric() {
 }
 
 func ExampleServer_handlerJSONGetMetric() {
-	s := Server{}
+	server, err := NewTempServer()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s := HTTPServer{server: server}
 	// getMetricsMap возвращает словарь метрик(map[string]storage.Metric) для демонстрации
-	s.MetricStorage = storage.NewMemStorage(getMetricsMap())
+	s.server.MetricStorage = storage.NewMemStorage(getMetricsMap())
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -119,9 +145,14 @@ func ExampleServer_handlerJSONGetMetric() {
 }
 
 func ExampleServer_handlerPing() {
-	s := Server{}
+	server, err := NewTempServer()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s := HTTPServer{server: server}
 	// getMetricsMap возвращает словарь метрик(map[string]storage.Metric) для демонстрации
-	s.MetricStorage = storage.NewMemStorage(getMetricsMap())
+	s.server.MetricStorage = storage.NewMemStorage(getMetricsMap())
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -140,10 +171,15 @@ func ExampleServer_handlerPing() {
 }
 
 func ExampleServer_handlerBatchUpdate() {
-	s := Server{}
+	server, err := NewTempServer()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s := HTTPServer{server: server}
 	// getMetricsMap возвращает словарь метрик(map[string]storage.Metric) для демонстрации
-	s.MetricStorage = storage.NewMemStorage(getMetricsMap())
-	nms := s.MetricStorage.(*storage.MemStorage)
+	s.server.MetricStorage = storage.NewMemStorage(getMetricsMap())
+	nms := s.server.MetricStorage.(*storage.MemStorage)
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
