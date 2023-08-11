@@ -77,6 +77,8 @@ type workPool struct {
 	wgFinish     sync.WaitGroup
 }
 
+var GRPC *GRPCAgent
+
 // WPool воркпул, отправляющий метрики на сервер.
 var WPool workPool
 
@@ -305,7 +307,11 @@ func sendMetrics() {
 		metrics[metricID] = gauge(cpuUtilStat)
 	}
 
-	sendMetricsBatchByJSON(metrics)
+	if GRPC != nil {
+		GRPC.sendMetricBatch(metrics)
+	} else {
+		sendMetricsBatchByJSON(metrics)
+	}
 }
 
 // sendMetricByURL отправляет метрику Post запросом, посредством url.
