@@ -47,9 +47,6 @@ func getServer(useDB bool) *HTTPServer {
 		panic(err)
 	}
 	s := HTTPServer{server: server}
-	if err != nil {
-		panic(err)
-	}
 	server.LayoutsDir = "./html_layouts/"
 	if !useDB {
 		s.server.MetricStorage = storage.NewMemStorage(getMetricsMap())
