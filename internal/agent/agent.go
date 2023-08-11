@@ -11,7 +11,9 @@ import (
 	"github.com/firesworder/devopsmetrics/internal/crypt"
 	"log"
 	"math/rand"
+	"net"
 	"net/url"
+	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -34,6 +36,9 @@ type (
 
 // serverURL содержит адрес сервера.
 var serverURL string
+
+// содержит v4 ip хоста
+var hostIPV4 string
 
 // переменные в которых хранятся значения метрик(в сыром виде) для отправки.
 var (
@@ -72,6 +77,8 @@ type workPool struct {
 	wgFinish     sync.WaitGroup
 }
 
+var GRPC *GRPCAgent
+
 // WPool воркпул, отправляющий метрики на сервер.
 var WPool workPool
 
@@ -82,6 +89,7 @@ var encoder *crypt.Encoder
 
 func init() {
 	InitCmdArgs()
+	initHostIP()
 	if Env.PublicCryptoKeyFp != "" {
 		var err error
 		encoder, err = crypt.NewEncoder(Env.PublicCryptoKeyFp)
@@ -109,6 +117,24 @@ func InitCmdArgs() {
 	flag.StringVar(&Env.PublicCryptoKeyFp, "crypto-key", "", "filepath to public key")
 	flag.StringVar(&Env.ConfigFilepath, "config", "", "filepath to json env config")
 	flag.StringVar(&Env.ConfigFilepath, "c", "", "filepath to json env config")
+}
+
+// Определяет host IP для заполнения X-REAL-IP заголовка в запросах к серверу
+func initHostIP() {
+	host, err := os.Hostname()
+	if err != nil {
+		log.Fatal(err)
+	}
+	adds, err := net.LookupHost(host)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, v := range adds {
+		if ip := net.ParseIP(v); ip.To4() != nil {
+			hostIPV4 = v
+			return
+		}
+	}
 }
 
 // ParseEnvArgs Парсит значения полей Env. Сначала из cmd аргументов, затем из перем-х окружения.
@@ -281,7 +307,11 @@ func sendMetrics() {
 		metrics[metricID] = gauge(cpuUtilStat)
 	}
 
-	sendMetricsBatchByJSON(metrics)
+	if GRPC != nil {
+		GRPC.sendMetricBatch(metrics)
+	} else {
+		sendMetricsBatchByJSON(metrics)
+	}
 }
 
 // sendMetricByURL отправляет метрику Post запросом, посредством url.
@@ -299,6 +329,7 @@ func sendMetricByURL(paramName string, paramValue interface{}) {
 
 	_, err := client.R().
 		SetHeader("Content-Type", "text/plain").
+		SetHeader("X-Real-IP", hostIPV4).
 		Post(requestURL)
 	if err != nil {
 		log.Println(err)
@@ -352,6 +383,7 @@ func sendMetricByJSON(paramName string, paramValue interface{}) {
 
 	_, err = client.R().
 		SetHeader("Content-Type", "application/json").
+		SetHeader("X-Real-IP", hostIPV4).
 		SetBody(bodyContent).
 		Post(`/update/`)
 	if err != nil {
@@ -415,6 +447,7 @@ func sendMetricsBatchByJSON(metrics map[string]interface{}) {
 
 	_, err = client.R().
 		SetHeader("Content-Type", "application/json").
+		SetHeader("X-Real-IP", hostIPV4).
 		SetBody(bodyContent).
 		Post(`/updates/`)
 	if err != nil {

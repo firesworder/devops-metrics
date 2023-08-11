@@ -34,10 +34,12 @@ func init() {
 	metric3, _ = storage.NewMetric("Alloc", internal.GaugeTypeName, 7.77)
 	unknownMetric, _ = storage.NewMetric("UnknownMetric", internal.CounterTypeName, int64(10))
 	unknownMetric2, _ = storage.NewMetric("UnknownMetric", internal.GaugeTypeName, 7.77)
+
+	Env = environment{}
 }
 
 var testEnvVars = []string{
-	"ADDRESS", "STORE_FILE", "STORE_INTERVAL", "RESTORE", "KEY", "DATABASE_DSN", "CRYPTO_KEY", "CONFIG",
+	"ADDRESS", "STORE_FILE", "STORE_INTERVAL", "RESTORE", "KEY", "DATABASE_DSN", "CRYPTO_KEY", "CONFIG", "TRUSTED_SUBNET",
 }
 
 func SaveOSVarsState(testEnvVars []string) map[string]string {
@@ -70,6 +72,7 @@ type requestArgs struct {
 	method      string
 	url         string
 	contentType string
+	xRealIP     string
 	body        string
 }
 
@@ -88,7 +91,10 @@ func compareMetricsState(t *testing.T, wantMS map[string]storage.Metric, mR stor
 }
 
 func TestAddUpdateMetricHandler(t *testing.T) {
-	s := Server{}
+	server, err := NewTempServer()
+	require.NoError(t, err)
+
+	s := HTTPServer{server: server}
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -235,20 +241,23 @@ func TestAddUpdateMetricHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s.MetricStorage = storage.NewMemStorage(tt.initState)
+			s.server.MetricStorage = storage.NewMemStorage(tt.initState)
 			statusCode, contentType, body := sendTestRequest(t, ts, tt.request)
 			require.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
 			assert.Equal(t, tt.wantResponse.body, body)
 
-			compareMetricsState(t, tt.wantedState, s.MetricStorage, context.Background())
+			compareMetricsState(t, tt.wantedState, s.server.MetricStorage, context.Background())
 		})
 	}
 }
 
 func TestShowAllMetricsHandler(t *testing.T) {
-	s := Server{}
-	s.LayoutsDir = "./html_layouts/"
+	server, err := NewTempServer()
+	require.NoError(t, err)
+	server.LayoutsDir = "./html_layouts/"
+
+	s := HTTPServer{server: server}
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -293,7 +302,7 @@ func TestShowAllMetricsHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s.MetricStorage = storage.NewMemStorage(tt.memStorageState)
+			s.server.MetricStorage = storage.NewMemStorage(tt.memStorageState)
 			statusCode, contentType, body := sendTestRequest(t, ts, tt.request)
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
@@ -307,7 +316,10 @@ func TestShowAllMetricsHandler(t *testing.T) {
 }
 
 func TestGetMetricHandler(t *testing.T) {
-	s := Server{}
+	server, err := NewTempServer()
+	require.NoError(t, err)
+
+	s := HTTPServer{server: server}
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -409,7 +421,7 @@ func TestGetMetricHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s.MetricStorage = storage.NewMemStorage(tt.memStorageState)
+			s.server.MetricStorage = storage.NewMemStorage(tt.memStorageState)
 			statusCode, contentType, body := sendTestRequest(t, ts, tt.request)
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
@@ -419,7 +431,10 @@ func TestGetMetricHandler(t *testing.T) {
 }
 
 func TestAddUpdateMetricJSONHandler(t *testing.T) {
-	s := Server{}
+	server, err := NewTempServer()
+	require.NoError(t, err)
+
+	s := HTTPServer{server: server}
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -685,20 +700,23 @@ func TestAddUpdateMetricJSONHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s.MetricStorage = storage.NewMemStorage(tt.initState)
+			s.server.MetricStorage = storage.NewMemStorage(tt.initState)
 			statusCode, contentType, body := sendTestRequest(t, ts, tt.requestArgs)
 
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
 			assert.Equal(t, tt.wantResponse.body, body)
 
-			compareMetricsState(t, tt.wantedState, s.MetricStorage, context.Background())
+			compareMetricsState(t, tt.wantedState, s.server.MetricStorage, context.Background())
 		})
 	}
 }
 
 func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
-	s := Server{}
+	server, err := NewTempServer()
+	require.NoError(t, err)
+
+	s := HTTPServer{server: server}
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -858,14 +876,14 @@ func TestAddUpdateMetricJSONHandlerWithHash(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			Env = tt.env
-			s.MetricStorage = storage.NewMemStorage(tt.initState)
+			s.server.MetricStorage = storage.NewMemStorage(tt.initState)
 			statusCode, contentType, body := sendTestRequest(t, ts, tt.requestArgs)
 
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
 			assert.Equal(t, tt.wantResponse.body, body)
 
-			compareMetricsState(t, tt.wantedState, s.MetricStorage, context.Background())
+			compareMetricsState(t, tt.wantedState, s.server.MetricStorage, context.Background())
 		})
 	}
 
@@ -876,6 +894,9 @@ func sendTestRequest(t *testing.T, ts *httptest.Server, r requestArgs) (int, str
 	// создаю реквест
 	req, err := http.NewRequest(r.method, ts.URL+r.url, strings.NewReader(r.body))
 	req.Header.Set("Content-Type", "application/json")
+	if r.xRealIP != "" {
+		req.Header.Set("X-Real-IP", r.xRealIP)
+	}
 	require.NoError(t, err)
 
 	// делаю реквест на дефолтном клиенте
@@ -891,6 +912,9 @@ func sendTestRequest(t *testing.T, ts *httptest.Server, r requestArgs) (int, str
 }
 
 func TestGetMetricJSONHandler(t *testing.T) {
+	server, err := NewTempServer()
+	require.NoError(t, err)
+
 	filledState := map[string]storage.Metric{
 		metric1.Name: *metric1,
 		metric2.Name: *metric2,
@@ -899,7 +923,7 @@ func TestGetMetricJSONHandler(t *testing.T) {
 	emptyState := map[string]storage.Metric{}
 
 	// костыль, чтоб
-	s := Server{}
+	s := HTTPServer{server: server}
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -1031,7 +1055,7 @@ func TestGetMetricJSONHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s.MetricStorage = storage.NewMemStorage(tt.memStorageState)
+			s.server.MetricStorage = storage.NewMemStorage(tt.memStorageState)
 			statusCode, contentType, body := sendTestRequest(t, ts, tt.requestArgs)
 
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
@@ -1042,6 +1066,9 @@ func TestGetMetricJSONHandler(t *testing.T) {
 }
 
 func TestGetMetricJsonHandlerWithHash(t *testing.T) {
+	server, err := NewTempServer()
+	require.NoError(t, err)
+
 	filledState := map[string]storage.Metric{
 		metric1.Name: *metric1,
 		metric2.Name: *metric2,
@@ -1050,7 +1077,7 @@ func TestGetMetricJsonHandlerWithHash(t *testing.T) {
 	emptyState := map[string]storage.Metric{}
 
 	// костыль, чтоб
-	s := Server{}
+	s := HTTPServer{server: server}
 	ts := httptest.NewServer(s.newRouter())
 	defaultEnv := Env
 	defer ts.Close()
@@ -1133,7 +1160,7 @@ func TestGetMetricJsonHandlerWithHash(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			Env = tt.env
-			s.MetricStorage = storage.NewMemStorage(tt.memStorageState)
+			s.server.MetricStorage = storage.NewMemStorage(tt.memStorageState)
 			statusCode, contentType, body := sendTestRequest(t, ts, tt.requestArgs)
 
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
@@ -1147,10 +1174,12 @@ func TestGetMetricJsonHandlerWithHash(t *testing.T) {
 
 func TestServer_PingHandler(t *testing.T) {
 	Env.DatabaseDsn = "postgresql://postgres:admin@localhost:5432/devops"
-	s, err := NewServer()
+	server, err := NewTempServer()
 	if err != nil {
 		t.Skipf("cannot connect to db. db mocks are not ready yet")
 	}
+
+	s := HTTPServer{server: server}
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -1211,7 +1240,7 @@ func TestServer_InitFileStore(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Server{
+			s := &TempServer{
 				FileStore: tt.beforeInitSArgs.FileStore,
 			}
 			Env = environment{}
@@ -1305,7 +1334,7 @@ func TestServer_InitMetricStorage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			serverObj := Server{
+			serverObj := TempServer{
 				FileStore: tt.serverArgs.FileStore,
 			}
 			Env.Restore = tt.Restore
@@ -1511,6 +1540,7 @@ func TestParseEnvArgs(t *testing.T) {
 				DatabaseDsn:        "",
 				PrivateCryptoKeyFp: "/path/to/key.pem",
 				ConfigFilepath:     "env_config_test.json",
+				TrustedSubnet:      "192.168.1.1/24",
 			},
 			wantPanic: false,
 		},
@@ -1528,6 +1558,7 @@ func TestParseEnvArgs(t *testing.T) {
 				DatabaseDsn:        "",
 				PrivateCryptoKeyFp: "/path/to/key.pem",
 				ConfigFilepath:     "env_config_test.json",
+				TrustedSubnet:      "192.168.1.1/24",
 			},
 			wantPanic: false,
 		},
@@ -1545,12 +1576,13 @@ func TestParseEnvArgs(t *testing.T) {
 				DatabaseDsn:        "",
 				PrivateCryptoKeyFp: "/path/to/key.pem",
 				ConfigFilepath:     "env_config_test.json",
+				TrustedSubnet:      "192.168.1.1/24",
 			},
 			wantPanic: false,
 		},
 		{
 			name:   "Test 16. Field 'ConfigFilepath', set by env var 'CONFIG'. File not exist.",
-			cmdStr: "file.exe --a=cmd.site --r=15s --p=3s -config=env_config_test.json",
+			cmdStr: "file.exe --a=cmd.site -r=false --p=3s -config=env_config_test.json",
 			envVars: map[string]string{
 				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true", "CONFIG": "not_existed_config.json",
 			},
@@ -1565,6 +1597,79 @@ func TestParseEnvArgs(t *testing.T) {
 			},
 			wantPanic: true,
 		},
+		// поле TrustedSubnet
+		{
+			name:   "Test 17. Field 'TrustedSubnet', set by cmd key 't'.",
+			cmdStr: "file.exe -a=cmd.site -i=20s -f=somefile.json -r=false -t=192.168.1.1/18",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: environment{
+				ServerAddress:      "cmd.site",
+				StoreInterval:      60 * time.Second,
+				StoreFile:          "env.json",
+				Restore:            true,
+				DatabaseDsn:        "",
+				PrivateCryptoKeyFp: "",
+				TrustedSubnet:      "192.168.1.1/18",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 18. Field 'TrustedSubnet', set by env var 'TRUSTED_SUBNET'.",
+			cmdStr: "file.exe -a=cmd.site -i=20s -r=false",
+			envVars: map[string]string{
+				"STORE_INTERVAL": "60s", "CONFIG": "env_config_test.json", "RESTORE": "true",
+				"TRUSTED_SUBNET": "192.168.1.1/12",
+			},
+			wantEnv: environment{
+				ServerAddress:      "cmd.site",
+				StoreInterval:      60 * time.Second,
+				StoreFile:          "/path/to/file.db",
+				Restore:            true,
+				DatabaseDsn:        "",
+				PrivateCryptoKeyFp: "/path/to/key.pem",
+				ConfigFilepath:     "env_config_test.json",
+				TrustedSubnet:      "192.168.1.1/12",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 19. Field 'TrustedSubnet', set by config file field 'trusted_subnet'.",
+			cmdStr: "file.exe -a=cmd.site -i=20s -r=false",
+			envVars: map[string]string{
+				"STORE_INTERVAL": "60s", "CONFIG": "env_config_test.json", "RESTORE": "true",
+			},
+			wantEnv: environment{
+				ServerAddress:      "cmd.site",
+				StoreInterval:      60 * time.Second,
+				StoreFile:          "/path/to/file.db",
+				Restore:            true,
+				DatabaseDsn:        "",
+				PrivateCryptoKeyFp: "/path/to/key.pem",
+				ConfigFilepath:     "env_config_test.json",
+				TrustedSubnet:      "192.168.1.1/24",
+			},
+			wantPanic: false,
+		},
+		{
+			name:   "Test 20. Field 'TrustedSubnet', field not set.",
+			cmdStr: "file.exe -a=cmd.site -i=20s -r=false",
+			envVars: map[string]string{
+				"STORE_FILE": "env.json", "STORE_INTERVAL": "60s", "RESTORE": "true",
+			},
+			wantEnv: environment{
+				ServerAddress:      "cmd.site",
+				StoreInterval:      60 * time.Second,
+				StoreFile:          "env.json",
+				Restore:            true,
+				DatabaseDsn:        "",
+				PrivateCryptoKeyFp: "",
+				ConfigFilepath:     "",
+				TrustedSubnet:      "",
+			},
+			wantPanic: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1576,6 +1681,7 @@ func TestParseEnvArgs(t *testing.T) {
 				Restore:       true,
 				Key:           "",
 				DatabaseDsn:   "",
+				TrustedSubnet: "",
 			}
 
 			UpdateOSEnvState(t, testEnvVars, tt.envVars)
@@ -1649,7 +1755,10 @@ func sendTestRequestWithCompression(t *testing.T, ts *httptest.Server, r request
 }
 
 func TestServer_gzipCompressor(t *testing.T) {
-	s := Server{}
+	server, err := NewTempServer()
+	require.NoError(t, err)
+
+	s := HTTPServer{server: server}
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -1685,20 +1794,23 @@ func TestServer_gzipCompressor(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s.MetricStorage = storage.NewMemStorage(tt.initState)
+			s.server.MetricStorage = storage.NewMemStorage(tt.initState)
 			rWC := sendTestRequestWithCompression(t, ts, tt.requestArgsWC)
 			require.Equal(t, tt.wantResponse.statusCode, rWC.statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, rWC.contentType)
 			assert.Equal(t, tt.wantResponse.uncompressed, rWC.uncompressed)
 			assert.Equal(t, tt.wantResponse.body, rWC.body)
 
-			compareMetricsState(t, tt.wantedState, s.MetricStorage, context.Background())
+			compareMetricsState(t, tt.wantedState, s.server.MetricStorage, context.Background())
 		})
 	}
 }
 
 func TestServer_gzipDecompressor(t *testing.T) {
-	s := Server{}
+	server, err := NewTempServer()
+	require.NoError(t, err)
+
+	s := HTTPServer{server: server}
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -1733,13 +1845,13 @@ func TestServer_gzipDecompressor(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s.MetricStorage = storage.NewMemStorage(tt.initState)
+			s.server.MetricStorage = storage.NewMemStorage(tt.initState)
 			rWC := sendTestRequestWithCompression(t, ts, tt.requestArgsWC)
 			require.Equal(t, tt.wantResponse.statusCode, rWC.statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, rWC.contentType)
 			assert.Equal(t, tt.wantResponse.body, rWC.body)
 
-			compareMetricsState(t, tt.wantedState, s.MetricStorage, context.Background())
+			compareMetricsState(t, tt.wantedState, s.server.MetricStorage, context.Background())
 		})
 	}
 }
@@ -1753,12 +1865,13 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 	metricCounterUpdatedMpl, _ := storage.NewMetric("CounterMetric", internal.CounterTypeName, int64(969525009))
 	devTest := true
 	Env.DatabaseDsn = "postgresql://postgres:admin@localhost:5432/devops"
-	s, err := NewServer()
+	server, err := NewTempServer()
 	if err != nil {
 		devTest = false
 		Env.DatabaseDsn = ""
-		s, _ = NewServer()
+		server, _ = NewTempServer()
 	}
+	s := HTTPServer{server: server}
 	ts := httptest.NewServer(s.newRouter())
 	defer ts.Close()
 
@@ -1855,21 +1968,21 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if devTest {
-				_, err = s.DBConn.Exec("DELETE FROM metrics")
+				_, err = s.server.DBConn.Exec("DELETE FROM metrics")
 				require.NoError(t, err)
 				for _, metric := range tt.memStorageState {
-					err = s.MetricStorage.AddMetric(ctx, metric)
+					err = s.server.MetricStorage.AddMetric(ctx, metric)
 					require.NoError(t, err)
 				}
 			} else {
-				s.MetricStorage = storage.NewMemStorage(tt.memStorageState)
+				s.server.MetricStorage = storage.NewMemStorage(tt.memStorageState)
 			}
 
 			statusCode, contentType, _ := sendTestRequest(t, ts, tt.requestArgs)
 			assert.Equal(t, tt.wantResponse.statusCode, statusCode)
 			assert.Equal(t, tt.wantResponse.contentType, contentType)
 
-			compareMetricsState(t, tt.wantStorageState, s.MetricStorage, context.Background())
+			compareMetricsState(t, tt.wantStorageState, s.server.MetricStorage, context.Background())
 		})
 	}
 }
@@ -1877,8 +1990,9 @@ func TestServer_handlerBatchUpdate(t *testing.T) {
 func TestServer_decryptMessage(t *testing.T) {
 	testKeysDir := "../crypt/test/"
 
-	s, err := NewServer()
+	server, err := NewTempServer()
 	require.NoError(t, err)
+	s := NewHTTPServer(server)
 	ts := httptest.NewServer(s.Router)
 	defer ts.Close()
 
@@ -1938,14 +2052,14 @@ func TestServer_decryptMessage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// очищаю изменения в сторедже
-			s.MetricStorage = &storage.MemStorage{Metrics: map[string]storage.Metric{}}
+			s.server.MetricStorage = &storage.MemStorage{Metrics: map[string]storage.Metric{}}
 			// если указан приватный ключ - тестировать с шифрованием
 			if tt.privateKeyName != "" {
 				tt.req.body = string(encMsg)
-				s.Decoder, err = crypt.NewDecoder(testKeysDir + tt.privateKeyName)
+				s.server.Decoder, err = crypt.NewDecoder(testKeysDir + tt.privateKeyName)
 				require.NoError(t, err)
 			} else {
-				s.Decoder = nil
+				s.server.Decoder = nil
 				tt.req.body = testBody
 			}
 
@@ -1959,6 +2073,118 @@ func TestServer_decryptMessage(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestServer_checkRequestSubnet(t *testing.T) {
+	tests := []struct {
+		name          string
+		req           requestArgs
+		trustedSubnet string
+		wantResponse  response
+	}{
+		{
+			name: "Test 1. TrustedSubnet field is not set. Update method.",
+			req: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10}`,
+				xRealIP:     "",
+			},
+			trustedSubnet: "",
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10}`,
+			},
+		},
+		{
+			name: "Test 2. TrustedSubnet field is set. Get method. XRealIP is not set.",
+			req: requestArgs{
+				method:      http.MethodPost,
+				url:         "/value/",
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge"}`,
+				xRealIP:     "",
+			},
+			trustedSubnet: "192.168.1.0/24",
+			wantResponse: response{
+				statusCode:  http.StatusForbidden,
+				contentType: "text/plain; charset=utf-8",
+				body:        "header value X-Real-IP can not be empty\n",
+			},
+		},
+		{
+			name: "Test 3. TrustedSubnet field is set. Update method. XRealIP is set, but IP invalid.",
+			req: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10}`,
+				xRealIP:     "192.122.1",
+			},
+			trustedSubnet: "192.168.1.0/24",
+			wantResponse: response{
+				statusCode:  http.StatusBadRequest,
+				contentType: "text/plain; charset=utf-8",
+				body:        "header value X-Real-IP is not valid\n",
+			},
+		},
+		{
+			name: "Test 4. TrustedSubnet field is set. Get method. XRealIP is set, but not in TrustedSubnet.",
+			req: requestArgs{
+				method:      http.MethodPost,
+				url:         "/value/",
+				contentType: "application/json",
+				body:        `{"id":"RandomValue","type":"gauge"}`,
+				xRealIP:     "192.122.1.1",
+			},
+			trustedSubnet: "192.168.1.0/24",
+			wantResponse: response{
+				statusCode:  http.StatusForbidden,
+				contentType: "text/plain; charset=utf-8",
+				body:        "user ip is not in trusted subnet\n",
+			},
+		},
+		{
+			name: "Test 5. TrustedSubnet field is set. Update method. XRealIP is set and in TrustedSubnet.",
+			req: requestArgs{
+				method:      http.MethodPost,
+				url:         "/update/",
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10}`,
+				xRealIP:     "192.168.1.1",
+			},
+			trustedSubnet: "192.168.1.0/24",
+			wantResponse: response{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+				body:        `{"id":"PollCount","type":"counter","delta":10}`,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// подготовка к очередному тесту
+			Env.TrustedSubnet = tt.trustedSubnet
+			server, err := NewTempServer()
+			require.NoError(t, err)
+
+			s := NewHTTPServer(server)
+			s.server.MetricStorage = &storage.MemStorage{Metrics: map[string]storage.Metric{
+				"RandomValue": {Value: float64(12.23), Name: "RandomValue"},
+			}}
+			ts := httptest.NewServer(s.Router)
+			defer ts.Close()
+
+			statusCode, contentType, respBody := sendTestRequest(t, ts, tt.req)
+			require.Equal(t, tt.wantResponse.statusCode, statusCode)
+			assert.Equal(t, tt.wantResponse.contentType, contentType)
+			assert.Equal(t, tt.wantResponse.body, respBody)
+		})
+	}
+	// сбрасываю TrustedSubnet, чтобы не влиять на другие тесты
+	Env.TrustedSubnet = ""
 }
 
 // Эти тесты должны быть внизу, т.к. вызывают гонку горутинами
@@ -2010,7 +2236,7 @@ func TestServer_SyncSaveMetricStorage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Server{
+			s := &TempServer{
 				FileStore:     tt.serverArgs.FileStore,
 				MetricStorage: tt.serverArgs.MetricStorage,
 			}
@@ -2087,7 +2313,7 @@ func TestServer_InitRepeatableSave(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Server{
+			s := &TempServer{
 				FileStore:     tt.serverArgs.FileStore,
 				MetricStorage: tt.serverArgs.MetricStorage,
 			}

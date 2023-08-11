@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+option go_package = "internal/server";
+
+message Metric {
+  string id = 1;
+  string m_type = 2;
+  int64 delta = 3;
+  double value = 4;
+  string hash = 5;
+}
+
+// handler GetMetric(url + json http handlers)
+message GetMetricRequest {
+  string ID = 1;
+}
+
+message GetMetricResponse {
+  Metric metric = 1;
+  string error = 2;
+}
+
+// handler(url + json http handlers)
+message UpdateMetricRequest {
+  Metric metric = 1;
+}
+
+message UpdateMetricResponse {
+  Metric metric = 1;
+  string error = 2;
+}
+
+// handler BatchUpdate
+message BatchMetricUpdateRequest {
+  repeated Metric metrics = 1;
+}
+
+message BatchMetricUpdateResponse {
+  string error = 1;
+}
+
+// services
+service Metrics {
+  rpc GetMetric(GetMetricRequest) returns (GetMetricResponse);
+  rpc UpdateMetric(UpdateMetricRequest) returns (UpdateMetricResponse);
+  rpc BatchMetricUpdate(BatchMetricUpdateRequest) returns (BatchMetricUpdateResponse);
+}

@@ -28,13 +28,14 @@ func main() {
 	signal.Notify(sigClose, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	serverCtx, serverStopCtx := context.WithCancel(context.Background())
 
-	serverParams, err := server.NewServer()
+	serverParams, err := server.NewTempServer()
 	if err != nil {
 		log.Fatal(err)
 	}
+	httpServer := server.NewHTTPServer(serverParams)
 	serverObj := &http.Server{
 		Addr:    server.Env.ServerAddress,
-		Handler: serverParams.Router,
+		Handler: httpServer.Router,
 	}
 	go func() {
 		<-sigClose
