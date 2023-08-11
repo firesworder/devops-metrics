@@ -719,6 +719,6 @@ func TestCreateSendMetricsJob(t *testing.T) {
 
 func Test_initHostIp(t *testing.T) {
 	hostIPV4 = ""
-	initHostIp()
+	initHostIP()
 	assert.NotEqual(t, hostIPV4, "")
 }

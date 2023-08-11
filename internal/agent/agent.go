@@ -89,7 +89,7 @@ var encoder *crypt.Encoder
 
 func init() {
 	InitCmdArgs()
-	initHostIp()
+	initHostIP()
 	if Env.PublicCryptoKeyFp != "" {
 		var err error
 		encoder, err = crypt.NewEncoder(Env.PublicCryptoKeyFp)
@@ -120,7 +120,7 @@ func InitCmdArgs() {
 }
 
 // Определяет host IP для заполнения X-REAL-IP заголовка в запросах к серверу
-func initHostIp() {
+func initHostIP() {
 	host, err := os.Hostname()
 	if err != nil {
 		log.Fatal(err)
