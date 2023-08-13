@@ -1,13 +1,13 @@
-package server
+package env
 
 import (
 	"encoding/json"
-	"github.com/firesworder/devopsmetrics/internal/envconfighelper"
+	"github.com/firesworder/devopsmetrics/internal/helper"
 	"os"
 	"time"
 )
 
-type envConfig struct {
+type serverEnvConfig struct {
 	ServerAddress      string `json:"address"`
 	Restore            bool   `json:"restore"`
 	StoreInterval      string `json:"store_interval"`
@@ -17,6 +17,31 @@ type envConfig struct {
 	TrustedSubnet      string `json:"trusted_subnet"`
 }
 
+// todo: можно упростить эти константы?
+
+// словарь [ключ ком.строки: имя ассоц. поля Env]
+var cmdEnvDict = map[string]string{
+	"a":          "ServerAddress",
+	"r":          "Restore",
+	"i":          "StoreInterval",
+	"f":          "StoreFile",
+	"d":          "DatabaseDsn",
+	"crypto-key": "PrivateCryptoKeyFp",
+	"t":          "TrustedSubnet",
+}
+
+// словарь [перем.окружения: имя ассоц. поля Env]
+var osEnvEnvDict = map[string]string{
+	"ADDRESS":        "ServerAddress",
+	"RESTORE":        "Restore",
+	"STORE_INTERVAL": "StoreInterval",
+	"STORE_FILE":     "StoreFile",
+	"DATABASE_DSN":   "DatabaseDsn",
+	"CRYPTO_KEY":     "PrivateCryptoKeyFp",
+	"TRUSTED_SUBNET": "TrustedSubnet",
+}
+
+// todo: вынести путь к конфигу в аргументы
 func parseJSONConfig() error {
 	// поля заполняемые из JSON(константа)
 	var fieldsToSet = map[string]bool{
@@ -29,28 +54,6 @@ func parseJSONConfig() error {
 		"TrustedSubnet":      true,
 	}
 
-	// словарь [ключ ком.строки: имя ассоц. поля Env]
-	var cmdEnvDict = map[string]string{
-		"a":          "ServerAddress",
-		"r":          "Restore",
-		"i":          "StoreInterval",
-		"f":          "StoreFile",
-		"d":          "DatabaseDsn",
-		"crypto-key": "PrivateCryptoKeyFp",
-		"t":          "TrustedSubnet",
-	}
-
-	// словарь [перем.окружения: имя ассоц. поля Env]
-	var osEnvEnvDict = map[string]string{
-		"ADDRESS":        "ServerAddress",
-		"RESTORE":        "Restore",
-		"STORE_INTERVAL": "StoreInterval",
-		"STORE_FILE":     "StoreFile",
-		"DATABASE_DSN":   "DatabaseDsn",
-		"CRYPTO_KEY":     "PrivateCryptoKeyFp",
-		"TRUSTED_SUBNET": "TrustedSubnet",
-	}
-
 	// получаю json из конфига, путь беру из переменной env
 	config, err := getJSONData(Env.ConfigFilepath)
 	if err != nil {
@@ -58,7 +61,7 @@ func parseJSONConfig() error {
 	}
 
 	// получаю список полей для заполнения из envJSON
-	envconfighelper.GetFieldsNameToFill(cmdEnvDict, osEnvEnvDict, fieldsToSet)
+	helper.GetFieldsNameToFill(cmdEnvDict, osEnvEnvDict, fieldsToSet)
 
 	// записываю новые значения
 	if fieldsToSet["ServerAddress"] {
@@ -89,8 +92,8 @@ func parseJSONConfig() error {
 	return nil
 }
 
-func getJSONData(configFile string) (*envConfig, error) {
-	config := &envConfig{}
+func getJSONData(configFile string) (*serverEnvConfig, error) {
+	config := &serverEnvConfig{}
 	f, err := os.Open(configFile)
 	if err != nil {
 		return nil, err

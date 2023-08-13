@@ -1,4 +1,4 @@
-package server
+package env
 
 import (
 	"errors"
@@ -14,8 +14,8 @@ func init() {
 	initCmdArgs()
 }
 
-// environment для получения(из ENV и cmd) и хранения переменных окружения агента.
-type environment struct {
+// Environment для получения(из ENV и cmd) и хранения переменных окружения агента.
+type Environment struct {
 	ServerAddress      string        `env:"ADDRESS"`
 	StoreFile          string        `env:"STORE_FILE"`
 	Key                string        `env:"KEY"`
@@ -28,17 +28,17 @@ type environment struct {
 }
 
 // Env объект с переменными окружения(из ENV и cmd args).
-var Env environment
+var Env Environment
 
 // initCmdArgs Определяет флаги командной строки и линкует их с соотв полями объекта Env.
 // В рамках этой же функции происходит и заполнение дефолтными значениями.
 func initCmdArgs() {
 	flag.StringVar(&Env.ServerAddress, "a", "localhost:8080", "server address")
-	flag.BoolVar(&Env.Restore, "r", true, "restore memstorage from store file")
-	flag.DurationVar(&Env.StoreInterval, "i", 300*time.Second, "store interval")
 	flag.StringVar(&Env.StoreFile, "f", "/tmp/devops-metrics-db.json", "store file")
 	flag.StringVar(&Env.Key, "k", "", "key for hash func")
 	flag.StringVar(&Env.DatabaseDsn, "d", "", "database address")
+	flag.BoolVar(&Env.Restore, "r", true, "restore memstorage from store file")
+	flag.DurationVar(&Env.StoreInterval, "i", 300*time.Second, "store interval")
 	flag.StringVar(&Env.PrivateCryptoKeyFp, "crypto-key", "", "filepath to private key")
 	flag.StringVar(&Env.ConfigFilepath, "config", "", "filepath to json env config")
 	flag.StringVar(&Env.ConfigFilepath, "c", "", "filepath to json env config")
