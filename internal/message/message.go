@@ -6,9 +6,15 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/firesworder/devopsmetrics/internal"
+)
+
+var (
+	ErrHashInvalid = errors.New("hash is not valid")
+	ErrEmptyKey    = errors.New("key for hash function can not be empty")
 )
 
 // Metrics объект сообщения-метрики.
@@ -23,7 +29,7 @@ type Metrics struct {
 // InitHash формирует подписанный(hmac) хэш метрики и записывает в свойство Hash объекта.
 func (m *Metrics) InitHash(key string) error {
 	if key == "" {
-		return fmt.Errorf("key cannot be empty")
+		return ErrEmptyKey
 	}
 
 	h := hmac.New(sha256.New, []byte(key))
@@ -48,15 +54,17 @@ func (m *Metrics) InitHash(key string) error {
 
 // CheckHash сверяет полученный и ожидаемый(для ключа key) хеш для метрики.
 // Если хэши совпадает - возвращает true, иначе false.
-func (m *Metrics) CheckHash(key string) (bool, error) {
-	gotHash := m.Hash
-	defer func() {
-		m.Hash = gotHash
-	}()
-
-	err := m.InitHash(key)
-	if err != nil {
-		return false, err
+func CheckHash(m Metrics, key string) error {
+	if key == "" {
+		return ErrEmptyKey
 	}
-	return hmac.Equal([]byte(gotHash), []byte(m.Hash)), nil
+
+	gotHash := m.Hash
+	if err := m.InitHash(key); err != nil {
+		return err
+	}
+	if !hmac.Equal([]byte(gotHash), []byte(m.Hash)) {
+		return ErrHashInvalid
+	}
+	return nil
 }

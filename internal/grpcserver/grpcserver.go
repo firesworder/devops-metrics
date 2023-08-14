@@ -1,10 +1,11 @@
-package server
+package grpcserver
 
 import (
 	"context"
 	"errors"
 	"github.com/firesworder/devopsmetrics/internal"
 	"github.com/firesworder/devopsmetrics/internal/message"
+	"github.com/firesworder/devopsmetrics/internal/server"
 	"github.com/firesworder/devopsmetrics/internal/storage"
 	pb "github.com/firesworder/devopsmetrics/proto"
 	"google.golang.org/grpc"
@@ -50,7 +51,7 @@ type GRPCServer struct {
 	// для совместимости с будущими версиями
 	pb.UnimplementedMetricsServer
 
-	server *TempServer
+	server *server.TempServer
 }
 
 func (gs *GRPCServer) serverInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo,
@@ -98,12 +99,13 @@ func (gs *GRPCServer) GetMetric(ctx context.Context, in *pb.GetMetricRequest) (*
 	}
 
 	responseMsg := metric.GetMessageMetric()
-	if Env.Key != "" {
-		err = responseMsg.InitHash(Env.Key)
-		if err != nil {
-			return nil, status.Errorf(codes.NotFound, err.Error())
-		}
-	}
+	// todo: Env.Key
+	//if Env.Key != "" {
+	//	err = responseMsg.InitHash(Env.Key)
+	//	if err != nil {
+	//		return nil, status.Errorf(codes.NotFound, err.Error())
+	//	}
+	//}
 
 	response.Metric = getPbMetric(responseMsg)
 	return &response, nil
@@ -114,15 +116,16 @@ func (gs *GRPCServer) UpdateMetric(ctx context.Context, in *pb.UpdateMetricReque
 	var err error
 
 	metricMessage := getMessageMetric(in.Metric)
-	if Env.Key != "" {
-		var isHashCorrect bool
-		isHashCorrect, err = metricMessage.CheckHash(Env.Key)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		} else if !isHashCorrect {
-			return nil, status.Error(codes.InvalidArgument, "hash is not correct")
-		}
-	}
+	// todo: Env.Key
+	//if Env.Key != "" {
+	//	var isHashCorrect bool
+	//	isHashCorrect, err = metricMessage.CheckHash(Env.Key)
+	//	if err != nil {
+	//		return nil, status.Error(codes.Internal, err.Error())
+	//	} else if !isHashCorrect {
+	//		return nil, status.Error(codes.InvalidArgument, "hash is not correct")
+	//	}
+	//}
 
 	metric, err = storage.NewMetricFromMessage(metricMessage)
 	if err != nil {
@@ -137,9 +140,10 @@ func (gs *GRPCServer) UpdateMetric(ctx context.Context, in *pb.UpdateMetricReque
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	if err = gs.server.syncSaveMetricStorage(); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	// todo: gs.server.syncSaveMetricStorage()
+	//if err = gs.server.syncSaveMetricStorage(); err != nil {
+	//	return nil, status.Error(codes.Internal, err.Error())
+	//}
 
 	*metric, err = gs.server.MetricStorage.GetMetric(ctx, metric.Name)
 	if err != nil {
@@ -148,12 +152,13 @@ func (gs *GRPCServer) UpdateMetric(ctx context.Context, in *pb.UpdateMetricReque
 	}
 
 	responseMsg := metric.GetMessageMetric()
-	if Env.Key != "" {
-		err = responseMsg.InitHash(Env.Key)
-		if err != nil {
-			return nil, status.Errorf(codes.NotFound, err.Error())
-		}
-	}
+	// todo: Env
+	//if Env.Key != "" {
+	//	err = responseMsg.InitHash(Env.Key)
+	//	if err != nil {
+	//		return nil, status.Errorf(codes.NotFound, err.Error())
+	//	}
+	//}
 
 	response.Metric = getPbMetric(responseMsg)
 	return &response, nil
@@ -166,15 +171,16 @@ func (gs *GRPCServer) BatchMetricUpdate(ctx context.Context, in *pb.BatchMetricU
 	for _, mm := range in.Metrics {
 		metricMessage := getMessageMetric(mm)
 
-		if Env.Key != "" {
-			var isHashCorrect bool
-			isHashCorrect, err = metricMessage.CheckHash(Env.Key)
-			if err != nil {
-				return nil, status.Error(codes.Internal, err.Error())
-			} else if !isHashCorrect {
-				return nil, status.Error(codes.InvalidArgument, "hash is not correct")
-			}
-		}
+		// todo: Env
+		//if Env.Key != "" {
+		//	var isHashCorrect bool
+		//	isHashCorrect, err = metricMessage.CheckHash(Env.Key)
+		//	if err != nil {
+		//		return nil, status.Error(codes.Internal, err.Error())
+		//	} else if !isHashCorrect {
+		//		return nil, status.Error(codes.InvalidArgument, "hash is not correct")
+		//	}
+		//}
 
 		var m *storage.Metric
 		m, err = storage.NewMetricFromMessage(metricMessage)
@@ -192,9 +198,10 @@ func (gs *GRPCServer) BatchMetricUpdate(ctx context.Context, in *pb.BatchMetricU
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err = gs.server.syncSaveMetricStorage(); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	// todo: syncSaveMetricStorage() экспортируемым
+	//if err = gs.server.syncSaveMetricStorage(); err != nil {
+	//	return nil, status.Error(codes.Internal, err.Error())
+	//}
 
 	return &response, nil
 }
